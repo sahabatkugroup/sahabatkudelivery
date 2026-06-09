@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>Sahabatku Absensi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #00CAFF; --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --border: rgba(0,0,0,0.06); }
+        .dark-mode { --bg: #020617; --card: #0f172a; --text: #f1f5f9; --border: rgba(255,255,255,0.06); }
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .premium-glass { 
+            background: var(--card); 
+            border: 1px solid var(--border); 
+            border-radius: 24px; 
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.02); 
+        }
+
+        .nav-pro { 
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            width: 92%; max-width: 400px; 
+            background: #0f172a; border-radius: 35px; padding: 8px; 
+            display: flex; justify-content: space-around; z-index: 1000;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .nav-btn { color: #64748b; font-size: 1.1rem; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .nav-btn.active { color: var(--primary); background: rgba(0,202,255,0.15); border-radius: 25px; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+        .shake-alert { animation: shake 0.5s ease-in-out infinite; }
+
+        #loader { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        .scroll-hide::-webkit-scrollbar { display: none; }
+        input[type="month"]::-webkit-calendar-picker-indicator { filter: invert(0.5); }
+
+        details summary::-webkit-details-marker { display: none; }
+    </style>
+</head>
+<body class="max-w-md mx-auto px-5 pb-32">
+
+    <div id="loader">
+        <div class="w-10 h-10 border-4 border-[#00CAFF]/20 border-t-[#00CAFF] rounded-full animate-spin mb-4"></div>
+        <p class="text-[9px] font-black uppercase tracking-[3px] text-[#00CAFF]">Sahabatku System</p>
+    </div>
+
+    <header class="pt-8 pb-6 flex justify-between items-center">
+        <div>
+            <p class="text-[9px] font-black text-[#00CAFF] uppercase tracking-[2px]">Sahabatku Delivery</p>
+            <h1 class="text-2xl font-extrabold tracking-tight">Elite <span class="text-[#00CAFF]">Apps.</span></h1>
+        </div>
+        <button onclick="toggleDarkMode()" id="themeBtn" class="w-11 h-11 premium-glass flex items-center justify-center text-[#00CAFF] active:scale-90 transition-all">
+            <i class="fa-solid fa-moon"></i>
+        </button>
+    </header>
+
+    <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="premium-glass p-5 flex flex-col items-center">
+            <p class="text-[8px] font-bold opacity-40 uppercase mb-1">Total Team</p>
+            <h3 id="countMaster" class="text-2xl font-black italic">--</h3>
+        </div>
+        <div class="premium-glass p-5 border-l-4 border-[#00CAFF] flex flex-col items-center">
+            <p class="text-[8px] font-bold text-[#00CAFF] uppercase mb-1">Off Hari Ini</p>
+            <h3 id="countOff" class="text-2xl font-black italic text-[#00CAFF]">0</h3>
+        </div>
+    </div>
+
+    <div id="auto-check-area" class="hidden mb-6 space-y-3"></div>
+
+    <main>
+        <section id="tab-jadwal" class="tab-content active space-y-4">
+            <div class="flex justify-between items-center px-1">
+                <span class="text-[9px] font-black uppercase opacity-40 tracking-wider">Kalender Kerja</span>
+                <input type="month" id="filterMonth" onchange="renderData()" class="bg-transparent font-bold text-xs outline-none">
+            </div>
+            <div id="render-jadwal" class="space-y-3"></div>
+        </section>
+
+        <section id="tab-form" class="tab-content">
+            <div class="premium-glass p-7 space-y-5">
+                <div class="text-center">
+                    <h2 class="text-lg font-extrabold uppercase">PENGAJUAN</h2>
+                    <p class="text-[8px] opacity-40 font-black tracking-[2px]">Digital Form Jatibarang</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[9px] font-black uppercase opacity-40 ml-2 mb-1 block">Jenis Pengajuan</label>
+                        <select id="pJenis" onchange="handleJenisChange()" class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 font-bold outline-none border-none text-sm">
+                            <option value="Tukar Off">Tukar Off</option>
+                            <option value="Izin">Izin</option>
+                            <option value="Sakit">Sakit</option>
+                        </select>
+                    </div>
+                
+                    <div>
+                        <label class="text-[9px] font-black uppercase opacity-40 ml-2 mb-1 block">Personel Pemohon</label>
+                        <div onclick="openPicker('pemohon')" class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 font-bold flex justify-between items-center cursor-pointer">
+                            <span id="selectedNama" class="opacity-40 text-sm">Pilih Personel (Pemohon)</span>
+                            <i class="fa-solid fa-chevron-down text-[#00CAFF] text-xs"></i>
+                        </div>
+                    </div>
+                
+                    <div id="wrapperTglPemohon">
+                        <label class="text-[9px] font-black uppercase opacity-40 ml-2 mb-1 block">Jadwal Off Pemohon</label>
+                        <select id="pTgl" class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 font-bold outline-none border-none text-sm">
+                            <option value="">Pilih Tanggal Off Anda</option>
+                        </select>
+                    </div>
+
+                    <div id="wrapperTglDefault" class="hidden">
+                        <label class="text-[9px] font-black uppercase opacity-40 ml-2 mb-1 block">Tanggal Pengajuan</label>
+                        <input type="date" id="pTglDefault" class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 font-bold outline-none border-none text-sm">
+                    </div>
+                
+                    <div id="wrapperTukarOff" class="space-y-4">
+                        <div>
+                            <label class="text-[9px] font-black uppercase opacity-40 ml-2 mb-1 block">Personel Yang Diajak Tukar</label>
+                            <div onclick="openPicker('target')" class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 font-bold flex justify-between items-center cursor-pointer">
+                                <span id="selectedNamaTarget" class="opacity-40 text-sm">Pilih Personel Yang Mau Ditukar</span>
+                                <i class="fa-solid fa-chevron-down text-[#00CAFF] text-xs"></i>
+                            </div>
+                        </div>
+                
+                        <div>
+                            <label class="text-[9px] font-black uppercase opacity-40 ml-2 mb-1 block">Jadwal Off Personel Target</label>
+                            <select id="pTglTarget" class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 font-bold outline-none border-none text-sm">
+                                <option value="">Pilih Tanggal Off Target</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-black uppercase opacity-40 ml-2 mb-1 block">Keterangan Tambahan</label>
+                        <textarea id="pKet" placeholder="Keterangan..." class="w-full p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/50 font-bold outline-none border-none text-sm" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <button onclick="submitForm()" id="btnSubmit" class="w-full bg-[#00CAFF] text-white py-4 rounded-2xl font-black shadow-lg shadow-sky-400/20 active:scale-95 transition-all">
+                    AJUKAN
+                </button>
+            </div>
+        </section>
+
+        <section id="tab-recap" class="tab-content space-y-4">
+            <div class="relative group px-1">
+                <i class="fa-solid fa-magnifying-glass absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#00CAFF]"></i>
+                <input type="text" id="searchKurir" onkeyup="filterRecap()" placeholder="Cari nama..." 
+                    class="w-full pl-12 pr-5 py-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 font-bold outline-none shadow-sm text-sm">
+            </div>
+            <div id="render-recap" class="space-y-3"></div>
+        </section>
+    </main>
+
+    <nav class="nav-pro">
+        <button onclick="switchTab('jadwal', this)" class="nav-btn active"><i class="fa-solid fa-house-chimney"></i></button>
+        <button onclick="switchTab('form', this)" class="nav-btn"><i class="fa-solid fa-circle-plus"></i></button>
+        <button onclick="switchTab('recap', this)" class="nav-btn"><i class="fa-solid fa-chart-line"></i></button>
+    </nav>
+
+    <div id="modalNama" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] hidden items-end" onclick="closePicker()">
+        <div class="bg-white dark:bg-slate-900 w-full rounded-t-[35px] p-6 max-h-[75vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="w-10 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6"></div>
+            <div id="listNama" class="grid grid-cols-1 gap-2"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbz2gHikiFQ2qUI5Y6Nw_ISKQOzkFfGrvmIlSLONcqOR6QGtXg8crEqG7wpDQpuHXyKa6A/exec"; 
+        let store = { kurir: [], jadwal: [], sandi: {} };
+        let currentPickerTarget = 'pemohon'; 
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeBtn').innerHTML = '<i class="fa-solid fa-sun"></i>';
+            }
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            document.getElementById('themeBtn').innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+        }
+
+        window.onload = () => {
+            initTheme();
+            const skrg = new Date();
+            const wib = new Date(skrg.getTime() + (7 * 60 + skrg.getTimezoneOffset()) * 60000);
+            document.getElementById('filterMonth').value = `${wib.getFullYear()}-${String(wib.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('pTglDefault').valueAsDate = wib; 
+            
+            handleJenisChange(); 
+            loadData();
+        };
+
+        async function loadData() {
+            try {
+                const res = await fetch(API_URL + "?action=get");
+                store = await res.json();
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('countMaster').innerText = store.kurir.length;
+                renderData();
+            } catch (e) {
+                alert("Gagal Sinkronisasi");
+            }
+        }
+
+        function renderData() {
+            const listJ = document.getElementById('render-jadwal');
+            const listR = document.getElementById('render-recap');
+            const autoArea = document.getElementById('auto-check-area');
+            const ym = document.getElementById('filterMonth').value;
+            const [year, month] = ym.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+            
+            const skrg = new Date();
+            const todayStr = new Date(skrg.getTime() + (7 * 60 + skrg.getTimezoneOffset()) * 60000).toISOString().split('T')[0];
+            
+            listJ.innerHTML = ''; listR.innerHTML = ''; autoArea.innerHTML = '';
+            let offCount = 0;
+
+            const hiddenNotifs = JSON.parse(localStorage.getItem('hidden_off_' + todayStr) || "[]");
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateIso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = dateIso === todayStr;
+                const item = store.jadwal[d - 1]; 
+                
+                let content = '<span class="text-[9px] opacity-20 font-bold uppercase">Ready Team</span>';
+                if (item) {
+                    content = renderBadges(item);
+                    if (isToday && item.off) {
+                        const listOff = item.off.split(',').filter(x => x.trim());
+                        offCount = listOff.length;
+                        
+                        listOff.forEach(nama => {
+                            const n = nama.trim();
+                            if (hiddenNotifs.includes(n)) return;
+
+                            autoArea.classList.remove('hidden');
+                            autoArea.innerHTML += `
+                            <div id="notif-${n.replace(/\s+/g, '')}" class="premium-glass p-4 border-l-4 border-amber-500 bg-amber-500/5 flex flex-col gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center text-white shake-alert">
+                                        <i class="fa-solid fa-bell"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-[9px] font-black text-amber-600 uppercase">Verifikasi Kehadiran</p>
+                                        <h4 class="text-sm font-bold uppercase">${n}</h4>
+                                        <p class="text-[8px] opacity-50 italic">Jadwal Anda: OFF</p>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="secureConfirm('${n}', 'Konfirmasi OFF')" class="flex-1 py-2 bg-slate-200 dark:bg-slate-800 rounded-xl text-[10px] font-bold">BENAR OFF</button>
+                                    <button onclick="secureConfirm('${n}', 'BATAL OFF (MASUK)')" class="flex-1 py-2 bg-amber-500 text-white rounded-xl text-[10px] font-bold shadow-lg shadow-amber-500/20">TETAP MASUK</button>
+                                </div>
+                            </div>`;
+                        });
+                    }
+                }
+
+                const hari = new Date(dateIso).toLocaleDateString('id-ID', {weekday: 'short'});
+                listJ.innerHTML += `
+                    <div id="date-${dateIso}" class="premium-glass p-5 flex items-center gap-4 ${isToday ? 'ring-2 ring-[#00CAFF] bg-[#00CAFF]/5' : ''}">
+                        <div class="text-center border-r pr-4 border-slate-100 dark:border-slate-800 w-12">
+                            <p class="text-[8px] font-black uppercase opacity-30">${hari}</p>
+                            <p class="text-lg font-black">${d}</p>
+                        </div>
+                        <div class="flex-1 flex flex-wrap gap-1">${content}</div>
+                    </div>`;
+            }
+            document.getElementById('countOff').innerText = offCount;
+
+            store.kurir.sort().forEach(nama => {
+                let s = { off: 0, noOff: 0, izin: 0, sakit: 0, noM: 0, noP: 0 };
+                const nU = nama.toUpperCase().trim();
+            
+                for (let i = 0; i < daysInMonth; i++) {
+                    const r = store.jadwal[i];
+                    if (!r) continue;
+            
+                    const isIncluded = (v) => {
+                        if (!v) return false;
+                        return v.toUpperCase().split(',').map(x => x.trim()).includes(nU);
+                    };
+            
+                    if (isIncluded(r.off)) s.off++;
+                    if (isIncluded(r.noOff)) s.noOff++;
+                    if (isIncluded(r.izin)) s.izin++;
+                    if (isIncluded(r.sakit)) s.sakit++;
+                    if (isIncluded(r.noMasuk)) s.noM++;
+                    if (isIncluded(r.noPulang)) s.noP++;
+                }
+
+                listR.innerHTML += `
+                    <details class="recap-card group premium-glass overflow-hidden transition-all duration-300" data-nama="${nama.toLowerCase()}">
+                        <summary class="flex justify-between items-center p-5 cursor-pointer list-none outline-none">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-[#00CAFF]/10 flex items-center justify-center text-[#00CAFF] group-open:bg-[#00CAFF] group-open:text-white transition-all">
+                                    <i class="fa-solid fa-user text-xs"></i>
+                                </div>
+                                <span class="font-bold uppercase text-sm tracking-tight">${nama}</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-[10px] font-black opacity-20 uppercase">${ym}</span>
+                                <i class="fa-solid fa-chevron-down text-[10px] opacity-40 transition-transform"></i>
+                            </div>
+                        </summary>
+                        <div class="px-5 pb-6 border-t border-slate-50 dark:border-slate-800/50 pt-4">
+                            <div class="grid grid-cols-3 gap-2">
+                                ${miniStat('OFF', s.off, 'amber')}
+                                ${miniStat('Tidak Ambil OFF', s.noOff, 'emerald')}
+                                ${miniStat('IZIN', s.izin, 'blue')}
+                                ${miniStat('SAKIT', s.sakit, 'rose')}
+                                ${miniStat('Tanpa Absen M', s.noM, 'slate')}
+                                ${miniStat('Tanpa Absen P', s.noP, 'slate')}
+                            </div>
+                        </div>
+                    </details>`;
+            });
+            
+            const target = document.getElementById(`date-${todayStr}`);
+            if(target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+        }
+
+        async function secureConfirm(nama, status) {
+            const { value: pin } = await Swal.fire({
+                title: `Halo ${nama}`,
+                text: "Masukkan PIN Konfirmasi Anda:",
+                input: 'password',
+                inputPlaceholder: 'PIN Anda',
+                confirmButtonColor: '#00CAFF',
+                confirmButtonText: 'Verifikasi',
+                inputAttributes: { maxlength: 6, autofocus: 'true' }
+            });
+        
+            if (pin === undefined || pin === "") return;
+        
+            if (String(pin) !== String(store.sandi[nama])) {
+                return Swal.fire({ 
+                    icon: 'error', 
+                    title: 'PIN SALAH!', 
+                    text: 'Silakan cek kembali PIN Anda.',
+                    confirmButtonColor: '#00CAFF' 
+                });
+            }
+        
+            let jenisOtomatis = status.includes("BATAL") ? "Batal Off" : "Tukar Off";
+        
+            Swal.fire({
+                title: 'Memverifikasi...',
+                html: 'Data sedang dikirim ke sistem...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+        
+            const today = new Date().toISOString().split('T')[0];
+            const data = { 
+                action: "submit", 
+                jenis: jenisOtomatis, 
+                nama: nama, 
+                tgl: today, 
+                ket: "[AUTO] " + status 
+            };
+        
+            try {
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'STATUS TERUPDATE!',
+                    html: `
+                        <div class="text-left text-sm space-y-2">
+                            <p>Nama: <b>${nama}</b></p>
+                            <p>Jenis: <b class="text-[#00CAFF]">${jenisOtomatis}</b></p>
+                            <p>Status: <span class="text-amber-500 font-bold italic underline">PENDING</span></p>
+                            <hr>
+                            <p>Berhasil masuk sistem. Segera hubungi <b>Leader</b> untuk approval.</p>
+                        </div>
+                    `,
+                    confirmButtonColor: '#00CAFF',
+                    confirmButtonText: 'OK, SIAP!'
+                }).then(() => {
+                    let hidden = JSON.parse(localStorage.getItem('hidden_off_' + today) || "[]");
+                    if (!hidden.includes(nama)) {
+                        hidden.push(nama);
+                        localStorage.setItem('hidden_off_' + today, JSON.stringify(hidden));
+                    }
+                    location.reload();
+                });
+            } catch (e) { 
+                Swal.fire({ icon: 'error', title: 'Gagal Update!', text: 'Jaringan bermasalah.', confirmButtonColor: '#00CAFF' }); 
+            }
+        }
+
+        function miniStat(lbl, val, clr) {
+            return `<div class="bg-${clr}-50 dark:bg-${clr}-900/10 p-2 rounded-xl border border-${clr}-100 dark:border-${clr}-900/20 text-center">
+                <p class="text-[7px] font-bold text-${clr}-600 uppercase mb-0.5">${lbl}</p>
+                <p class="text-xs font-black text-${clr}-700 dark:text-${clr}-400">${val}</p>
+            </div>`;
+        }
+
+        function renderBadges(i) {
+            let h = '';
+            const b = (t, c, tc) => `<span class="${c} ${tc} px-2.5 py-1 rounded-lg text-[8px] font-bold uppercase">${t}</span>`;
+            const cleanList = (str) => str ? str.split(',').map(n => n.trim()).filter(n => n !== "") : [];
+        
+            cleanList(i.off).forEach(n => h += b(`OFF: ${n}`, 'bg-amber-100', 'text-amber-600'));
+            cleanList(i.noOff).forEach(n => h += b(`NO-OFF: ${n}`, 'bg-emerald-100', 'text-emerald-600'));
+            cleanList(i.izin).forEach(n => h += b(`IZIN: ${n}`, 'bg-blue-100', 'text-blue-600'));
+            cleanList(i.sakit).forEach(n => h += b(`SAKIT: ${n}`, 'bg-rose-100', 'text-rose-600'));
+            
+            return h;
+        }
+
+        function switchTab(id, el) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + id).classList.add('active');
+            el.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ================= LOGIKA BARU FITUR TUKAR OFF OPERASIONAL =================
+
+        function handleJenisChange() {
+            const jenis = document.getElementById('pJenis').value;
+            const wrapperTukar = document.getElementById('wrapperTukarOff');
+            const wrapperTglPemohon = document.getElementById('wrapperTglPemohon');
+            const wrapperTglDefault = document.getElementById('wrapperTglDefault');
+
+            if (jenis === "Tukar Off") {
+                wrapperTukar.classList.remove('hidden');
+                wrapperTglPemohon.classList.remove('hidden');
+                wrapperTglDefault.classList.add('hidden');
+                updateDropdownTanggal('pemohon');
+                updateDropdownTanggal('target');
+            } else {
+                wrapperTukar.classList.add('hidden');
+                wrapperTglPemohon.classList.add('hidden');
+                wrapperTglDefault.classList.remove('hidden');
+            }
+        }
+
+        function getJadwalOffPersonel(namaPersonel) {
+            if (!namaPersonel || namaPersonel.includes("Pilih Personel")) return [];
+            
+            const ym = document.getElementById('filterMonth').value;
+            if (!ym) return [];
+            const [year, month] = ym.split('-').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+            
+            let listTanggalOff = [];
+            const nU = namaPersonel.toUpperCase().trim();
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const item = store.jadwal[d - 1];
+                if (item && item.off) {
+                    const isOff = item.off.toUpperCase().split(',').map(x => x.trim()).includes(nU);
+                    if (isOff) {
+                        const dateIso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        listTanggalOff.push({ tgl: dateIso, angka: d });
+                    }
+                }
+            }
+            return listTanggalOff;
+        }
+
+        function updateDropdownTanggal(role) {
+            if (role === 'pemohon') {
+                const nama = document.getElementById('selectedNama').innerText;
+                const selectElement = document.getElementById('pTgl');
+                const listOff = getJadwalOffPersonel(nama);
+                
+                selectElement.innerHTML = '<option value="">Pilih Tanggal Off Anda</option>';
+                listOff.forEach(item => {
+                    selectElement.innerHTML += `<option value="${item.tgl}">Tanggal ${item.angka}</option>`;
+                });
+            } else if (role === 'target') {
+                const namaTarget = document.getElementById('selectedNamaTarget').innerText;
+                const selectElementTarget = document.getElementById('pTglTarget');
+                const listOffTarget = getJadwalOffPersonel(namaTarget);
+                
+                selectElementTarget.innerHTML = '<option value="">Pilih Tanggal Off Target</option>';
+                listOffTarget.forEach(item => {
+                    selectElementTarget.innerHTML += `<option value="${item.tgl}">Tanggal ${item.angka}</option>`;
+                });
+            }
+        }
+
+        function openPicker(role = 'pemohon') {
+            currentPickerTarget = role;
+            const list = document.getElementById('listNama');
+            
+            let listKurirFiltered = [...store.kurir];
+            if (role === 'target') {
+                const pemohonNama = document.getElementById('selectedNama').innerText;
+                listKurirFiltered = listKurirFiltered.filter(n => n !== pemohonNama);
+            } else {
+                const targetNama = document.getElementById('selectedNamaTarget').innerText;
+                listKurirFiltered = listKurirFiltered.filter(n => n !== targetNama);
+            }
+
+            list.innerHTML = listKurirFiltered.sort().map(n => `
+                <div onclick="selectNama('${n}')" class="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl font-bold text-center uppercase active:bg-[#00CAFF] active:text-white transition-all text-sm">
+                    ${n}
+                </div>
+            `).join('');
+            document.getElementById('modalNama').classList.replace('hidden', 'flex');
+        }
+
+        function selectNama(n) {
+            if (currentPickerTarget === 'pemohon') {
+                document.getElementById('selectedNama').innerText = n;
+                document.getElementById('selectedNama').classList.remove('opacity-40');
+                updateDropdownTanggal('pemohon');
+            } else {
+                document.getElementById('selectedNamaTarget').innerText = n;
+                document.getElementById('selectedNamaTarget').classList.remove('opacity-40');
+                updateDropdownTanggal('target');
+            }
+            closePicker();
+        }
+
+        function closePicker() { 
+            document.getElementById('modalNama').classList.replace('flex', 'hidden'); 
+        }
+
+        function filterRecap() {
+            const q = document.getElementById('searchKurir').value.toLowerCase();
+            document.querySelectorAll('.recap-card').forEach(c => c.style.display = c.dataset.nama.includes(q) ? 'block' : 'none');
+        }
+
+        async function submitForm() {
+            const btn = document.getElementById('btnSubmit');
+            const jenis = document.getElementById('pJenis').value;
+            const nama = document.getElementById('selectedNama').innerText;
+            
+            let tanggalFinal = "";
+            let keteranganFinal = document.getElementById('pKet').value;
+
+            if (nama === "Pilih Personel (Pemohon)" || nama === "Pilih Personel") {
+                return Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap!', text: 'Pastikan Nama Pemohon sudah diisi.', confirmButtonColor: '#00CAFF' });
+            }
+
+            if (jenis === "Tukar Off") {
+                const tglPemohon = document.getElementById('pTgl').value;
+                const namaTarget = document.getElementById('selectedNamaTarget').innerText;
+                const tglTarget = document.getElementById('pTglTarget').value;
+
+                if (!tglPemohon || namaTarget.includes("Pilih Personel") || !tglTarget) {
+                    return Swal.fire({ icon: 'warning', title: 'Data Tukar Belum Lengkap!', text: 'Pastikan Anda sudah memilih tanggal off Anda, personel target, dan tanggal off target.', confirmButtonColor: '#00CAFF' });
+                }
+                
+                tanggalFinal = tglPemohon; 
+                keteranganFinal = `[TUKAR OFF] Barter tgl ${tglPemohon.split('-')[2]} dengan ${namaTarget} (tgl ${tglTarget.split('-')[2]}). ${keteranganFinal}`;
+            } else {
+                tanggalFinal = document.getElementById('pTglDefault').value;
+                if (!tanggalFinal) {
+                    return Swal.fire({ icon: 'warning', title: 'Tanggal Kosong!', text: 'Pastikan tanggal pengajuan telah terisi.', confirmButtonColor: '#00CAFF' });
+                }
+            }
+
+            const data = {
+                action: "submit",
+                jenis: jenis,
+                nama: nama,
+                tgl: tanggalFinal,
+                ket: keteranganFinal
+            };
+
+            const { value: pin } = await Swal.fire({
+                title: `Halo ${nama}`,
+                text: "Masukkan PIN Verifikasi Anda untuk mengajukan:",
+                input: 'password',
+                inputPlaceholder: 'PIN 6 Digit',
+                confirmButtonColor: '#00CAFF',
+                confirmButtonText: 'Verifikasi & Kirim',
+                inputAttributes: { maxlength: 6, autofocus: 'true' },
+                showCancelButton: true,
+                cancelButtonText: 'Batal'
+            });
+
+            if (pin === undefined || pin === "") return;
+
+            if (String(pin) !== String(store.sandi[nama])) {
+                return Swal.fire({ icon: 'error', title: 'PIN SALAH!', text: 'Identitas tidak terverifikasi.', confirmButtonColor: '#00CAFF' });
+            }
+
+            btn.disabled = true; 
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> MENGIRIM...';
+
+            try {
+                await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'BERHASIL TERKIRIM!',
+                    html: `
+                        <div class="text-left text-sm space-y-2">
+                            <p>Nama: <b>${nama}</b></p>
+                            <p>Jenis: <b>${jenis}</b></p>
+                            <p>Status Pengajuan: <span class="text-amber-500 font-bold italic underline">PENDING</span></p>
+                            <hr>
+                            <p>Sistem mendeteksi pengajuan barter off. Silakan hubungi <b>Korlap / Team Leader</b> untuk approval agar jadwal otomatis ter-update.</p>
+                        </div>
+                    `,
+                    confirmButtonText: 'SAYA MENGERTI',
+                    confirmButtonColor: '#00CAFF',
+                    allowOutsideClick: false
+                }).then(() => {
+                    location.reload();
+                });
+
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Gagal Terkirim!', text: 'Periksa koneksi internet Anda.', confirmButtonColor: '#00CAFF' });
+                btn.disabled = false; 
+                btn.innerText = "AJUKAN";
+            }
+        }
+    </script>
+</body>
+</html>
