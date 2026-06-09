@@ -118,14 +118,20 @@
                             <h4 class="text-xs font-medium mt-0.5" id="dash-date"></h4>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-[11px] text-white/80">Total Nota Anda</p>
-                            <p class="text-lg font-black mt-0.5" id="dash-k-total-trx">0</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="text-center">
+                            <p class="text-[10px] text-white/80 leading-tight">Total Nota</p>
+                            <p class="text-md font-black mt-0.5" id="dash-k-total-trx">0</p>
                         </div>
-                        <div>
-                            <p class="text-[11px] text-white/80">Total Omset Pendapatan</p>
-                            <p class="text-lg font-black mt-0.5" id="dash-k-total-income">Rp 0</p>
+                        
+                        <div class="text-center border-l border-white/20">
+                            <p class="text-[10px] text-white/80 leading-tight">Pendapatan</p>
+                            <p class="text-md font-black mt-0.5" id="dash-k-total-income">Rp 0</p>
+                        </div>
+                        
+                        <div class="text-center border-l border-white/20">
+                            <p class="text-[10px] text-white/80 leading-tight">Trx Mitra</p>
+                            <p class="text-md font-black mt-0.5" id="dash-k-total-mitra-trx">0</p>
                         </div>
                     </div>
                 </div>
@@ -567,6 +573,13 @@
             </div>
 
             <div id="screen-pengaturan" class="screen p-4 space-y-3">
+                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm mt-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Keamanan Akun</h3>
+                    <div class="space-y-3">
+                        <input type="password" id="new-password" placeholder="Password Baru" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                        <button onclick="changePassword()" class="w-full py-2 bg-primary text-white font-bold rounded-xl text-xs uppercase">Simpan Password Baru</button>
+                    </div>
+                </div>
                 <div class="bg-white dark:bg-darkCard rounded-2xl border overflow-hidden shadow-sm">
                     <div class="flex items-center justify-between p-4 border-b dark:border-slate-700">
                         <div class="flex items-center space-x-3"><i data-lucide="moon" class="w-5 h-5 text-slate-400"></i><span class="text-xs font-medium">Dark Mode Tampilan</span></div>
@@ -640,36 +653,37 @@
         let cloudMitraList = {};
         let cloudLogMitra = {};
 
-        // Inisialisasi Sinkronisasi Realtime Database ke Local States
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             if (typeof initTheme === 'function') initTheme();
             
             // =========================================================================
-            // LOKASI PENEMPATAN: SET DEFAULT INPUT TANGGAL FILTER KE HARI INI
+            // PERBAIKAN: SET DEFAULT INPUT TANGGAL FILTER KE HARI INI (WIB)
             // =========================================================================
-            const tglSkrg = new Date().toISOString().split('T')[0]; // Menghasilkan format YYYY-MM-DD
+            // Menghitung waktu WIB (UTC + 7 jam)
+            const now = new Date();
+            const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            const tglSkrgWib = wib.toISOString().split('T')[0]; // Hasil: YYYY-MM-DD
             
-            // 1. Set otomatis filter tanggal halaman Admin Nota
-            const inputFilterAdminNota = document.getElementById('an-filter-tgl');
-            if (inputFilterAdminNota && !inputFilterAdminNota.value) {
-                inputFilterAdminNota.value = tglSkrg;
-            }
-
-            // 2. Set otomatis filter tanggal halaman Riwayat Kurir (sesuaikan ID jika berbeda)
-            const inputFilterRiwayatKurir = document.getElementById('riwayat-filter-tgl');
-            if (inputFilterRiwayatKurir && !inputFilterRiwayatKurir.value) {
-                inputFilterRiwayatKurir.value = tglSkrg;
-            }
-
-            // 3. Set otomatis filter tanggal halaman Log Transaksi Mitra Admin
-            const inputFilterLogMitra = document.getElementById('am-log-tgl');
-            if (inputFilterLogMitra && !inputFilterLogMitra.value) {
-                inputFilterLogMitra.value = tglSkrg;
-            }
+            // Daftar semua ID input tanggal yang ada di aplikasi Anda
+            const daftarInputTgl = [
+                'an-filter-tgl',        // Admin Nota
+                'riwayat-filter-tgl',   // Riwayat Kurir
+                'am-log-tgl',           // Admin Log Mitra
+                'm-filter-tgl-kurir'    // Kurir Transaksi Mitra
+            ];
+        
+            // Loop untuk mengisi semua input yang ditemukan
+            daftarInputTgl.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.value) {
+                    el.value = tglSkrgWib;
+                }
+            });
             // =========================================================================
             
-            // Ambal Data Kurir secara Realtime dari node 'users'
+            // ... (Sisa kode onValue dan sesi Anda tetap sama di bawah ini) ...
+            
             onValue(ref(db, 'users'), (snapshot) => {
                 cloudKurirList = snapshot.val() || {};
                 renderAdminKurirList();
@@ -677,41 +691,38 @@
                 populateMitraLogKurirDropdown();
                 renderAdminLogMitra();
             });
-
-            // Ambil Data Nota secara Realtime
+        
             onValue(ref(db, 'nota'), (snapshot) => {
                 cloudNotaList = snapshot.val() || {};
                 if (typeof renderAdminNota === 'function') renderAdminNota();
                 if (typeof renderKurirRiwayatList === 'function') renderKurirRiwayatList();
                 calculateDashboardStats();
             });
-
-            // Ambil Data Mitra secara Realtime
+        
             onValue(ref(db, 'mitra'), (snapshot) => {
                 cloudMitraList = snapshot.val() || {};
                 if (typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
                 if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
                 if (typeof populateMitraSelectionDropdown === 'function') populateMitraSelectionDropdown();
             });
-
+        
             onValue(ref(db, 'log_mitra'), (snapshot) => {
                 cloudLogMitra = snapshot.val() || {};
                 if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
                 if (typeof renderAdminLogMitra === 'function') renderAdminLogMitra();
+                calculateMitraStats();
             });
-
-
+        
             // Pemeriksaan Sesi Otomatis (Auto-Login)
             const savedSession = localStorage.getItem('sahabatku_session');
             if (savedSession) {
                 userSession = JSON.parse(savedSession);
-                
-                // SINKRONISASI NAMA USER SAAT AUTO-LOGIN BERHASIL
                 document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
+                
                 if(document.getElementById('nota-kurir') && userSession.nama) {
                     document.getElementById('nota-kurir').value = userSession.nama;
                 }
-
+        
                 if (userSession.role === 'admin') {
                     launchApplicationSession("screen-admin-dashboard");
                 } else {
@@ -745,12 +756,8 @@
                 btnSubmit.disabled = true;
                 btnSubmit.innerText = "MEMVERIFIKASI...";
             }
-        
-            // 1. Admin Access Gateway
             if (userIn === "admin" && passIn === "admin123") {
                 userSession = { username: "admin", nama: "Super Admin", role: "admin" };
-                
-                // SIMPAN SESI ADMIN KE BROWSER HP
                 localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
                 
                 // Set nama lengkap admin di UI dashboard jika ada
@@ -801,11 +808,11 @@
                     
                     launchApplicationSession("screen-dashboard");
                 } else {
-                    alert("Kombinasi Username & Password tidak terdaftar atau salah!");
+                    alert("Username & Password tidak terdaftar atau salah!");
                 }
             })
             .catch((error) => {
-                console.error("Firebase Login Error: ", error);
+                console.error("Login Error: ", error);
                 alert("Terjadi gangguan koneksi ke server: " + error.message);
                 if(btnSubmit) {
                     btnSubmit.disabled = false;
@@ -813,7 +820,41 @@
                 }
             });
         };
-
+        window.changePassword = function() {
+            const newPassword = document.getElementById('new-password').value.trim();
+            
+            // 1. Validasi
+            if (!newPassword) {
+                alert("Mohon masukkan password baru!");
+                return;
+            }
+            
+            // 2. Pastikan user sudah login
+            if (!userSession || !userSession.id) {
+                alert("Sesi tidak ditemukan. Silakan login ulang.");
+                return;
+            }
+        
+            if (confirm("Apakah Anda yakin ingin mengubah password Anda?")) {
+                // PERBAIKAN: Path disesuaikan dengan 'users' bukan 'kurir'
+                const dbRef = ref(db, 'users/' + userSession.id);
+                
+                update(dbRef, {
+                    password: newPassword
+                })
+                .then(() => {
+                    alert("Password berhasil diperbarui! Silakan login kembali untuk keamanan.");
+                    document.getElementById('new-password').value = '';
+                    
+                    // Logika Keamanan: Setelah ganti password, paksa user logout 
+                    // agar mereka login ulang menggunakan password baru
+                    handleLogout(); 
+                })
+                .catch((error) => {
+                    alert("Gagal mengubah password: " + error.message);
+                });
+            }
+        };
         window.launchApplicationSession = function(targetDashboard) {
             document.getElementById('screen-login').classList.remove('active');
             const mainLayout = document.getElementById('main-layout');
@@ -945,7 +986,27 @@
                 elNextNota.innerText = nextCode;
             }
         }
-
+        window.calculateMitraStats = function() {
+            // Hitung tanggal WIB hari ini
+            const now = new Date();
+            const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            const tglSkrgWib = wib.toISOString().split('T')[0];
+        
+            let countMitraTrx = 0;
+        
+            // Filter log berdasarkan tanggal hari ini (WIB)
+            if (typeof cloudLogMitra !== 'undefined') {
+                for (let key in cloudLogMitra) {
+                    const entry = cloudLogMitra[key];
+                    if (entry.tglRaw === tglSkrgWib) {
+                        countMitraTrx += (parseInt(entry.trxInput) || 0);
+                    }
+                }
+            }
+        
+            const el = document.getElementById('dash-k-total-mitra-trx');
+            if (el) el.innerText = countMitraTrx;
+        };
         // =========================================================================
         // PANEL ADMIN LOGIC: MANAGEMENT KURIR (Murni Modern SDK v10)
         // =========================================================================
@@ -1081,43 +1142,27 @@
                 }
             }
         }
-
-        // Inisialisasi Sinkronisasi Realtime Database ke Local States
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             if (typeof initTheme === 'function') initTheme();
+            const now = new Date();
+            const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            const tglSkrgWib = wib.toISOString().split('T')[0]; // Format YYYY-MM-DD
             
-            // =========================================================================
-            // SET DEFAULT SEMUA INPUT TANGGAL FILTER KE HARI INI (ADMIN & KURIR)
-            // =========================================================================
-            const tglSkrg = new Date().toISOString().split('T')[0]; // Menghasilkan format YYYY-MM-DD
-            
-            // --- SISI ADMIN ---
-            // 1. Filter tanggal halaman Admin Nota
-            const inputFilterAdminNota = document.getElementById('an-filter-tgl');
-            if (inputFilterAdminNota && !inputFilterAdminNota.value) {
-                inputFilterAdminNota.value = tglSkrg;
-            }
-            // 2. Filter tanggal halaman Log Transaksi Mitra Admin
-            const inputFilterLogMitra = document.getElementById('am-log-tgl');
-            if (inputFilterLogMitra && !inputFilterLogMitra.value) {
-                inputFilterLogMitra.value = tglSkrg;
-            }
-
-            // --- SISI KURIR ---
-            // 3. Filter tanggal halaman Riwayat Kurir
-            const inputFilterRiwayatKurir = document.getElementById('filter-date-riwayat');
-            if (inputFilterRiwayatKurir && !inputFilterRiwayatKurir.value) {
-                inputFilterRiwayatKurir.value = tglSkrg;
-            }
-            // 4. Filter tanggal halaman Transaksi Mitra Kurir
-            const inputFilterMitraKurir = document.getElementById('m-filter-tgl-kurir');
-            if (inputFilterMitraKurir && !inputFilterMitraKurir.value) {
-                inputFilterMitraKurir.value = tglSkrg;
-            }
-            // =========================================================================
-            
-            // Ambil Data Kurir secara Realtime dari node 'users'
+            // Daftar semua ID input tanggal yang ada di aplikasi Anda
+            const daftarInputTgl = [
+                'an-filter-tgl',        // Admin Nota
+                'am-log-tgl',           // Admin Log Mitra
+                'filter-date-riwayat',  // Kurir Riwayat
+                'm-filter-tgl-kurir'    // Kurir Transaksi Mitra
+            ];
+        
+            daftarInputTgl.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.value) {
+                    el.value = tglSkrgWib;
+                }
+            });
             onValue(ref(db, 'users'), (snapshot) => {
                 cloudKurirList = snapshot.val() || {};
                 renderAdminKurirList();
@@ -1125,7 +1170,7 @@
                 populateMitraLogKurirDropdown();
                 renderAdminLogMitra();
             });
-
+        
             // Ambil Data Nota secara Realtime
             onValue(ref(db, 'nota'), (snapshot) => {
                 cloudNotaList = snapshot.val() || {};
@@ -1133,30 +1178,35 @@
                 if (typeof renderKurirRiwayatList === 'function') renderKurirRiwayatList();
                 calculateDashboardStats();
             });
-
+        
+            // Ambil Data Mitra secara Realtime
             onValue(ref(db, 'mitra'), (snapshot) => {
                 cloudMitraList = snapshot.val() || {};
                 if (typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
                 if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
                 if (typeof populateMitraSelectionDropdown === 'function') populateMitraSelectionDropdown();
             });
+        
+            // Ambil Data Log Mitra secara Realtime
             onValue(ref(db, 'log_mitra'), (snapshot) => {
                 cloudLogMitra = snapshot.val() || {};
                 if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
                 if (typeof renderAdminLogMitra === 'function') renderAdminLogMitra();
+                
+                // Panggil fungsi statistik agar dashboard selalu update sesuai WIB
+                if (typeof calculateMitraStats === 'function') calculateMitraStats();
             });
-
+        
             // Pemeriksaan Sesi Otomatis (Auto-Login)
             const savedSession = localStorage.getItem('sahabatku_session');
             if (savedSession) {
                 userSession = JSON.parse(savedSession);
                 
-                // SINKRONISASI NAMA USER SAAT AUTO-LOGIN BERHASIL
                 document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
                 if(document.getElementById('nota-kurir') && userSession.nama) {
                     document.getElementById('nota-kurir').value = userSession.nama;
                 }
-
+        
                 if (userSession.role === 'admin') {
                     launchApplicationSession("screen-admin-dashboard");
                 } else {
@@ -1849,8 +1899,6 @@
                 drop.innerHTML += `<option value="${cloudMitraList[k].nama}">${cloudMitraList[k].nama}</option>`;
             }
         }
-
-        // --- FUNGSI UTAMA: INPUT TRANSAKSI ---
         window.addTransaksiMitra = function() {
             const mNama = document.getElementById('m-input-pilih').value;
             const trxInput = parseInt(document.getElementById('m-input-trx').value) || 0;
@@ -1858,10 +1906,13 @@
             if(!mNama) { alert("Silahkan pilih mitra terlebih dahulu!"); return; }
             if(trxInput <= 0) { alert("Jumlah transaksi harus lebih dari 0!"); return; }
         
-            const timeSkrg = new Date();
-            const waktuLokal = timeSkrg.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const tglRawLokal = timeSkrg.toISOString().split('T')[0];
-        
+            // 1. Hitung Waktu WIB secara konsisten
+            const now = new Date();
+            const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            
+            const tglRawLokal = wib.toISOString().split('T')[0]; // Format YYYY-MM-DD
+            const waktuLokal = wib.toISOString().split('T')[1].split('.')[0]; // Format HH:mm:ss
+            
             const payload = {
                 mitraNama: mNama,
                 trxInput: trxInput,
@@ -1871,13 +1922,15 @@
                 tglRaw: tglRawLokal
             };
         
+            // 2. Push ke Firebase
             push(ref(db, 'log_mitra'), payload).then(() => {
                 alert("Transaksi mitra berhasil di-input!");
                 document.getElementById('m-input-trx').value = '';
                 
-                // Segarkan tampilan
                 if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
                 if (typeof sembunyikanRiwayatMitra === 'function') sembunyikanRiwayatMitra();
+                
+                if (typeof calculateMitraStats === 'function') calculateMitraStats();
             });
         };
         
@@ -1890,16 +1943,24 @@
         };
         window.lihatRiwayatMitraOtomatis = function(namaMitra) {
             sembunyikanRiwayatMitra();
-
+        
+            // Hitung tanggal WIB hari ini
+            const now = new Date();
+            const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            const tglSkrgWib = wib.toISOString().split('T')[0];
+        
             setTimeout(function() {
-                if (typeof renderKurirLogMitra === 'function') {
-                    // Reset filter tanggal agar data tidak bentrok dengan pencarian lama
-                    const filterTgl = document.getElementById('m-filter-tgl-kurir');
-                    if (filterTgl) filterTgl.value = ''; 
-                    
-                    renderKurirLogMitra(namaMitra);
+                const filterTgl = document.getElementById('m-filter-tgl-kurir');
+                
+                if (filterTgl) {
+                    filterTgl.value = tglSkrgWib; 
                 }
-            }, 50); // Jeda 50ms sudah cukup untuk memberikan efek "reset"
+                if (typeof renderKurirLogMitra === 'function') {
+                    renderKurirLogMitra(namaMitra);
+                } else {
+                    console.error("Fungsi renderKurirLogMitra tidak ditemukan!");
+                }
+            }, 50);
         };
         
         window.bukaInputTransaksiMitra = function(namaMitra) {
@@ -1911,8 +1972,6 @@
                 inputTrx.focus();
             }
         };
-        
-        // --- RENDER RIWAYAT (DENGAN TANGGAL & JAM) ---
         window.renderKurirLogMitra = function(filterNamaMitraKhusus = '') {
             const container = document.getElementById('container-kurir-log-mitra');
             const fTgl = document.getElementById('m-filter-tgl-kurir').value;
@@ -1930,17 +1989,20 @@
         
             logKeysSorted.forEach(k => {
                 const log = cloudLogMitra[k];
+                
                 if(userSession && log.kurirUsername !== userSession.username) return;
                 if(filterNamaMitraKhusus && log.mitraNama !== filterNamaMitraKhusus) return;
                 if(!filterNamaMitraKhusus && fTgl && log.tglRaw !== fTgl) return;
         
                 adaDataLog = true;
+                const waktuTampil = log.waktu ? log.waktu.substring(0, 5) : '00:00'; 
+        
                 container.innerHTML += `
                     <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded flex justify-between items-center text-[11px] border border-slate-100 dark:border-slate-700/50 mb-1">
                         <div class="flex flex-col">
                             <span class="font-bold text-slate-800 dark:text-white">${log.mitraNama}</span>
                             <span class="text-[9px] text-slate-500 font-medium">
-                                ${log.tglRaw} • ${log.waktu || '00:00'}
+                                ${log.tglRaw} • ${waktuTampil} WIB
                             </span>
                         </div>
                         <b class="text-blue-600 dark:text-blue-400 text-sm">+${log.trxInput} Trx</b>
@@ -2047,11 +2109,32 @@
             }
         }
         document.addEventListener('DOMContentLoaded', () => {
+            // 1. Hitung Tanggal Hari Ini (WIB) secara akurat
+            const now = new Date();
+            const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            const tglSkrgWib = wib.toISOString().split('T')[0]; // Format YYYY-MM-DD
+        
+            // 2. Set otomatis ke input filter tanggal (termasuk m-filter-tgl-kurir)
+            const daftarInputTgl = ['an-filter-tgl', 'riwayat-filter-tgl', 'am-log-tgl', 'm-filter-tgl-kurir'];
+            daftarInputTgl.forEach(id => {
+                const el = document.getElementById(id);
+                // Kita isi hanya jika elemen ada dan belum ada nilainya
+                if (el && !el.value) {
+                    el.value = tglSkrgWib;
+                }
+            });
+        
+            // 3. Render Awal
             if (typeof renderKurirMitraView === 'function') {
                 renderKurirMitraView();
             }
             if (typeof sembunyikanRiwayatMitra === 'function') {
                 sembunyikanRiwayatMitra();
+            }
+            
+            // 4. (Opsional) Jika Anda ingin saat pertama kali buka langsung menghitung total statistik
+            if (typeof calculateMitraStats === 'function') {
+                calculateMitraStats();
             }
         });
         // ==================================================
@@ -2101,16 +2184,15 @@
             const rekapBulanSelect = document.getElementById('rekap-bulan');
             const rekapTanggalInput = document.getElementById('rekap-tanggal');
             
-            // Ambil string tanggal waktu lokal hari ini (Format: YYYY-MM-DD)
-            const hariIni = new Date().toISOString().split('T')[0];
-            const bulanIni = hariIni.substring(0, 7); // Ambil format YYYY-MM
-        
-            // Atur tanggal default otomatis ke HARI INI jika input masih kosong saat dibuka
+            const now = new Date();
+            const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            const hariIni = wib.toISOString().split('T')[0]; 
+            const bulanIni = hariIni.substring(0, 7); 
+
             if (rekapTanggalInput && !rekapTanggalInput.value) {
                 rekapTanggalInput.value = hariIni;
             }
         
-            // Variabel kalkulasi dashboard atas
             let totalPendapatan = 0;
             let totalOngkir = 0;
             let totalTambahan = 0;
