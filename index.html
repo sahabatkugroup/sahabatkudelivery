@@ -425,32 +425,39 @@
 
             <div id="screen-preview" class="screen p-4 space-y-4">
                 <div id="canvas-nota" class="bg-white text-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 max-w-sm mx-auto space-y-4">
+
                     <div class="text-center border-b border-dashed border-slate-300 pb-3">
                         <h3 class="font-extrabold text-lg text-primary tracking-wide">SAHABATKU DELIVERY</h3>
                         <p class="text-[10px] text-slate-400">Jatibarang, Indramayu</p>
                     </div>
+                
                     <div class="text-[11px] space-y-1">
                         <div class="flex justify-between"><span class="text-slate-400">Nomor Nota:</span><span class="font-bold text-slate-700" id="p-nota-num">NT-******</span></div>
                         <div class="flex justify-between"><span class="text-slate-400">Tanggal:</span><span id="p-nota-date">00/00/0000 00:00</span></div>
                         <div class="flex justify-between"><span class="text-slate-400">Kurir:</span><span class="font-medium" id="p-nota-kurir">-</span></div>
                         <div class="flex justify-between"><span class="text-slate-400">Status:</span><span class="uppercase font-semibold" id="p-nota-status">-</span></div>
                     </div>
+                    
                     <table class="w-full text-[11px] text-left mt-2">
                         <thead>
                             <tr class="border-b border-dashed border-slate-300 text-slate-400 font-semibold"><th class="py-1">Item</th><th class="text-center">Qty</th><th class="text-right">Harga</th><th class="text-right">Total</th></tr>
                         </thead>
                         <tbody id="p-table-body"></tbody>
                     </table>
+                
                     <div class="border-t border-dashed border-slate-300 pt-2.5 text-[11px] space-y-1">
                         <div class="flex justify-between"><span class="text-slate-400">Subtotal Item</span><span id="p-subtotal">0</span></div>
                         <div class="flex justify-between"><span class="text-slate-400">Ongkir</span><span id="p-ongkir">0</span></div>
-                        
                         <div class="flex justify-between"><span class="text-slate-400">Tambahan Biaya</span><span id="p-biaya">0</span></div>
-                        
-                        <div id="p-rincian-biaya-list" class="pl-2 space-y-0.5 text-[10px] text-slate-500 hidden">
-                            </div>
-                        
+                        <div id="p-rincian-biaya-list" class="pl-2 space-y-0.5 text-[10px] text-slate-500 hidden"></div>
                         <div class="flex justify-between text-sm font-extrabold text-slate-900 pt-1"><span>TOTAL</span><span id="p-total" class="text-primary">0</span></div>
+                    </div>
+                
+                    <div class="border-t border-dashed border-slate-300 pt-3 text-center space-y-1">
+                        <p class="text-[10px] text-slate-500 italic">Terima kasih telah menggunakan jasa Sahabatku Delivery.</p>
+                        <p class="text-[10px] font-medium text-slate-700">Pastikan Selalu Order Melalui WhatsApp Resmi Kami:<br>
+                           <span class="text-primary font-bold text-xs">0821-1845-415</span>
+                        </p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3 max-w-sm mx-auto">
@@ -775,7 +782,7 @@
                 btnSubmit.disabled = true;
                 btnSubmit.innerText = "MEMVERIFIKASI...";
             }
-            if (userIn === "admin" && passIn === "admin123") {
+            if (userIn === "sahabatkugroupjtb@gmail.com" && passIn === "Romano!05") {
                 userSession = { username: "admin", nama: "Super Admin", role: "admin" };
                 localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
                 
