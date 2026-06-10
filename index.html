@@ -98,10 +98,12 @@
             <div id="screen-dashboard" class="screen p-4 space-y-4">
                 <div class="flex items-center justify-between bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
                     <div class="flex items-center space-x-3">
-                        <div class="w-11 h-11 rounded-full bg-blue-50 dark:bg-slate-800 flex items-center justify-center font-bold text-primary"><i data-lucide="user" class="w-5 h-5"></i></div>
+                        <div class="w-11 h-11 rounded-full overflow-hidden bg-blue-50 dark:bg-slate-800 flex items-center justify-center">
+                            <img src="https://uploads.onecompiler.io/44rwmsthk/44rwmtf46/Sahabatku%20(3).png" alt="User" class="w-full h-full object-cover">
+                        </div>
                         <div>
                             <h3 class="font-bold text-sm dark:text-white session-fullname">Memuat Nama...</h3>
-                            <div class="flex items-center text-[11px] text-slate-400"><span class="w-2 h-2 rounded-full bg-success mr-1.5"></span>Kurir Aktif</div>
+                            <div class="flex items-center text-[11px] text-slate-400"><span class="w-2 h-2 rounded-full bg-success mr-1.5"></span>Aktif</div>
                         </div>
                     </div>
                     <span class="text-[10px] bg-blue-50 text-primary dark:bg-blue-950 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">KURIR</span>
@@ -436,9 +438,21 @@
                         <!-- 3 Arah -->
                         <div id="admin-ongkir-rahasia" class="hidden space-y-3">
                             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Cek Ongkir 3 Arah</h3>
-                            <input type="text" id="admin-ongkir-3-asal" placeholder="Asal" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-                            <input type="text" id="admin-ongkir-3-titik" placeholder="Titik" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-                            <input type="text" id="admin-ongkir-3-tujuan" placeholder="Tujuan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                        
+                            <div class="relative">
+                                <input type="text" id="admin-ongkir-3-asal" oninput="updateAdminOngkir3Suggestions('asal')" placeholder="Asal" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                <div id="suggest-admin-ongkir-3-asal" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-darkCard border rounded-xl shadow-lg max-h-40 overflow-y-auto z-20"></div>
+                            </div>
+                        
+                            <div class="relative">
+                                <input type="text" id="admin-ongkir-3-titik" oninput="updateAdminOngkir3Suggestions('titik')" placeholder="Titik" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                <div id="suggest-admin-ongkir-3-titik" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-darkCard border rounded-xl shadow-lg max-h-40 overflow-y-auto z-20"></div>
+                            </div>
+                        
+                            <div class="relative">
+                                <input type="text" id="admin-ongkir-3-tujuan" oninput="updateAdminOngkir3Suggestions('tujuan')" placeholder="Tujuan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                <div id="suggest-admin-ongkir-3-tujuan" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-darkCard border rounded-xl shadow-lg max-h-40 overflow-y-auto z-20"></div>
+                            </div>
                             <button onclick="hitungOngkirTigaArah()" class="w-full py-2 bg-amber-500 text-white text-xs font-bold rounded-xl uppercase">Hitung 3 Arah</button>
                             <div id="admin-ongkir-result-3" class="hidden bg-amber-50 dark:bg-amber-950 border border-amber-200 p-4 rounded-2xl text-center">
                                 <h3 class="text-xl font-black text-amber-600" id="admin-ongkir-display-3">Rp 0</h3>
@@ -527,7 +541,14 @@
                     <div class="border-t border-white/10 my-1"></div>
                     <div class="flex justify-between text-sm font-bold text-amber-400"><span>Total Keseluruhan:</span><span id="calc-total">Rp 0</span></div>
                 </div>
-                <button onclick="prosesPratinjauNota()" class="w-full py-3.5 bg-success text-white font-bold rounded-xl shadow-lg uppercase text-xs tracking-wider ripple">Pratinjau & Simpan Nota</button>
+                <div class="space-y-2">
+                    <button onclick="prosesPratinjauNota()" class="w-full py-3.5 bg-success text-white font-bold rounded-xl shadow-lg uppercase text-xs tracking-wider ripple">
+                        Pratinjau Nota
+                    </button>
+                    <button onclick="resetNotaBaru()" class="w-full py-3.5 bg-rose-50 text-danger border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900 rounded-xl font-bold text-xs tracking-wider uppercase ripple">
+                        Bersihkan
+                    </button>
+                </div>
             </div>
 
             <div id="screen-preview" class="screen p-4 space-y-4">
@@ -1770,17 +1791,18 @@
             
             const inputOngkir = document.getElementById('nota-ongkir');
             if (inputOngkir) inputOngkir.value = '6.000';
-            
-            if (document.getElementById('item-harga')) document.getElementById('item-harga').placeholder = 'Contoh: 10000';
-            if (document.getElementById('biaya-nominal')) document.getElementById('biaya-nominal').placeholder = 'Contoh: 10000';
-
-            notaState = { items: [], biaya: [], subtotal: 0, ongkir: 6.000, total: 6.000 };
-            if (document.getElementById('container-items')) document.getElementById('container-items').innerHTML = '';
-            if (document.getElementById('container-biaya')) document.getElementById('container-biaya').innerHTML = '';
-            
+        
+            if (!loadNotaDraft()) {
+                notaState = { items: [], biaya: [], subtotal: 0, ongkir: 6000, total: 6000 };
+            }
+        
+            if (document.getElementById('container-items')) renderNotaItems();
+            if (document.getElementById('container-biaya')) renderBiayaItems();
             calculateNotaTotal();
+        
             navigateTo('screen-nota');
         };
+
         window.autocapitalText = function(el) {
             let posisiKursor = el.selectionStart;
             let teksAsli = el.value;
@@ -1813,20 +1835,20 @@
         }
         window.addNotaItem = function() {
             const nama = document.getElementById('item-nama').value.trim();
-            // Gunakan bersihkanAngka() karena inputan sudah berformat titik (10.000)
-            const harga = bersihkanAngka(document.getElementById('item-harga').value); 
+            const hargaInput = document.getElementById('item-harga').value.trim();
+            const harga = hargaInput ? bersihkanAngka(hargaInput) : 0;
             const qty = parseInt(document.getElementById('item-qty').value) || 1;
             
-            if (!nama || harga <= 0) return;
-
+            if (!nama) return;
+        
             notaState.items.push({ nama, qty, harga, subtotal: qty * harga });
             
-            // Reset form input barang
             document.getElementById('item-nama').value = '';
             document.getElementById('item-harga').value = '';
             document.getElementById('item-qty').value = '1';
             
             calculateNotaTotal();
+            saveNotaDraft();
             renderNotaItems();
         }
         window.deleteNotaItem = function(idx) {
@@ -1888,11 +1910,13 @@
             document.getElementById('biaya-nominal').value = '';
             
             calculateNotaTotal();
+            saveNotaDraft();
             renderBiayaItems();
         }
         window.deleteBiayaItem = function(idx) {
             notaState.biaya.splice(idx, 1);
             calculateNotaTotal();
+            saveNotaDraft();
             renderBiayaItems();
         }
 
@@ -2010,8 +2034,8 @@
 
             push(ref(db, 'nota'), payload).then(() => {
                 alert("Nota kiriman berhasil disimpan!");
-                // Reset kembali ke nilai default baru (ongkir default 6000)
-                notaState = { items: [], biaya: [], subtotal: 0, ongkir: 6.000, total: 6.000 };
+                localStorage.removeItem('sahabatku_nota_draft');
+                notaState = { items: [], biaya: [], subtotal: 0, ongkir: 6000, total: 6000 };
                 document.getElementById('container-items').innerHTML = '';
                 document.getElementById('container-biaya').innerHTML = '';
                 
@@ -2218,6 +2242,61 @@
 
             // Alihkan layar ke halaman preview nota
             navigateTo('screen-preview');
+        }
+        function saveNotaDraft() {
+            try {
+                localStorage.setItem('sahabatku_nota_draft', JSON.stringify(notaState));
+            } catch (e) {}
+        }
+        window.resetNotaBaru = function() {
+            if (!confirm('Bersihkan semua isi nota dan buat nota baru?')) return;
+        
+            notaState = { items: [], biaya: [], subtotal: 0, ongkir: 6000, total: 6000 };
+            localStorage.removeItem('sahabatku_nota_draft');
+        
+            const itemNama = document.getElementById('item-nama');
+            const itemHarga = document.getElementById('item-harga');
+            const itemQty = document.getElementById('item-qty');
+            const biayaDrop = document.getElementById('biaya-dropdown');
+            const biayaManual = document.getElementById('biaya-nama-manual');
+            const biayaNominal = document.getElementById('biaya-nominal');
+            const ongkirInput = document.getElementById('nota-ongkir');
+        
+            if (itemNama) itemNama.value = '';
+            if (itemHarga) itemHarga.value = '';
+            if (itemQty) itemQty.value = '1';
+            if (biayaDrop) biayaDrop.value = '';
+            if (biayaManual) biayaManual.classList.add('hidden');
+            if (biayaNominal) biayaNominal.value = '';
+            if (ongkirInput) ongkirInput.value = '6.000';
+        
+            if (document.getElementById('container-items')) document.getElementById('container-items').innerHTML = '';
+            if (document.getElementById('container-biaya')) document.getElementById('container-biaya').innerHTML = '';
+        
+            calculateNotaTotal();
+            navigateTo('screen-nota');
+        };
+
+        function loadNotaDraft() {
+            try {
+                const draft = localStorage.getItem('sahabatku_nota_draft');
+                if (!draft) return false;
+        
+                const data = JSON.parse(draft);
+                if (!data) return false;
+        
+                notaState = {
+                    items: Array.isArray(data.items) ? data.items : [],
+                    biaya: Array.isArray(data.biaya) ? data.biaya : [],
+                    subtotal: parseInt(data.subtotal) || 0,
+                    ongkir: parseInt(data.ongkir) || 6000,
+                    total: parseInt(data.total) || 0
+                };
+        
+                return true;
+            } catch (e) {
+                return false;
+            }
         }
 
         // Fungsi untuk menghapus data nota dari database cloud secara permanen
@@ -2474,6 +2553,7 @@
             // 4. (Opsional) Jika Anda ingin saat pertama kali buka langsung menghitung total statistik
             if (typeof calculateMitraStats === 'function') {
                 calculateMitraStats();
+                loadNotaDraft();
             }
         });
         window.hitungTarifOngkir = function() {
@@ -3265,8 +3345,10 @@
             const titik = document.getElementById('admin-ongkir-3-titik').value.trim();
             const tujuan = document.getElementById('admin-ongkir-3-tujuan').value.trim();
         
-            if (!asal || !titik || !tujuan) return alert('Lengkapi semua kolom.');
-        
+            if (!asal || !titik || !tujuan) {
+                alert('Lengkapi semua kolom.');
+                return;
+            }
             const cariTarif = (nama) => {
                 for (let k in cloudOngkirList) {
                     const item = cloudOngkirList[k];
@@ -3279,6 +3361,51 @@
         
             document.getElementById('admin-ongkir-display-3').innerText = 'Rp ' + Math.max(0, hasil).toLocaleString('id-ID');
             document.getElementById('admin-ongkir-result-3').classList.remove('hidden');
+        };
+
+        window.updateAdminOngkir3Suggestions = function(type) {
+            const input = document.getElementById(`admin-ongkir-3-${type}`);
+            const box = document.getElementById(`suggest-admin-ongkir-3-${type}`);
+            if (!input || !box) return;
+        
+            const q = normalizeNama(input.value);
+            if (!q) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+        
+            const matches = [];
+            for (let k in cloudOngkirList) {
+                const item = cloudOngkirList[k];
+                if (item && normalizeNama(item.wilayah).includes(q)) {
+                    matches.push(item.wilayah);
+                }
+            }
+        
+            if (matches.length === 0) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                return;
+            }
+        
+            box.innerHTML = matches.slice(0, 6).map(nama => `
+                <div onclick="pilihAdminOngkir3Suggestion('${type}', '${nama.replace(/'/g, "\\'")}')" class="px-3 py-2 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
+                    ${nama}
+                </div>
+            `).join('');
+        
+            box.classList.remove('hidden');
+        };
+        
+        window.pilihAdminOngkir3Suggestion = function(type, nama) {
+            const input = document.getElementById(`admin-ongkir-3-${type}`);
+            const box = document.getElementById(`suggest-admin-ongkir-3-${type}`);
+            if (input) input.value = nama;
+            if (box) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+            }
         };
 
         window.clearAdminOngkirNormal = function() {
