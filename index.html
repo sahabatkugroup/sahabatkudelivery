@@ -56,8 +56,8 @@
 
     <div id="screen-login" class="screen active custom-gradient justify-end relative overflow-hidden">
         <div class="absolute top-12 left-0 right-0 flex flex-col items-center justify-center text-white px-6">
-            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center p-2 shadow-lg mb-3">
-                <i data-lucide="bike" class="w-12 h-12 text-primary"></i>
+            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center p-0 shadow-lg mb-3 overflow-hidden">
+                <img src="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png" alt="Logo Sahabatku" class="w-full h-full object-cover">
             </div>
             <h1 class="text-2xl font-black tracking-wider text-center">SAHABATKU DELIVERY</h1>
             <p class="text-xs opacity-90 mt-0.5 uppercase tracking-widest font-semibold">Kurir & Admin Platform</p>
@@ -611,16 +611,16 @@
 
         <nav id="global-nav" class="bg-white/90 dark:bg-darkCard/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 fixed bottom-0 left-0 right-0 z-50 px-2 shadow-lg">
             <div class="flex justify-around items-center h-16 relative">
-                <button onclick="backToDashboardRole()" class="flex flex-col items-center justify-center w-12 h-12 text-primary">
+                <button id="nav-dashboard-btn" onclick="backToDashboardRole()" class="flex flex-col items-center justify-center w-12 h-12 text-primary hidden opacity-0 pointer-events-none">
                     <i data-lucide="home" class="w-5 h-5"></i>
                     <span class="text-[10px] font-bold mt-1">Dashboard</span>
                 </button>
-        
-                <button onclick="navigateTo('screen-nota')" class="relative -top-7 flex items-center justify-center w-14 h-14 bg-primary text-white rounded-full shadow-lg border-4 border-white dark:border-darkCard transition-transform active:scale-95">
+                
+                <button id="nav-nota-btn" onclick="navigateTo('screen-nota')" class="relative -top-7 flex items-center justify-center w-14 h-14 bg-primary text-white rounded-full shadow-lg border-4 border-white dark:border-darkCard transition-transform active:scale-95 hidden opacity-0 pointer-events-none">
                     <i data-lucide="plus" class="w-7 h-7"></i>
                 </button>
-        
-                <button onclick="navigateTo('screen-pengaturan')" class="flex flex-col items-center justify-center w-12 h-12 text-slate-400">
+                
+                <button id="nav-sistem-btn" onclick="navigateTo('screen-pengaturan')" class="flex flex-col items-center justify-center w-12 h-12 text-slate-400 hidden opacity-0 pointer-events-none">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                     <span class="text-[10px] font-medium mt-1">Sistem</span>
                 </button>
@@ -695,7 +695,13 @@
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             if (typeof initTheme === 'function') initTheme();
-            
+            ['nav-dashboard-btn', 'nav-nota-btn', 'nav-sistem-btn'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+                }
+            });
+
             const tglSkrgWib = getWibRawDate();
 
             // Daftar semua ID input tanggal yang ada di aplikasi Anda
@@ -897,8 +903,24 @@
             nameContainers.forEach(el => el.innerText = userSession.nama);
             
             localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
+        
+            const navDashboardBtn = document.getElementById('nav-dashboard-btn');
+            const navNotaBtn = document.getElementById('nav-nota-btn');
+            const navSistemBtn = document.getElementById('nav-sistem-btn');
+            const showKurirNav = userSession && userSession.role === 'kurir';
+        
+            [navDashboardBtn, navNotaBtn, navSistemBtn].forEach(btn => {
+                if (!btn) return;
+                if (showKurirNav) {
+                    btn.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+                } else {
+                    btn.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+                }
+            });
+        
             navigateTo(targetDashboard);
         };
+
         window.handleLogout = function() {
             if(confirm("Apakah Anda yakin ingin keluar dari sistem Sahabatku Delivery?")) {
                 localStorage.removeItem('sahabatku_session');
@@ -907,10 +929,22 @@
                 if(document.getElementById('login-username')) document.getElementById('login-username').value = '';
                 if(document.getElementById('login-password')) document.getElementById('login-password').value = '';
                 
+                ['nav-dashboard-btn', 'nav-nota-btn', 'nav-sistem-btn'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+                    }
+                });
+        
                 navigateTo('screen-login');
             }
         }
+
         window.navigateTo = function(screenId) {
+            if (screenId === 'screen-nota' && (!userSession || userSession.role !== 'kurir')) {
+                alert('Menu Nota hanya untuk login kurir.');
+                return;
+            }
             if (screenId === currentScreen) return;
             
             const currentEl = document.getElementById(currentScreen);
