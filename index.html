@@ -588,10 +588,18 @@
                         </p>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-3 max-w-sm mx-auto">
-                    <button onclick="saveNotaAsJpg()" class="py-2.5 bg-slate-800 text-white font-medium text-xs rounded-xl flex items-center justify-center gap-2 shadow"><i data-lucide="image" class="w-4 h-4"></i> Simpan Gambar</button>
-                    <button onclick="commitSaveNota()" class="py-2.5 bg-primary text-white font-medium text-xs rounded-xl flex items-center justify-center gap-2 shadow"><i data-lucide="save" class="w-4 h-4"></i> Simpan Nota</button>
-                    <button onclick="shareWhatsApp()" class="col-span-2 py-3 bg-success text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 tracking-wider uppercase shadow-md"><i data-lucide="share-2" class="w-4 h-4"></i> Bagikan WhatsApp</button>
+                <div id="preview-action-buttons" class="grid gap-2 max-w-sm mx-auto">
+                    <button id="btn-simpan-gambar" onclick="saveNotaAsJpg()" class="py-2.5 bg-slate-800 text-white font-medium text-xs rounded-xl flex items-center justify-center gap-2 shadow">
+                        <i data-lucide="image" class="w-4 h-4"></i> Simpan Gambar
+                    </button>
+                
+                    <button id="btn-simpan-nota" onclick="commitSaveNota()" class="py-2.5 bg-primary text-white font-medium text-xs rounded-xl flex items-center justify-center gap-2 shadow">
+                        <i data-lucide="save" class="w-4 h-4"></i> Simpan Nota
+                    </button>
+                
+                    <button id="btn-share-wa" onclick="shareWhatsApp()" class="py-2.5 bg-success text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md">
+                        <i data-lucide="share-2" class="w-4 h-4"></i> Bagikan WhatsApp
+                    </button>
                 </div>
             </div>
 
@@ -815,8 +823,7 @@
         let adminOngkirMode = 'normal';
         
         function getWibDate() {
-            const now = new Date();
-            return new Date(now.getTime() + (7 * 60 * 60 * 1000));
+            return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
         }
         
         function getWibRawDate() {
@@ -1948,14 +1955,11 @@
             document.getElementById('calc-total').innerText = "Rp " + notaState.total.toLocaleString('id-ID');
         }
         window.prosesPratinjauNota = function() {
-            // REVISI VALIDASI: Item & Tambahan Biaya bersifat Opsional, Hanya Ongkir yang Wajib (> 0)
             const cekOngkir = parseInt(document.getElementById('nota-ongkir').value) || 0;
             if (cekOngkir <= 0) { 
                 alert("Wajib mengisi Ongkir untuk melanjutkan!"); 
                 return; 
             }
-            
-            // Hitung ulang total akhir sebelum masuk ke preview
             calculateNotaTotal();
             
             const tgl = new Date();
@@ -1970,7 +1974,6 @@
             document.getElementById('p-biaya').innerText = totalBiayaTambahan.toLocaleString('id-ID');
             document.getElementById('p-total').innerText = notaState.total.toLocaleString('id-ID');
 
-            // --- TAMBAHAN BAGIAN: RENDERING RINCIAN BIAYA DROPDOWN ---
             const rincianBiayaList = document.getElementById('p-rincian-biaya-list');
             if (rincianBiayaList) {
                 rincianBiayaList.innerHTML = ''; // Reset list lama
@@ -1988,7 +1991,6 @@
                     rincianBiayaList.classList.add('hidden');
                 }
             }
-            // --------------------------------------------------------
 
             const tbody = document.getElementById('p-table-body');
             tbody.innerHTML = '';
@@ -2001,7 +2003,9 @@
                     tbody.innerHTML += `<tr><td>${it.nama}</td><td class="text-center">${it.qty}</td><td class="text-right">${it.harga.toLocaleString('id-ID')}</td><td class="text-right">${it.subtotal.toLocaleString('id-ID')}</td></tr>`;
                 });
             }
-
+            const btnSimpanNota = document.getElementById('btn-simpan-nota');
+            if (btnSimpanNota) btnSimpanNota.classList.remove('hidden');
+            updatePreviewButtonsLayout();
             navigateTo('screen-preview');
         }
         window.saveNotaAsJpg = function() {
@@ -2110,35 +2114,46 @@
                 alert("Terjadi kesalahan sistem gambar: " + err.message);
             });
         }
+        window.updatePreviewButtonsLayout = function() {
+            const btnSimpanNota = document.getElementById('btn-simpan-nota');
+            const previewButtons = document.getElementById('preview-action-buttons');
+            if (!previewButtons) return;
+        
+            if (btnSimpanNota && btnSimpanNota.classList.contains('hidden')) {
+                previewButtons.className = 'grid grid-cols-2 gap-2 max-w-sm mx-auto';
+            } else {
+                previewButtons.className = 'grid grid-cols-3 gap-2 max-w-sm mx-auto';
+            }
+        };
         window.renderKurirRiwayatList = function() {
             const container = document.getElementById('container-riwayat-list');
             if(!container) return;
             container.innerHTML = '';
-            
-            // 1. Ambil nilai filter tanggal, jika kosong default ke hari ini
+        
             let filterTgl = document.getElementById('filter-date-riwayat') ? document.getElementById('filter-date-riwayat').value : '';
-            if (!filterTgl) {
-                filterTgl = new Date().toISOString().split('T')[0];
-            }
-            
-            // 2. Ambil nilai input pencarian nomor nota (jadikan huruf kecil agar tidak sensitif huruf besar/kecil)
-            const searchKeyword = document.getElementById('search-riwayat') ? document.getElementById('search-riwayat').value.toLowerCase().trim() : '';
-            
-            // Variabel penanda jika tidak ada data yang lolos filter
+            if (!filterTgl) filterTgl = new Date().toISOString().split('T')[0];
+        
+            const searchKeyword = document.getElementById('search-riwayat')
+                ? document.getElementById('search-riwayat').value.toLowerCase().trim()
+                : '';
+        
             let hasData = false;
-
-            for(let k in cloudNotaList) {
+        
+            const keys = Object.keys(cloudNotaList || {}).sort((a, b) => {
+                const getNo = (key) => {
+                    const id = cloudNotaList[key]?.id || '';
+                    const angka = id.toString().match(/(\d+)$/);
+                    return angka ? parseInt(angka[1]) : 0;
+                };
+                return getNo(b) - getNo(a);
+            });
+        
+            for (let k of keys) {
                 const n = cloudNotaList[k];
-                
-                // FILTER 1: Harus milik kurir yang sedang login
-                if(userSession && userSession.role === 'kurir' && n.kurirUsername !== userSession.username) continue;
-
-                // FILTER 2: Harus sesuai dengan tanggal yang dipilih pada filter input
-                if(filterTgl && n.tanggalRaw !== filterTgl) continue;
-
-                // FILTER 3: Harus sesuai dengan pencarian nomor nota (jika pencarian diisi)
-                if(searchKeyword && n.id && !n.id.toLowerCase().includes(searchKeyword)) continue;
-
+                if (userSession && userSession.role === 'kurir' && n.kurirUsername !== userSession.username) continue;
+                if (filterTgl && n.tanggalRaw !== filterTgl) continue;
+                if (searchKeyword && n.id && !n.id.toLowerCase().includes(searchKeyword)) continue;
+        
                 hasData = true;
                 container.innerHTML += `
                     <div class="bg-white dark:bg-darkCard p-3 rounded-xl border text-xs space-y-2 shadow-sm">
@@ -2163,14 +2178,9 @@
                     </div>
                 `;
             }
-
+        
             if (!hasData) {
-                // Memberikan info yang lebih jelas jika filter pencarian aktif atau tidak ada data harian
-                if (searchKeyword) {
-                    container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Nomor nota tidak ditemukan pada tanggal ini.</div>';
-                } else {
-                    container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Tidak ada riwayat nota untuk tanggal ini.</div>';
-                }
+                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Tidak ada riwayat nota untuk tanggal ini.</div>';
             }
         }
         window.previewRiwayatNota = function(key) {
@@ -2183,20 +2193,16 @@
             document.getElementById('p-nota-date').innerText = n.tanggal;
             document.getElementById('p-nota-kurir').innerText = n.kurirNama || n.kurirUsername;
             document.getElementById('p-nota-status').innerText = n.status || 'Lunas';
-            
-            // Hitung ulang biaya tambahan jika ada dimasukkan sebelumnya
             let totalBiayaTambahan = 0;
             if (n.biayaTambahan && Array.isArray(n.biayaTambahan)) {
                 totalBiayaTambahan = n.biayaTambahan.reduce((acc, curr) => acc + (curr.nominal || 0), 0);
             }
 
-            // Isikan kalkulasi angka-angka di bawah preview
             document.getElementById('p-subtotal').innerText = (n.subtotal || (n.total - n.ongkir - totalBiayaTambahan)).toLocaleString('id-ID');
             document.getElementById('p-ongkir').innerText = (n.ongkir || 0).toLocaleString('id-ID');
             document.getElementById('p-biaya').innerText = totalBiayaTambahan.toLocaleString('id-ID');
             document.getElementById('p-total').innerText = (n.total || 0).toLocaleString('id-ID');
 
-            // --- TAMBAHAN BAGIAN: RENDERING RINCIAN BIAYA RIWAYAT ---
             const rincianBiayaList = document.getElementById('p-rincian-biaya-list');
             if (rincianBiayaList) {
                 rincianBiayaList.innerHTML = '';
@@ -2214,9 +2220,6 @@
                     rincianBiayaList.classList.add('hidden');
                 }
             }
-            // --------------------------------------------------------
-
-            // Render isi tabel barang belanjaannya
             const tbody = document.getElementById('p-table-body');
             tbody.innerHTML = '';
             if (n.items && Array.isArray(n.items)) {
@@ -2230,8 +2233,6 @@
                         </tr>`;
                 });
             }
-
-            // Sinkronkan juga notaState sementara ke data nota ini agar tombol "Bagikan WA" / cetak ulang berfungsi valid
             notaState = {
                 items: n.items || [],
                 biaya: n.biayaTambahan || [],
@@ -2239,8 +2240,9 @@
                 ongkir: n.ongkir || 0,
                 total: n.total || 0
             };
-
-            // Alihkan layar ke halaman preview nota
+            const btnSimpanNota = document.getElementById('btn-simpan-nota');
+            if (btnSimpanNota) btnSimpanNota.classList.add('hidden');
+            updatePreviewButtonsLayout();
             navigateTo('screen-preview');
         }
         function saveNotaDraft() {
@@ -2840,6 +2842,7 @@
         
             for (let key in cloudNotaList) {
                 const nota = cloudNotaList[key];
+                if (!nota) continue;
         
                 if (nota.kurirUsername !== usernameKurir) continue;
                 if (nota.tanggalRaw !== tanggalRawHariIni) continue;
@@ -2853,10 +2856,8 @@
                     });
                 }
         
-                const omsetNotaIni = nominalOngkir + nominalTambahan;
-        
                 totalNotaHariIni++;
-                totalOmsetHariIni += omsetNotaIni;
+                totalOmsetHariIni += (nominalOngkir + nominalTambahan);
             }
         
             const elTotalTrx = document.getElementById('dash-k-total-trx');
@@ -2871,7 +2872,6 @@
         
             if (typeof calculateMitraStats === 'function') calculateMitraStats();
         };
-
         // Simpan instance grafik secara global agar bisa di-reset saat filter berubah
         let instanceChartRekap = null;
         
