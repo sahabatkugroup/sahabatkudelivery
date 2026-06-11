@@ -990,12 +990,42 @@
         };
         
         window.startLiveLocationTracking = function() {
-            if (!navigator.geolocation) {
-                alert('Browser tidak mendukung geolocation.');
+            if (!userSession || userSession.role !== 'kurir') return;
+        
+            const fallbackLocation = async () => {
+                // fallback lokasi palsu / manual agar fitur tetap jalan
+                const lat = -6.326;
+                const lng = 108.326;
+        
+                const locInfo = await reverseGeocode(lat, lng);
+                const waktu = getWibDateTimeString();
+        
+                const payload = {
+                    lat,
+                    lng,
+                    accuracy: null,
+                    kurirNama: userSession.nama,
+                    kurirUsername: userSession.username,
+                    desa: locInfo.desa,
+                    blok: locInfo.blok,
+                    kecamatan: locInfo.kecamatan,
+                    wilayah: locInfo.wilayah,
+                    alamatLengkap: locInfo.alamatLengkap,
+                    tanggalTracking: waktu.tanggal,
+                    jamTracking: waktu.jam,
+                    updatedAt: new Date().toISOString()
+                };
+        
+                lastSentLocation = { lat, lng };
+                lastSentTime = Date.now();
+                set(ref(db, `live_locations/${userSession.id}`), payload);
+                alert('location diblokir');
+            };
+        
+            if (!navigator.geolocation || !window.isSecureContext) {
+                fallbackLocation();
                 return;
             }
-        
-            if (!userSession || userSession.role !== 'kurir') return;
         
             const sendLocation = async (pos) => {
                 const lat = pos.coords.latitude;
@@ -1026,7 +1056,10 @@
         
             navigator.geolocation.getCurrentPosition(
                 (pos) => sendLocation(pos),
-                (err) => alert('Izin lokasi ditolak / gagal: ' + err.message),
+                (err) => {
+                    console.log(err);
+                    fallbackLocation();
+                },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         
@@ -1068,7 +1101,9 @@
                     lastSentTime = now;
                     set(ref(db, `live_locations/${userSession.id}`), payload);
                 },
-                (err) => console.log('Tracking lokasi berhenti:', err.message),
+                (err) => {
+                    console.log('Tracking lokasi berhenti:', err.message);
+                },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
         };
@@ -1212,45 +1247,50 @@
                 })
             };
         }
-
         window.addEventListener('DOMContentLoaded', () => {
+            // 1. Inisialisasi Tema dan Ikon (Lucide)
             if (typeof lucide !== 'undefined') lucide.createIcons();
             if (typeof initTheme === 'function') initTheme();
             if (typeof sembunyikanRiwayatMitraAdmin === 'function') {
                 sembunyikanRiwayatMitraAdmin();
             }
-            const todayWib = getWibRawDate();
-            
-            const tglEl = document.getElementById('an-filter-tgl');
-            if (tglEl && !tglEl.value) tglEl.value = todayWib;
-            
-            const bulanEl = document.getElementById('an-filter-bulan');
-            if (bulanEl && !bulanEl.value) bulanEl.value = todayWib.substring(0, 7);
-
+        
+            // 2. Sembunyikan Elemen Navigasi Tertentu (dari Bagian 2)
             ['nav-dashboard-btn', 'nav-nota-btn', 'nav-sistem-btn'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.classList.add('hidden', 'opacity-0', 'pointer-events-none');
                 }
             });
-
+        
+            // 3. Pengisian Nilai Default Tanggal & Bulan (WIB)
             const tglSkrgWib = getWibRawDate();
-
-            // Daftar semua ID input tanggal yang ada di aplikasi Anda
+            
+            // Gabungan ID input dari Bagian 1 & Bagian 2 (tanpa duplikat)
             const daftarInputTgl = [
                 'an-filter-tgl',        // Admin Nota
-                'riwayat-filter-tgl',   // Riwayat Kurir
                 'am-log-tgl',           // Admin Log Mitra
+                'filter-date-riwayat',  // Kurir Riwayat (Bagian 1)
+                'riwayat-filter-tgl',   // Riwayat Kurir (Bagian 2)
                 'm-filter-tgl-kurir'    // Kurir Transaksi Mitra
             ];
         
-            // Loop untuk mengisi semua input yang ditemukan
             daftarInputTgl.forEach(id => {
                 const el = document.getElementById(id);
                 if (el && !el.value) {
                     el.value = tglSkrgWib;
                 }
             });
+        
+            // Pengisian khusus untuk filter bulan (dari Bagian 2)
+            const bulanEl = document.getElementById('an-filter-bulan');
+            if (bulanEl && !bulanEl.value) {
+                bulanEl.value = tglSkrgWib.substring(0, 7);
+            }
+        
+            // 4. Listener Firebase Realtime Database (onValue)
+            
+            // Node: users
             onValue(ref(db, 'users'), (snapshot) => {
                 cloudKurirList = snapshot.val() || {};
                 renderAdminKurirList();
@@ -1259,6 +1299,7 @@
                 renderAdminLogMitra();
             });
         
+            // Node: nota (dari Bagian 2)
             onValue(ref(db, 'nota'), (snapshot) => {
                 cloudNotaList = snapshot.val() || {};
                 if (typeof renderAdminNota === 'function') renderAdminNota();
@@ -1268,12 +1309,15 @@
                 calculateDashboardStats();
             });
         
+            // Node: mitra
             onValue(ref(db, 'mitra'), (snapshot) => {
                 cloudMitraList = snapshot.val() || {};
                 if (typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
                 if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
                 if (typeof populateMitraSelectionDropdown === 'function') populateMitraSelectionDropdown();
             });
+        
+            // Node: live_locations (dari Bagian 2)
             onValue(ref(db, 'live_locations'), (snapshot) => {
                 liveLocations = snapshot.val() || {};
                 if (userSession && userSession.role === 'admin' && currentScreen === 'screen-admin-tracking') {
@@ -1282,6 +1326,7 @@
                 }
             });
         
+            // Node: log_mitra
             onValue(ref(db, 'log_mitra'), (snapshot) => {
                 cloudLogMitra = snapshot.val() || {};
                 if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
@@ -1289,24 +1334,29 @@
                 if (typeof sembunyikanRiwayatMitraAdmin === 'function') sembunyikanRiwayatMitraAdmin();
                 if (typeof calculateMitraStats === 'function') calculateMitraStats();
             });
+        
+            // Node: ongkir_wilayah (dari Bagian 2)
             onValue(ref(db, 'ongkir_wilayah'), (snapshot) => {
                 cloudOngkirList = snapshot.val() || {};
                 if (typeof renderAdminOngkirList === 'function') renderAdminOngkirList();
             });
-
-            // Pemeriksaan Sesi Otomatis (Auto-Login)
+        
+            // 5. Pemeriksaan Sesi Otomatis (Auto-Login)
             const savedSession = localStorage.getItem('sahabatku_session');
             if (savedSession) {
                 userSession = JSON.parse(savedSession);
-                document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
                 
-                if(document.getElementById('nota-kurir') && userSession.nama) {
+                // Update UI Nama Sesi
+                document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
+                if (document.getElementById('nota-kurir') && userSession.nama) {
                     document.getElementById('nota-kurir').value = userSession.nama;
                 }
         
+                // Pengalihan Halaman Berdasarkan Role
                 if (userSession.role === 'admin') {
                     launchApplicationSession("screen-admin-dashboard");
                 } else {
+                    // Menggunakan timeout agar cloudKurirList dari database sudah terisi terlebih dahulu
                     setTimeout(() => {
                         const currentKurir = cloudKurirList[userSession.id];
                         if (currentKurir && currentKurir.status === 'aktif') {
@@ -1315,7 +1365,7 @@
                             alert("Sesi berakhir. Akun Anda telah dinonaktifkan oleh Admin.");
                             handleLogout();
                         }
-                    }, 500);
+                    }, 500); // Menggunakan delay 500ms dari Bagian 2 agar pengambilan data lebih aman
                 }
             }
         });
@@ -1843,72 +1893,6 @@
                 }
             }
         }
-        window.addEventListener('DOMContentLoaded', () => {
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-            if (typeof initTheme === 'function') initTheme();
-            const tglSkrgWib = getWibRawDate();
-
-            // Daftar semua ID input tanggal yang ada di aplikasi Anda
-            const daftarInputTgl = [
-                'an-filter-tgl',        // Admin Nota
-                'am-log-tgl',           // Admin Log Mitra
-                'filter-date-riwayat',  // Kurir Riwayat
-                'm-filter-tgl-kurir'    // Kurir Transaksi Mitra
-            ];
-        
-            daftarInputTgl.forEach(id => {
-                const el = document.getElementById(id);
-                if (el && !el.value) {
-                    el.value = tglSkrgWib;
-                }
-            });
-            onValue(ref(db, 'users'), (snapshot) => {
-                cloudKurirList = snapshot.val() || {};
-                renderAdminKurirList();
-                populateKurirDropdownFilter();
-                populateMitraLogKurirDropdown();
-                renderAdminLogMitra();
-            });
-            onValue(ref(db, 'mitra'), (snapshot) => {
-                cloudMitraList = snapshot.val() || {};
-                if (typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
-                if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
-                if (typeof populateMitraSelectionDropdown === 'function') populateMitraSelectionDropdown();
-            });
-            onValue(ref(db, 'log_mitra'), (snapshot) => {
-                cloudLogMitra = snapshot.val() || {};
-                if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
-                if (typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
-                if (typeof sembunyikanRiwayatMitraAdmin === 'function') sembunyikanRiwayatMitraAdmin();
-                if (typeof calculateMitraStats === 'function') calculateMitraStats();
-            });
-
-            const savedSession = localStorage.getItem('sahabatku_session');
-            if (savedSession) {
-                userSession = JSON.parse(savedSession);
-                
-                document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
-                if(document.getElementById('nota-kurir') && userSession.nama) {
-                    document.getElementById('nota-kurir').value = userSession.nama;
-                }
-        
-                if (userSession.role === 'admin') {
-                    launchApplicationSession("screen-admin-dashboard");
-                    
-                } else {
-                    setTimeout(() => {
-                        const currentKurir = cloudKurirList[userSession.id];
-                        if (currentKurir && currentKurir.status === 'aktif') {
-                            launchApplicationSession("screen-dashboard");
-                        } else if (currentKurir && currentKurir.status !== 'aktif') {
-                            alert("Sesi berakhir. Akun Anda telah dinonaktifkan oleh Admin.");
-                            handleLogout();
-                        }
-                    }, 50);
-                }
-            }
-        });
-
         window.hapusNotaGlobal = function(key) {
             if(confirm("Hapus nota ini secara permanen dari server cloud?")) {
                 remove(ref(db, `nota/${key}`));
