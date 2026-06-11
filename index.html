@@ -1008,6 +1008,7 @@
         let trackingMarker = null;
         let selectedKurirTracking = null;
         let selectedTrackingUser = null;
+        let pendingAutoLoginCheck = false;
         
         function getWibDate() {
             return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
@@ -1296,24 +1297,30 @@
                 }
             });
         
-            // Pengisian khusus untuk filter bulan (dari Bagian 2)
             const bulanEl = document.getElementById('an-filter-bulan');
             if (bulanEl && !bulanEl.value) {
                 bulanEl.value = tglSkrgWib.substring(0, 7);
             }
-        
-            // 4. Listener Firebase Realtime Database (onValue)
-            
-            // Node: users
             onValue(ref(db, 'users'), (snapshot) => {
                 cloudKurirList = snapshot.val() || {};
                 renderAdminKurirList();
                 populateKurirDropdownFilter();
                 populateMitraLogKurirDropdown();
                 renderAdminLogMitra();
+            
+                if (pendingAutoLoginCheck && userSession && userSession.role === 'kurir') {
+                    const currentKurir = cloudKurirList[userSession.id];
+                    if (currentKurir && currentKurir.status === 'aktif') {
+                        launchApplicationSession("screen-dashboard");
+                        startLiveLocationTracking();
+                    } else if (currentKurir && currentKurir.status !== 'aktif') {
+                        alert("Sesi berakhir. Akun Anda telah dinonaktifkan oleh Admin.");
+                        handleLogout();
+                    }
+                    pendingAutoLoginCheck = false;
+                }
             });
-        
-            // Node: nota (dari Bagian 2)
+
             onValue(ref(db, 'nota'), (snapshot) => {
                 cloudNotaList = snapshot.val() || {};
                 if (typeof renderAdminNota === 'function') renderAdminNota();
@@ -1360,31 +1367,19 @@
                     renderAdminTestimonial();
                 }
             });
-
             const savedSession = localStorage.getItem('sahabatku_session');
             if (savedSession) {
                 userSession = JSON.parse(savedSession);
                 
-                // Update UI Nama Sesi
                 document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
                 if (document.getElementById('nota-kurir') && userSession.nama) {
                     document.getElementById('nota-kurir').value = userSession.nama;
                 }
-        
-                // Pengalihan Halaman Berdasarkan Role
+            
                 if (userSession.role === 'admin') {
                     launchApplicationSession("screen-admin-dashboard");
                 } else {
-                    // Menggunakan timeout agar cloudKurirList dari database sudah terisi terlebih dahulu
-                    setTimeout(() => {
-                        const currentKurir = cloudKurirList[userSession.id];
-                        if (currentKurir && currentKurir.status === 'aktif') {
-                            launchApplicationSession("screen-dashboard");
-                        } else if (currentKurir && currentKurir.status !== 'aktif') {
-                            alert("Sesi berakhir. Akun Anda telah dinonaktifkan oleh Admin.");
-                            handleLogout();
-                        }
-                    }, 500); // Menggunakan delay 500ms dari Bagian 2 agar pengambilan data lebih aman
+                    pendingAutoLoginCheck = true;
                 }
             }
         });
