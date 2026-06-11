@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testimoni Pelanggan - Sahabatku Delivery</title>
+    <meta name="description" content="Kirim dan lihat testimoni pelanggan Sahabatku Delivery. Layanan pengiriman logistik lokal profesional, cepat, dan terpercaya.">
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        premium: '#0080f7',
+                        darkblue: '#0056b3',
+                        slatebg: '#f8fafc'
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+            overflow-x: hidden;
+        }
+        /* Glassmorphism utility */
+        .glass {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        /* Continuous Marquee Slider Animation */
+        @keyframes marquee {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+            display: flex;
+            width: max-content;
+            animation: marquee 30s linear infinite;
+        }
+        .animate-marquee:hover {
+            animation-play-state: paused;
+        }
+        /* Custom Rating Radio styling */
+        .rating-star:checked ~ .star-label,
+        .rating-star:checked ~ .star-label ~ .star-label {
+            color: #fbbf24;
+        }
+        /* Premium Glow Button Effect */
+        .btn-gradient-glow {
+            background: linear-gradient(135deg, #0080f7 0%, #6366f1 100%);
+            box-shadow: 0 4px 15px rgba(0, 128, 247, 0.35);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-gradient-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+        }
+        /* Card Dashboard Control Styling */
+        .dashboard-trigger-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15), 0 0 0 1px rgba(255,255,255,0.05);
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        .dashboard-trigger-card:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 30px 50px rgba(0, 128, 247, 0.2);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+
+    <!-- HERO BACKGROUND GRADIENT -->
+    <div class="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-500/10 via-premium/5 to-transparent -z-10"></div>
+
+    <!-- NAVBAR -->
+    <nav class="sticky top-0 z-40 w-full glass border-b border-slate-200/50 transition-all duration-300">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <!-- Logo Resmi Perusahaan -->
+                <div class="w-10 h-10 rounded-xl overflow-hidden shadow-md border border-slate-100 flex items-center justify-center bg-white">
+                    <img src="https://i.ibb.co.com/Lhg1Z2GW/Sahabatku-2.png/logo.png" alt="Sahabatku Logo" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <span class="font-extrabold text-lg tracking-tight block text-slate-900">Sahabatku</span>
+                    <span class="text-xs text-premium font-bold tracking-widest uppercase block -mt-1">Delivery</span>
+                </div>
+            </div>
+            <!-- Tombol Kunjungi Web di Navbar -->
+            <a href="https://sahabatkugroup.github.io/websitesahabatkudelivery/" target="_blank" class="btn-gradient-glow text-white text-xs md:text-sm font-semibold px-5 py-2.5 rounded-full flex items-center gap-2">
+                Kunjungi Web Kami <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+            </a>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="max-w-6xl mx-auto px-4 pt-10 pb-24 space-y-16">
+        
+        <!-- URUTAN 1: FORM TESTIMONI PREMIUM -->
+        <section id="form-section" class="max-w-2xl mx-auto">
+            <div class="glass p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-white relative">
+                
+                <div class="flex items-center gap-4 mb-6 pb-6 border-b border-slate-200/60">
+                    <div class="w-12 h-12 bg-premium/10 rounded-2xl flex items-center justify-center text-premium text-xl">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg md:text-xl font-bold text-slate-900">Bagikan Pengalaman Anda</h2>
+                        <p class="text-xs md:text-sm text-slate-500">Ulasan Anda membantu kami meningkatkan kualitas layanan.</p>
+                    </div>
+                </div>
+
+                <form id="testimonialForm" class="space-y-5">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="fullname">Nama Lengkap *</label>
+                        <input type="text" id="fullname" required placeholder="Contoh: Thom Haye" class="w-full px-4 py-3 rounded-xl bg-slate-50/50 border border-slate-200 focus:border-premium focus:ring-2 focus:ring-premium/20 transition-all outline-none text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="courierName">Nama Kurir <span class="text-slate-400 font-normal">(Opsional)</span></label>
+                        <input type="text" id="courierName" placeholder="Nama kurir yang mengantar..." class="w-full px-4 py-3 rounded-xl bg-slate-50/50 border border-slate-200 focus:border-premium focus:ring-2 focus:ring-premium/20 transition-all outline-none text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Rating Kepuasan *</label>
+                        <div class="flex flex-row-reverse justify-end gap-2 text-2xl">
+                            <input type="radio" id="star5" name="rating" value="5" class="hidden peer rating-star" required>
+                            <label for="star5" class="star-label cursor-pointer text-slate-200 hover:text-amber-400 peer-hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></label>
+                            
+                            <input type="radio" id="star4" name="rating" value="4" class="hidden peer rating-star">
+                            <label for="star4" class="star-label cursor-pointer text-slate-200 hover:text-amber-400 peer-hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></label>
+                            
+                            <input type="radio" id="star3" name="rating" value="3" class="hidden peer rating-star">
+                            <label for="star3" class="star-label cursor-pointer text-slate-200 hover:text-amber-400 peer-hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></label>
+                            
+                            <input type="radio" id="star2" name="rating" value="2" class="hidden peer rating-star">
+                            <label for="star2" class="star-label cursor-pointer text-slate-200 hover:text-amber-400 peer-hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></label>
+                            
+                            <input type="radio" id="star1" name="rating" value="1" class="hidden peer rating-star">
+                            <label for="star1" class="star-label cursor-pointer text-slate-200 hover:text-amber-400 peer-hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></label>
+                        </div>
+                    </div>
+
+                    <!-- Grid Parameter Layanan -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Sikap Kurir -->
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Sikap Kurir *</label>
+                            <select id="attitude" required class="w-full px-4 py-3 rounded-xl bg-slate-50/50 border border-slate-200 focus:border-premium focus:ring-2 focus:ring-premium/20 transition-all outline-none text-sm appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_16px_center] bg-no-repeat">
+                                <option value="" disabled selected>Pilih sikap kurir</option>
+                                <option value="Sangat Ramah">Sangat Ramah</option>
+                                <option value="Ramah">Ramah</option>
+                                <option value="Kurang Ramah">Kurang Ramah</option>
+                            </select>
+                        </div>
+                        <!-- Kecepatan Pengiriman -->
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Kecepatan Kirim *</label>
+                            <select id="speed" required class="w-full px-4 py-3 rounded-xl bg-slate-50/50 border border-slate-200 focus:border-premium focus:ring-2 focus:ring-premium/20 transition-all outline-none text-sm appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_16px_center] bg-no-repeat">
+                                <option value="" disabled selected>Pilih kecepatan kirim</option>
+                                <option value="Sangat Cepat">Sangat Cepat</option>
+                                <option value="Cepat">Cepat</option>
+                                <option value="Standar">Standar</option>
+                                <option value="Lambat">Lambat</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Pesan dan Kesan -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5" for="comments">Pesan dan Kesan *</label>
+                        <textarea id="comments" required rows="4" placeholder="Tuliskan detail pengalaman menarik Anda bersama Sahabatku Delivery..." class="w-full px-4 py-3 rounded-xl bg-slate-50/50 border border-slate-200 focus:border-premium focus:ring-2 focus:ring-premium/20 transition-all outline-none text-sm resize-none"></textarea>
+                    </div>
+
+                    <!-- Tombol Kirim -->
+                    <button type="submit" class="w-full bg-premium hover:bg-darkblue text-white font-bold py-3.5 px-6 rounded-xl transition-all duration-300 shadow-lg shadow-premium/20 hover:shadow-xl text-sm tracking-wide mt-2">
+                        Kirim Testimoni<i class="fa-solid fa-paper-plane ml-2"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- URUTAN 2: APA KATA MEREKA? -->
+        <section class="overflow-hidden">
+            <div class="text-center mb-6">
+                <h2 class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Apa Kata Mereka?</h2>
+                <p class="text-slate-500 text-xs md:text-sm">Ulasan pilihan dari pelanggan setia kami yang berjalan otomatis.</p>
+            </div>
+
+            <div class="w-full relative py-4 overflow-x-auto overflow-y-hidden whitespace-nowrap scroll-smooth no-scrollbar">
+                <div id="marquee-track" class="flex gap-6 py-2 w-max">
+                    <div class="text-center text-slate-400 w-full py-8">Sedang memuat review pilihan...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- URUTAN 3: TOMBOL UTAMA DASHBOARD LIVE (DESAIN UT ULTRA-PREMIUM & INTERAKTIF) -->
+        <section class="max-w-xl mx-auto pt-4">
+            <button onclick="openDashboardPopup()" class="dashboard-trigger-card w-full rounded-2xl p-5 flex items-center justify-between group relative text-left outline-none overflow-hidden">
+                
+                <!-- Sorot Sinar Latar Belakang -->
+                <div class="absolute inset-0 bg-gradient-to-r from-premium/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                <div class="flex items-center gap-4 relative z-10">
+                    <!-- Representasi Ikon Grafik Bergerak Modern -->
+                    <div class="w-12 h-12 rounded-xl bg-premium/10 border border-premium/20 flex items-center justify-center text-premium text-xl transition-transform duration-500 group-hover:scale-110">
+                        <i class="fa-solid fa-chart-line animate-pulse"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-400 font-bold uppercase tracking-widest">Sistem Analitik Realtime</span>
+                            <!-- Dot Sinyal Kedip Live -->
+                            <span class="flex h-2 w-2 relative">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                        </div>
+                        <h3 class="text-white font-extrabold text-base md:text-lg tracking-tight mt-0.5 group-hover:text-premium transition-colors">
+                            Buka Dashboard Live
+                        </h3>
+                        <p class="text-slate-400 text-xs mt-0.5 font-light">Pantau total kepuasan dan performa kurir secara transparan.</p>
+                    </div>
+                </div>
+
+                <!-- Panah Indikator Aksi -->
+                <div class="text-slate-500 group-hover:text-white transition-colors duration-300 pr-2 text-lg hidden sm:block">
+                    <i class="fa-solid fa-circle-chevron-right transform group-hover:translate-x-1 transition-transform"></i>
+                </div>
+            </button>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full bg-white border-t border-slate-100 py-6 text-center text-xs text-slate-400">
+        &copy; 2026 Sahabatku Delivery. All Rights Reserved. Build with Premium Experience.
+    </footer>
+
+    <!-- POPUP 1: WELCOME POPUP -->
+    <div id="welcomePopup" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md opacity-100 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full text-center shadow-2xl scale-100 transition-transform duration-300 border border-slate-100">
+            <div class="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center overflow-hidden border border-slate-100 shadow-lg shadow-premium/20 mb-4 animate-bounce">
+                <img src="https://i.ibb.co.com/Lhg1Z2GW/Sahabatku-2.png/logo.png" alt="Sahabatku Logo" class="w-full h-full object-cover">
+            </div>
+            <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Sahabatku Delivery</h2>
+            <p class="text-xs text-premium font-bold tracking-widest uppercase mt-0.5">Customer Voice</p>
+            <p class="text-slate-500 text-sm mt-3 leading-relaxed">Selamat datang di portal kepuasan pelanggan! Penilaian objektif Anda mendorong pertumbuhan standar kami.</p>
+            <button onclick="closeWelcomePopup()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-6 rounded-xl mt-6 text-sm transition-all shadow-md">
+                Mulai Review <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="successPopup" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full text-center shadow-2xl border border-slate-100">
+            <div class="w-16 h-16 bg-green-500 text-white rounded-full mx-auto flex items-center justify-center text-3xl shadow-xl shadow-green-500/20 mb-4 scale-75 animate-pulse">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Terima Kasih Banyak!</h2>
+            <p class="text-xs text-green-600 font-bold tracking-widest uppercase mt-0.5">Ulasan Terkirim</p>
+            <p class="text-slate-500 text-sm mt-3 leading-relaxed">
+                Testimoni Anda adalah bagian penting dari perkembangan Sahabatku Delivery.<br><br>
+                Mohon pastikan Anda telah menerima nota elektronik dari Driver kami serta melakukan pemesanan melalui WhatsApp resmi Sahabatku Delivery di <strong>0821-1845-4515</strong>.<br><br>
+                Terima kasih telah meluangkan waktu untuk berbagi pengalaman bersama kami. ❤️
+            </p>
+            <button onclick="closeSuccessPopup()" class="w-full bg-premium hover:bg-darkblue text-white font-semibold py-3 px-6 rounded-xl mt-6 text-sm transition-all shadow-md">
+                Selesai
+            </button>
+        </div>
+    </div>
+
+    <div id="dashboardPopup" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-100 relative max-h-[90vh] overflow-y-auto no-scrollbar">
+            
+            <button onclick="closeDashboardPopup()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl p-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 rounded-xl mx-auto flex items-center justify-center overflow-hidden border border-slate-100 shadow-md mb-2 bg-white">
+                    <img src="https://i.ibb.co.com/Lhg1Z2GW/Sahabatku-2.png/logo.png" alt="Logo" class="w-full h-full object-cover">
+                </div>
+                <span class="text-xs font-bold text-premium uppercase tracking-widest bg-blue-50 px-3 py-1.5 rounded-full">Data Realtime</span>
+                <h2 class="text-xl md:text-2xl font-extrabold text-slate-900 mt-2 tracking-tight">Kepuasan Pelanggan Live</h2>
+            </div>
+
+            <!-- Stats Grid Inside Popup -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Pelanggan Puas</span>
+                        <div class="w-7 h-7 bg-green-100 text-green-600 rounded-lg flex items-center justify-center text-xs"><i class="fa-solid fa-users"></i></div>
+                    </div>
+                    <div>
+                        <h3 id="stat-satisfied" class="text-xl font-bold text-slate-900">0</h3>
+                        <p class="text-[10px] text-green-600 font-medium mt-0.5"><i class="fa-solid fa-arrow-up mr-0.5"></i>99% Rating &ge; 4</p>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Total Testimoni</span>
+                        <div class="w-7 h-7 bg-blue-100 text-premium rounded-lg flex items-center justify-center text-xs"><i class="fa-solid fa-comments"></i></div>
+                    </div>
+                    <div>
+                        <h3 id="stat-total" class="text-xl font-bold text-slate-900">0</h3>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Ulasan masuk terverifikasi</p>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Rata-rata Rating</span>
+                        <div class="w-7 h-7 bg-amber-100 text-amber-500 rounded-lg flex items-center justify-center text-xs"><i class="fa-solid fa-star"></i></div>
+                    </div>
+                    <div>
+                        <h3 id="stat-rating" class="text-xl font-bold text-slate-900">0.0</h3>
+                        <div class="flex items-center gap-0.5 text-[9px] text-amber-500 mt-1" id="stat-stars-render">
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kurir Dinilai</span>
+                        <div class="w-7 h-7 bg-purple-100 text-purple-500 rounded-lg flex items-center justify-center text-xs"><i class="fa-solid fa-motorcycle"></i></div>
+                    </div>
+                    <div>
+                        <h3 id="stat-couriers" class="text-xl font-bold text-slate-900">0</h3>
+                        <p class="text-[10px] text-purple-600 font-medium mt-0.5">Personel aktif dinilai</p>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="closeDashboardPopup()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-6 rounded-xl mt-5 text-sm transition-all shadow-md">
+                Kembali ke Halaman Utama
+            </button>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
+        authDomain: "aplikasi-sahabatkugroup.firebaseapp.com",
+        databaseURL: "https://aplikasi-sahabatkugroup-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "aplikasi-sahabatkugroup",
+        storageBucket: "aplikasi-sahabatkugroup.firebasestorage.app",
+        messagingSenderId: "323288632862",
+        appId: "1:323288632862:web:57f12fbb5b18ad0fbd680f",
+        measurementId: "G-788RL05MFR"
+      };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const testimonialsRef = ref(db, 'testimonials');
+
+        // Handle Form Submit
+        const form = document.getElementById('testimonialForm');
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const fullname = document.getElementById('fullname').value;
+            const courierName = document.getElementById('courierName').value;
+            const rating = parseInt(document.querySelector('input[name="rating"]:checked').value);
+            const attitude = document.getElementById('attitude').value;
+            const speed = document.getElementById('speed').value;
+            const comments = document.getElementById('comments').value;
+
+            const newTestimonialRef = push(testimonialsRef);
+            
+            set(newTestimonialRef, {
+                fullname: fullname,
+                courierName: courierName || "-",
+                rating: rating,
+                attitude: attitude,
+                speed: speed,
+                comments: comments,
+                timestamp: Date.now(),
+                isPublished: false, 
+                status: "pending"
+            }).then(() => {
+                form.reset();
+                showSuccessPopup();
+            }).catch((error) => {
+                alert("Gagal menyimpan data: " + error.message);
+            });
+        });
+
+        // Realtime Listener
+        onValue(testimonialsRef, (snapshot) => {
+            const data = snapshot.val();
+            let totalTestimonials = 0;
+            let satisfiedCount = 0;
+            let totalRatingSum = 0;
+            let uniqueCouriers = new Set();
+            let publishedCardsHTML = '';
+
+            if (data) {
+                const sortedKeys = Object.keys(data).sort((a, b) => data[b].timestamp - data[a].timestamp);
+            
+                sortedKeys.forEach(key => {
+                    const item = data[key];
+            
+                    if (item.isPublished === true) {
+                        totalTestimonials++;
+                        totalRatingSum += item.rating;
+            
+                        if (item.rating >= 4) {
+                            satisfiedCount++;
+                        }
+                        if (item.courierName && item.courierName !== "-") {
+                            uniqueCouriers.add(item.courierName.toLowerCase().trim());
+                        }
+            
+                        let badgeHTML = '<span class="px-2 py-0.5 bg-blue-50 text-premium rounded text-[10px] font-bold flex items-center gap-1"><i class="fa-solid fa-user-check"></i> Verified Customer</span>';
+                        if (item.rating === 5 && item.comments.length > 50) {
+                            badgeHTML += '<span class="px-2 py-0.5 bg-amber-50 text-amber-600 rounded text-[10px] font-bold flex items-center gap-1"><i class="fa-solid fa-crown"></i> Top Review</span>';
+                        } else if (item.comments.includes("selalu") || item.comments.includes("langganan")) {
+                            badgeHTML += '<span class="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-[10px] font-bold flex items-center gap-1"><i class="fa-solid fa-heart"></i> Pelanggan Setia</span>';
+                        }
+            
+                        let starsHTML = '';
+                        for(let i=1; i<=5; i++) {
+                            starsHTML += `<i class="fa-solid fa-star ${i <= item.rating ? 'text-amber-400' : 'text-slate-200'} text-xs"></i>`;
+                        }
+            
+                        const cardTemplate = `
+                            <div class="w-[300px] md:w-[360px] bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex-shrink-0 flex flex-col justify-between mx-3">
+                                <div>
+                                    <div class="flex items-start justify-between gap-2 mb-3">
+                                        <div>
+                                            <h4 class="font-bold text-sm text-slate-900">${item.fullname}</h4>
+                                            <p class="text-[11px] text-slate-400">Kurir: <span class="text-slate-600 font-medium">${item.courierName}</span></p>
+                                        </div>
+                                        <div class="flex items-center gap-0.5">
+                                            ${starsHTML}
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-slate-600 leading-relaxed italic mb-4">"${item.comments}"</p>
+                                </div>
+                                <div class="pt-3 border-t border-slate-50 flex flex-col gap-2">
+                                    <div class="flex flex-wrap gap-1">
+                                        ${badgeHTML}
+                                    </div>
+                                    <div class="flex items-center justify-between text-[10px] pt-1">
+                                        <span class="px-2 py-1 rounded-full bg-blue-50 text-blue-600 font-semibold">
+                                            <i class="fa-solid fa-gauge-high mr-1"></i> ${item.speed}
+                                        </span>
+                                        <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 font-semibold">
+                                            <i class="fa-solid fa-smile mr-1"></i> ${item.attitude}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        publishedCardsHTML += cardTemplate;
+                    }
+                });
+            }
+
+            const averageRating = totalTestimonials > 0 ? (totalRatingSum / totalTestimonials).toFixed(1) : "0.0";
+            document.getElementById('stat-satisfied').innerText = satisfiedCount;
+            document.getElementById('stat-total').innerText = totalTestimonials;
+            document.getElementById('stat-rating').innerText = averageRating;
+            document.getElementById('stat-couriers').innerText = uniqueCouriers.size;
+
+            let mainStarsHTML = '';
+            const roundedAvg = Math.round(parseFloat(averageRating));
+            for(let i=1; i<=5; i++) {
+                mainStarsHTML += `<i class="fa-solid fa-star ${i <= roundedAvg ? 'text-amber-400' : 'text-slate-200'}"></i>`;
+            }
+            document.getElementById('stat-stars-render').innerHTML = mainStarsHTML + `<span class="text-slate-400 font-medium ml-1">(${totalTestimonials})</span>`;
+
+            const marqueeTrack = document.getElementById('marquee-track');
+            if (publishedCardsHTML === '') {
+                marqueeTrack.innerHTML = '<div class="text-center text-slate-400 w-full py-8 text-xs">Belum ada review.</div>';
+            } else {
+                marqueeTrack.innerHTML = publishedCardsHTML;
+            }
+        });
+    </script>
+    <script>
+        function closeWelcomePopup() {
+            const popup = document.getElementById('welcomePopup');
+            popup.classList.add('opacity-0');
+            setTimeout(() => { popup.classList.add('hidden'); }, 300);
+        }
+
+        function showSuccessPopup() {
+            const popup = document.getElementById('successPopup');
+            popup.classList.remove('hidden');
+            setTimeout(() => {
+                popup.classList.remove('opacity-0');
+                popup.classList.add('opacity-100');
+            }, 50);
+        }
+
+        function closeSuccessPopup() {
+            const popup = document.getElementById('successPopup');
+            popup.classList.remove('opacity-100');
+            popup.classList.add('opacity-0');
+            setTimeout(() => { popup.classList.add('hidden'); }, 300);
+        }
+
+        function openDashboardPopup() {
+            const popup = document.getElementById('dashboardPopup');
+            popup.classList.remove('hidden');
+            setTimeout(() => {
+                popup.classList.remove('opacity-0');
+                popup.classList.add('opacity-100');
+            }, 50);
+        }
+
+        function closeDashboardPopup() {
+            const popup = document.getElementById('dashboardPopup');
+            popup.classList.remove('opacity-100');
+            popup.classList.add('opacity-0');
+            setTimeout(() => { popup.classList.add('hidden'); }, 300);
+        }
+        const marqueeWrapper = document.querySelector('.no-scrollbar');
+        let autoScrollInterval = setInterval(() => {
+            if (marqueeWrapper) {
+                marqueeWrapper.scrollLeft += 1;
+                if (marqueeWrapper.scrollLeft + marqueeWrapper.clientWidth >= marqueeWrapper.scrollWidth) {
+                    marqueeWrapper.scrollLeft = 0;
+                }
+            }
+        }, 20);
+        
+        marqueeWrapper.addEventListener('mouseenter', () => clearInterval(autoScrollInterval));
+        marqueeWrapper.addEventListener('mouseleave', () => {
+            autoScrollInterval = setInterval(() => {
+                if (marqueeWrapper) {
+                    marqueeWrapper.scrollLeft += 1;
+                    if (marqueeWrapper.scrollLeft + marqueeWrapper.clientWidth >= marqueeWrapper.scrollWidth) {
+                        marqueeWrapper.scrollLeft = 0;
+                    }
+                }
+            }, 20);
+        });
+        
+    </script>
+</body>
+</html>
