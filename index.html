@@ -555,7 +555,6 @@
                     <button onclick="showAdminOngkirMode('jarak')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-800">Hitung Jarak</button>
                     <button onclick="showAdminOngkirMode('rahasia')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-800">3 Arah</button>
                 </div>
-            
                 <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border shadow-sm space-y-3">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400" id="title-form-ongkir">Tambah / Edit Ongkir</h3>
                     <input type="hidden" id="ongkir-id-edit">
@@ -572,7 +571,6 @@
                         <button onclick="closeAdminOngkirPopup()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
                             ✕
                         </button>
-            
                         <div id="admin-ongkir-normal" class="hidden space-y-3">
                             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Cek Ongkir</h3>
                             <div class="relative">
@@ -589,7 +587,6 @@
                             </div>
                         </div>
             
-                        <!-- Jarak -->
                         <div id="admin-ongkir-jarak" class="hidden space-y-3">
                             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Hitung Jarak</h3>
                             <div class="relative">
@@ -603,20 +600,16 @@
                             </div>
                         </div>
             
-                        <!-- 3 Arah -->
                         <div id="admin-ongkir-rahasia" class="hidden space-y-3">
                             <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Cek Ongkir 3 Arah</h3>
-                        
                             <div class="relative">
                                 <input type="text" id="admin-ongkir-3-asal" oninput="updateAdminOngkir3Suggestions('asal')" placeholder="Asal" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                                 <div id="suggest-admin-ongkir-3-asal" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-darkCard border rounded-xl shadow-lg max-h-40 overflow-y-auto z-20"></div>
                             </div>
-                        
                             <div class="relative">
                                 <input type="text" id="admin-ongkir-3-titik" oninput="updateAdminOngkir3Suggestions('titik')" placeholder="Titik" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                                 <div id="suggest-admin-ongkir-3-titik" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-darkCard border rounded-xl shadow-lg max-h-40 overflow-y-auto z-20"></div>
                             </div>
-                        
                             <div class="relative">
                                 <input type="text" id="admin-ongkir-3-tujuan" oninput="updateAdminOngkir3Suggestions('tujuan')" placeholder="Tujuan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                                 <div id="suggest-admin-ongkir-3-tujuan" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-darkCard border rounded-xl shadow-lg max-h-40 overflow-y-auto z-20"></div>
@@ -1087,16 +1080,12 @@
           appId: "1:323288632862:web:57f12fbb5b18ad0fbd680f",
           measurementId: "G-788RL05MFR"
         };
-        // Inisialisasi Firebase secara tunggal & bersih dari bentrok
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        // Core Global Session State Variables
         let userSession = null; 
         let currentScreen = 'screen-login';
         let navigationHistory = [];
         let notaState = { items: [], biaya: [], subtotal: 0, ongkir: 10000, total: 0 };
-
-        // Local State Mirroring Data
         let cloudKurirList = {};
         let cloudNotaList = {};
         let cloudMitraList = {};
@@ -1437,7 +1426,6 @@
                 calculateDashboardStats();
             });
         
-            // Node: mitra
             onValue(ref(db, 'mitra'), (snapshot) => {
                 cloudMitraList = snapshot.val() || {};
                 if (typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
@@ -1445,7 +1433,6 @@
                 if (typeof populateMitraSelectionDropdown === 'function') populateMitraSelectionDropdown();
             });
         
-            // Node: live_locations (dari Bagian 2)
             onValue(ref(db, 'live_locations'), (snapshot) => {
                 liveLocations = snapshot.val() || {};
                 if (userSession && userSession.role === 'admin' && currentScreen === 'screen-admin-tracking') {
@@ -1454,7 +1441,6 @@
                 }
             });
         
-            // Node: log_mitra
             onValue(ref(db, 'log_mitra'), (snapshot) => {
                 cloudLogMitra = snapshot.val() || {};
                 if (typeof renderKurirMitraView === 'function') renderKurirMitraView();
@@ -1463,7 +1449,6 @@
                 if (typeof calculateMitraStats === 'function') calculateMitraStats();
             });
         
-            // Node: ongkir_wilayah (dari Bagian 2)
             onValue(ref(db, 'ongkir_wilayah'), (snapshot) => {
                 cloudOngkirList = snapshot.val() || {};
                 if (typeof renderAdminOngkirList === 'function') renderAdminOngkirList();
@@ -1507,9 +1492,6 @@
                 }
             });          
         });
-        // =========================================================================
-        // AUTENTIKASI LOGIN UTAMA (Murni Modern SDK v10 - Dengan Auto-Save Sesi)
-        // =========================================================================
         window.handleLogin = function(e) {
             if(e) e.preventDefault();
             const userIn = document.getElementById('login-username').value.trim().toLowerCase(); 
@@ -1525,30 +1507,51 @@
                 btnSubmit.disabled = true;
                 btnSubmit.innerText = "MEMVERIFIKASI...";
             }
-            if (userIn === "sahabatkugroupjtb@gmail.com" && passIn === "Romano!05") {
-                userSession = { username: "admin", nama: "Super Admin", role: "admin" };
-                localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
-                
-                // Set nama lengkap admin di UI dashboard jika ada
-                document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
-                
-                launchApplicationSession("screen-admin-dashboard");
-                setTimeout(() => {
-                    renderLiveMap();
-                }, 200);
-                if(btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerText = "Masuk Sistem"; }
-                return;
-            }
         
-            // 2. Validasi Akun Kurir dari Node 'users'
-            get(ref(db, 'users')).then((snapshot) => {
+            // 1. Ambil data kredensial admin dari path 'loginadmin' di Firebase Realtime Database
+            get(ref(db, 'loginadmin')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const adminData = snapshot.val();
+                    const adminUser = (adminData.username || "").trim().toLowerCase();
+                    const adminPass = (adminData.password || "").trim();
+        
+                    // 2. Validasi apakah input cocok dengan data Admin di Firebase
+                    if (userIn === adminUser && passIn === adminPass) {
+                        userSession = { username: "admin", nama: "Super Admin", role: "admin" };
+                        localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
+                        
+                        document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
+                        
+                        launchApplicationSession("screen-admin-dashboard");
+                        setTimeout(() => {
+                            if (typeof renderLiveMap === "function") renderLiveMap();
+                        }, 200);
+        
+                        if(btnSubmit) { 
+                            btnSubmit.disabled = false; 
+                            btnSubmit.innerText = "Masuk Sistem"; 
+                        }
+                        return; // Berhenti di sini karena login sukses sebagai admin
+                    }
+                }
+        
+                // 3. Jika bukan admin atau path 'loginadmin' tidak cocok, lanjutkan periksa database 'users' (Kurir)
+                return get(ref(db, 'users'));
+            })
+            .then((snapshotUsers) => {
+                // Jika proses di atas sudah return karena sukses login admin, snapshotUsers akan bernilai undefined
+                if (!snapshotUsers) return;
+        
                 let foundKey = null;
                 let foundUser = null;
         
-                if (snapshot.exists()) {
-                    const dataKurir = snapshot.val();
+                if (snapshotUsers.exists()) {
+                    const dataKurir = snapshotUsers.val();
                     for (let key in dataKurir) {
-                        if (dataKurir[key].username === userIn && dataKurir[key].password === passIn) {
+                        const kurirUser = (dataKurir[key].username || "").trim().toLowerCase();
+                        const kurirPass = (dataKurir[key].password || "").trim();
+                        
+                        if (kurirUser === userIn && kurirPass === passIn) {
                             foundKey = key;
                             foundUser = dataKurir[key];
                             break;
@@ -1568,18 +1571,15 @@
                     }
                     
                     userSession = { id: foundKey, username: foundUser.username, nama: foundUser.nama, role: "kurir" };
-                    
-                    // SIMPAN SESI KURIR KE BROWSER HP
                     localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
                     
-                    // Set nama lengkap kurir di UI dashboard & form nota
                     document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
                     if(document.getElementById('nota-kurir')) {
                         document.getElementById('nota-kurir').value = foundUser.nama;
                     }
                     
                     launchApplicationSession("screen-dashboard");
-                    startLiveLocationTracking();
+                    if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
                 } else {
                     alert("Username & Password tidak terdaftar atau salah!");
                 }
@@ -1596,20 +1596,17 @@
         window.changePassword = function() {
             const newPassword = document.getElementById('new-password').value.trim();
             
-            // 1. Validasi
             if (!newPassword) {
                 alert("Mohon masukkan password baru!");
                 return;
             }
             
-            // 2. Pastikan user sudah login
             if (!userSession || !userSession.id) {
                 alert("Sesi tidak ditemukan. Silakan login ulang.");
                 return;
             }
         
             if (confirm("Apakah Anda yakin ingin mengubah password Anda?")) {
-                // PERBAIKAN: Path disesuaikan dengan 'users' bukan 'kurir'
                 const dbRef = ref(db, 'users/' + userSession.id);
                 
                 update(dbRef, {
@@ -1618,9 +1615,6 @@
                 .then(() => {
                     alert("Password berhasil diperbarui! Silakan login kembali untuk keamanan.");
                     document.getElementById('new-password').value = '';
-                    
-                    // Logika Keamanan: Setelah ganti password, paksa user logout 
-                    // agar mereka login ulang menggunakan password baru
                     handleLogout(); 
                 })
                 .catch((error) => {
@@ -1749,17 +1743,11 @@
             if (targetEl) targetEl.classList.add('active');
             currentScreen = screenId;
             window.scrollTo(0, 0);
-        
-            // =======================================================
-            // PEMICU AUTOMATIC UPDATE UNTUK DASHBOARD UTAMA
-            // =======================================================
             if (screenId === 'screen-dashboard') {
                 setTimeout(() => {
                     if (typeof updateKurirDashboard === 'function') updateKurirDashboard();
                 }, 50);
             }
-            
-            // PEMICU REKAP BULANAN
             if (screenId === 'screen-rekap') {
                 setTimeout(() => { 
                     if (typeof loadRekapKurir === 'function') loadRekapKurir(); 
@@ -1800,11 +1788,9 @@
             const tglSkrg = getWibRawDate();
             const kurirAktifSet = new Set();
         
-            // HITUNG NOTA
             for (let k in cloudNotaList) {
                 const n = cloudNotaList[k];
                 if (!n) continue;
-        
                 if (n.tanggalRaw === tglSkrg) {
                     totalNotaToday++;
         
@@ -1816,18 +1802,12 @@
                             nominalTambahan += (parseInt(item.nominal) || 0);
                         });
                     }
-        
-                    // Omset lapangan = ongkir + tambahan saja
                     totalOmsetToday += (nominalOngkir + nominalTambahan);
-        
-                    // Kurir aktif = kurir yang hari ini membuat nota
                     if (n.kurirUsername) {
                         kurirAktifSet.add(n.kurirUsername);
                     }
                 }
             }
-        
-            // HITUNG MITRA HARI INI
             for (let k in cloudLogMitra) {
                 const log = cloudLogMitra[k];
                 if (!log) continue;
@@ -1850,7 +1830,6 @@
         window.calculateMitraStats = function() {
             const tglSkrgWib = getWibRawDate();
             let countMitraTrx = 0;
-        
             if (typeof cloudLogMitra !== 'undefined' && userSession && userSession.role === 'kurir') {
                 for (let key in cloudLogMitra) {
                     const entry = cloudLogMitra[key];
@@ -1864,10 +1843,6 @@
             const el = document.getElementById('dash-k-total-mitra-trx');
             if (el) el.innerText = countMitraTrx;
         };
-
-        // =========================================================================
-        // PANEL ADMIN LOGIC: MANAGEMENT KURIR (Murni Modern SDK v10)
-        // =========================================================================
         window.saveAkunKurir = function() {
             const idEdit = document.getElementById('ak-id-edit').value;
             const nama = document.getElementById('ak-nama').value.trim();
@@ -1892,13 +1867,10 @@
                 ongkirLocked: true,
                 ongkirPassword: ""
             };
-
             let targetRef;
             if (idEdit) {
-                // Mode Edit data yang ada
                 targetRef = ref(db, `users/${idEdit}`);
             } else {
-                // Mode Tambah Baru, lakukan cek validasi duplikat username lokal
                 const isDuplicated = Object.values(cloudKurirList).some(kurir => kurir.username === username);
                 if (isDuplicated) {
                     alert(`Username "${username}" sudah terdaftar! Gunakan username yang berbeda.`);
@@ -2100,7 +2072,6 @@
                     `;
                 });
             }
-        
             let rincianBiaya = '';
             const totalBiaya = (n.biayaTambahan || []).reduce((acc, b) => acc + (b.nominal || 0), 0);
             if (n.biayaTambahan && n.biayaTambahan.length > 0) {
@@ -2158,7 +2129,6 @@
                     </p>
                 </div>
             `;
-        
             document.getElementById('modal-preview-nota').classList.remove('hidden');
         }
 
@@ -2182,12 +2152,7 @@
                 link.download = fileName;
                 link.href = canvas.toDataURL('image/jpeg', 0.95);
                 link.click();
-            });
-        }
-
-        // ==================================================
-        // PANEL ADMIN LOGIC: MANAJEMEN MITRA & TRANSAKSI
-        // ==================================================
+            });        }
         window.saveDataMitra = function() {
             const idEdit = document.getElementById('am-id-edit').value;
             const nama = document.getElementById('am-nama').value.trim();
@@ -2217,7 +2182,6 @@
             document.getElementById('edit-mitra-alamat').value = d.alamat || '';
             document.getElementById('edit-mitra-hp').value = d.hp || '';
             document.getElementById('edit-mitra-target').value = d.target || '';
-        
             document.getElementById('modal-edit-mitra').classList.remove('hidden');
         };
         window.saveEditMitra = function() {
@@ -2269,7 +2233,6 @@
             const container = document.getElementById('container-admin-log-mitra');
             const logTgl = document.getElementById('am-log-tgl').value;
             const logSearch = document.getElementById('am-log-search').value.toLowerCase();
-            
             const elFilterKurir = document.getElementById('am-log-filter-kurir');
             const logFilterKurir = elFilterKurir ? elFilterKurir.value : 'semua';
             
@@ -2278,13 +2241,8 @@
             for(let k in cloudLogMitra) {
                 const log = cloudLogMitra[k];
                 
-                // 1. Filter berdasarkan Tanggal
                 if(logTgl && log.tglRaw !== logTgl) continue;
-                
-                // 2. Filter berdasarkan Dropdown Pilihan Nama Kurir (Menggunakan log.kurirNama)
                 if(logFilterKurir !== 'semua' && log.kurirNama !== logFilterKurir) continue;
-                
-                // 3. Filter berdasarkan Input Pencarian teks (Nama Mitra)
                 if(logSearch && !log.mitraNama.toLowerCase().includes(logSearch)) continue;
 
                 container.innerHTML += `
@@ -2470,9 +2428,6 @@
                 `;
             });
         };
-        // ==================================================
-        // FITUR LOGIC MODUL: SISI INTERFACE KURIR 
-        // ==================================================
         window.openModulNota = function() {
             document.getElementById('nota-kurir').value = userSession.nama;
             
@@ -2580,7 +2535,6 @@
 
         window.addBiayaItem = function() {
             const drop = document.getElementById('biaya-dropdown');
-            // Gunakan bersihkanAngka() di sini juga
             const nominal = bersihkanAngka(document.getElementById('biaya-nominal').value);
             let nama = drop.value;
 
@@ -2622,13 +2576,9 @@
 
         window.calculateNotaTotal = function() {
             notaState.subtotal = notaState.items.reduce((acc, curr) => acc + curr.subtotal, 0);
-            
-            // Gunakan bersihkanAngka untuk mengambil nilai murni dari ongkir ber-titik
             notaState.ongkir = bersihkanAngka(document.getElementById('nota-ongkir').value);
-            
             const totalBiayaTambahan = notaState.biaya.reduce((acc, curr) => acc + curr.nominal, 0);
             notaState.total = notaState.subtotal + notaState.ongkir + totalBiayaTambahan;
-
             document.getElementById('calc-subtotal').innerText = "Rp " + notaState.subtotal.toLocaleString('id-ID');
             document.getElementById('calc-ongkir').innerText = "Rp " + notaState.ongkir.toLocaleString('id-ID');
             document.getElementById('calc-biaya').innerText = "Rp " + totalBiayaTambahan.toLocaleString('id-ID');
@@ -2647,7 +2597,6 @@
             document.getElementById('p-nota-date').innerText = tgl.toLocaleString('id-ID');
             document.getElementById('p-nota-kurir').innerText = userSession.nama;
             document.getElementById('p-nota-status').innerText = document.getElementById('nota-status').value;
-            
             document.getElementById('p-subtotal').innerText = notaState.subtotal.toLocaleString('id-ID');
             document.getElementById('p-ongkir').innerText = notaState.ongkir.toLocaleString('id-ID');
             const totalBiayaTambahan = notaState.biaya.reduce((acc, curr) => acc + curr.nominal, 0);
@@ -2675,7 +2624,6 @@
             const tbody = document.getElementById('p-table-body');
             tbody.innerHTML = '';
             
-            // Jika tidak ada item barang, beri keterangan baris kosong opsional agar tampilan kertas nota tidak rusak
             if (notaState.items.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="text-center italic text-slate-400 py-2">- Tidak ada rincian barang (Hanya Ongkir) -</td></tr>`;
             } else {
@@ -2699,8 +2647,6 @@
 
         window.commitSaveNota = function() {
             const notaNum = document.getElementById('p-nota-num').innerText || "Nota";
-
-            // Menyusun payload data secara aman ke Firebase Realtime DB
             const payload = {
                 id: notaNum,
                 tanggal: document.getElementById('p-nota-date').innerText,
@@ -2739,18 +2685,11 @@
             const num = document.getElementById('p-nota-num').innerText;
             const kurir = document.getElementById('p-nota-kurir').innerText;
             const element = document.getElementById('canvas-nota');
-            
-            // Hanya menampilkan keterangan No Nota dan Nama Kurir
             const captionText = `Nota: ${num}\nKurir: ${kurir}`;
-            
-            // Penamaan file JPG menggunakan Nomor Nota dan Nama Kurir
             const fileNameJpg = `${num}_${kurir}.jpg`.replace(/\s+/g, '_'); 
-        
-            // Pastikan tombol di-disable sebentar agar tidak ter-klik ganda
             const btnShare = document.querySelector("button[onclick='shareWhatsApp()']");
             if (btnShare) btnShare.disabled = true;
         
-            // Proses konversi elemen HTML menjadi canvas JPG
             html2canvas(element, { useCORS: true, scale: 2 }).then(canvas => {
                 canvas.toBlob(function(blob) {
                     if (!blob) {
@@ -2759,10 +2698,7 @@
                         return;
                     }
         
-                    // Membuat file objek dengan nama custom berbasis Nota dan Kurir
                     const file = new File([blob], fileNameJpg, { type: 'image/jpeg' });
-        
-                    // Deteksi Web Share API browser ponsel untuk mengirim Gambar + Caption sekaligus
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         navigator.share({
                             files: [file],
@@ -2775,17 +2711,14 @@
                             if (btnShare) btnShare.disabled = false;
                         });
                     } else {
-                        // Fallback otomatis jika browser/perangkat tidak mendukung Web Share langsung
                         if (btnShare) btnShare.disabled = false;
-                        alert("Browser tidak mendukung share langsung. Gambar terunduh otomatis, silakan lampirkan manual ke WhatsApp.");
+                        alert("Browser tidak mendukung share langsung. Gambar terunduh otomatis.");
                         
-                        // Eksekusi download otomatis file gambar nota
                         const link = document.createElement('a');
                         link.download = fileNameJpg;
                         link.href = canvas.toDataURL('image/jpeg');
                         link.click();
                         
-                        // Mengalihkan langsung ke WhatsApp teks caption
                         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(captionText)}`, '_blank');
                     }
                 }, 'image/jpeg', 0.9);
@@ -2981,7 +2914,6 @@
             }
         }
 
-        // Fungsi untuk menghapus data nota dari database cloud secara permanen
         window.hapusRiwayatNota = function(key) {
             const n = cloudNotaList[key];
             const idNota = n ? n.id : "Nota ini";
@@ -2996,7 +2928,6 @@
                     });
             }
         }
-        // Mitra - Sisi Kurir View
         function populateMitraSelectionDropdown() {
             const drop = document.getElementById('m-input-pilih');
             if(!drop) return;
@@ -3031,9 +2962,6 @@
                 if (typeof calculateMitraStats === 'function') calculateMitraStats();
             });
         };
-
-        
-        // --- FUNGSI KONTROL RIWAYAT ---
         window.sembunyikanRiwayatMitra = function() {
             const container = document.getElementById('container-kurir-log-mitra');
             if (container) {
@@ -3042,8 +2970,6 @@
         };
         window.lihatRiwayatMitraOtomatis = function(namaMitra) {
             sembunyikanRiwayatMitra();
-        
-            // Hitung tanggal WIB hari ini
             const now = new Date();
             const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
             const tglSkrgWib = wib.toISOString().split('T')[0];
@@ -3190,7 +3116,6 @@
         };
 
         window.bukaInputTransaksiMitra = function(namaMitra) {
-            // Panggil sembunyikan setiap kali akan melakukan input baru
             sembunyikanRiwayatMitra(); 
             
             const selectMitra = document.getElementById('m-input-pilih');
@@ -3203,17 +3128,14 @@
         }
         document.addEventListener('DOMContentLoaded', () => {
             const tglSkrgWib = getWibRawDate();
-
             const daftarInputTgl = ['an-filter-tgl', 'riwayat-filter-tgl', 'am-log-tgl', 'm-filter-tgl-kurir'];
             daftarInputTgl.forEach(id => {
                 const el = document.getElementById(id);
-                // Kita isi hanya jika elemen ada dan belum ada nilainya
                 if (el && !el.value) {
                     el.value = tglSkrgWib;
                 }
             });
         
-            // 3. Render Awal
             if (typeof renderKurirMitraView === 'function') {
                 renderKurirMitraView();
             }
@@ -3221,7 +3143,6 @@
                 sembunyikanRiwayatMitra();
             }
             
-            // 4. (Opsional) Jika Anda ingin saat pertama kali buka langsung menghitung total statistik
             if (typeof calculateMitraStats === 'function') {
                 calculateMitraStats();
                 loadNotaDraft();
@@ -3290,11 +3211,7 @@
             if(isDark) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
             else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
         }
-        // =========================================================================
-        // FITUR REKAP KURIR: FILTER DINAMIS & MONITORING TABEL LOG HARIAN REAL-TIME
-        // =========================================================================
         window.loadRekapKurir = function() {
-            // 1. Validasi Sesi Pengguna Login
             if (!userSession || userSession.role !== 'kurir') return;
             
             const usernameKurir = userSession.username;
@@ -3315,56 +3232,36 @@
             let totalTambahan = 0;
             let totalNotaCount = 0;
             let totalTrxMitra = 0;
-        
-            // Map penampung log harian komparatif menyeluruh
             let rekapHarianMap = {};
             
-            // Set penampung untuk mendeteksi riwayat bulan secara otomatis tanpa hardcode
             let kumpulanBulanUnik = new Set();
             kumpulanBulanUnik.add(bulanIni); // Pastikan bulan saat ini wajib masuk daftar
-        
-            // ==========================================
-            // PROSES DATA NOTA (CLOUD NOTA LIST)
-            // ==========================================
             for (let key in cloudNotaList) {
                 const nota = cloudNotaList[key];
-        
-                // Validasi Kepemilikan: Hanya hitung nota milik kurir aktif
                 if (nota.kurirUsername !== usernameKurir) continue;
         
                 const tglNota = nota.tanggalRaw;
                 if (!tglNota) continue;
                 
                 const blnNota = tglNota.substring(0, 7);
-                kumpulanBulanUnik.add(blnNota); // Catat bulan yang ditemukan ke sistem dropdown
+                kumpulanBulanUnik.add(blnNota);
         
-                // Hitung nominal keuangan nota saat ini (Ongkir & Biaya Tambahan)
                 const nominalOngkir = parseInt(nota.ongkir) || 0;
                 let nominalTambahan = 0;
         
-                // Hitung akumulasi dari list array biayaTambahan milik nota jika ada
                 if (nota.biayaTambahan && Array.isArray(nota.biayaTambahan)) {
                     nota.biayaTambahan.forEach(item => {
                         nominalTambahan += (parseInt(item.nominal) || 0);
                     });
                 }
-        
-                // Pendapatan Nota Ini = Ongkir + Tambahan
                 const pendapatanNotaIni = nominalOngkir + nominalTambahan;
-        
-                // Siapkan penampung baris tanggal di tabel data harian jika belum ada
                 if (!rekapHarianMap[tglNota]) {
                     rekapHarianMap[tglNota] = { notaCount: 0, pendapatan: 0, trxMitra: 0 };
                 }
-        
-                // Akumulasikan ke log tabel harian (jika bulannya sesuai dengan pilihan filter aktif)
                 if (rekapBulanSelect && rekapBulanSelect.value === blnNota) {
                     rekapHarianMap[tglNota].notaCount += 1;
                     rekapHarianMap[tglNota].pendapatan += pendapatanNotaIni; // REVISI: Sekarang menggunakan (Ongkir + Tambahan)
                 }
-        
-                // LOGIKA FILTER MULTI-LEVEL UNTUK DASHBOARD ATAS:
-                // Jika filter tanggal diisi -> Wajib cocok tanggalnya. Jika kosong -> Cukup samakan bulannya saja.
                 if (rekapBulanSelect && rekapBulanSelect.value) {
                     if (rekapTanggalInput && rekapTanggalInput.value) {
                         if (tglNota !== rekapTanggalInput.value) continue;
@@ -3372,21 +3269,13 @@
                         if (blnNota !== rekapBulanSelect.value) continue;
                     }
                 }
-        
-                // Akumulasi data Dashboard Atas
                 totalOngkir += nominalOngkir;
                 totalTambahan += nominalTambahan;
                 totalPendapatan += pendapatanNotaIni;
                 totalNotaCount++;
             }
-        
-            // ==========================================
-            // PROSES DATA TRANSAKSI MITRA (CLOUD LOG MITRA)
-            // ==========================================
             for (let key in cloudLogMitra) {
                 const log = cloudLogMitra[key];
-        
-                // Validasi Kepemilikan: Hanya hitung input mitra milik kurir aktif
                 if (log.kurirUsername !== usernameKurir) continue;
         
                 const tglLog = log.tglRaw || log.tanggalRaw;
@@ -3404,8 +3293,6 @@
                 if (rekapBulanSelect && rekapBulanSelect.value === blnLog) {
                     rekapHarianMap[tglLog].trxMitra += jumlahTrxInput;
                 }
-        
-                // Terapkan filter untuk Dashboard Atas
                 if (rekapBulanSelect && rekapBulanSelect.value) {
                     if (rekapTanggalInput && rekapTanggalInput.value) {
                         if (tglLog !== rekapTanggalInput.value) continue;
@@ -3413,51 +3300,32 @@
                         if (blnLog !== rekapBulanSelect.value) continue;
                     }
                 }
-        
                 totalTrxMitra += jumlahTrxInput;
             }
-        
-            // =======================================================
-            // OTOMATISASI ISI DROPDOWN PILIHAN FILTER BULAN (DINAMIS)
-            // =======================================================
             if (rekapBulanSelect && rekapBulanSelect.options.length === 0) {
-                // Urutkan rentang bulan secara terbalik (Bulan terbaru di paling atas)
                 const daftarBulanUrut = Array.from(kumpulanBulanUnik).sort((a, b) => b.localeCompare(a));
                 
                 daftarBulanUrut.forEach(bln => {
                     const [tahun, bulan] = bln.split('-');
                     const namaBulanIndo = new Date(tahun, parseInt(bulan) - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-                    
                     const opt = new Option(namaBulanIndo, bln);
                     rekapBulanSelect.add(opt);
                 });
-        
-                // Kunci nilai default dropdown ke bulan berjalan saat ini
                 rekapBulanSelect.value = bulanIni;
-                
-                // Eksekusi ulang kalkulasi agar membaca data berdasarkan value default bulan yang baru disisipkan
                 loadRekapKurir();
                 return;
             }
-        
-            // ==========================================
-            // SUNTIK NILAI AKUMULASI KE DASHBOARD UI ATAS
-            // ==========================================
+
             document.getElementById('rk-pendapatan').innerText = "Rp " + totalPendapatan.toLocaleString('id-ID');
             document.getElementById('rk-ongkir').innerText = "Rp " + totalOngkir.toLocaleString('id-ID');
             document.getElementById('rk-tambahan').innerText = "Rp " + totalTambahan.toLocaleString('id-ID');
             document.getElementById('rk-nota-count').innerText = totalNotaCount;
             document.getElementById('rk-total-trx-mitra').innerText = totalTrxMitra + " Trx";
-        
-            // ==========================================
-            // RENDERING DATA HARIAN MENYELURUH (TABEL RIWAYAT)
-            // ==========================================
+
             const tabelBody = document.getElementById('rk-tabel-perhari');
             if (tabelBody && rekapBulanSelect) {
                 tabelBody.innerHTML = '';
                 const bulanTerpilih = rekapBulanSelect.value;
-                
-                // Urutkan tanggal dari yang paling baru ke bawah (Descending)
                 const urutanTanggal = Object.keys(rekapHarianMap).sort((a, b) => b.localeCompare(a));
                 let adaData = false;
         
@@ -3466,8 +3334,6 @@
                     
                     adaData = true;
                     const dataHariIni = rekapHarianMap[tglKey];
-                    
-                    // Format tanggal lokal agar rapi (Contoh: 09 Jun)
                     const opsiFormat = { day: 'numeric', month: 'short' };
                     const tglCantik = new Date(tglKey).toLocaleDateString('id-ID', opsiFormat);
         
@@ -3538,38 +3404,27 @@
         
             const nextCode = `NT-${tanggalRawHariIni.replace(/-/g, '')}-${String(totalNotaHariIni + 1).padStart(4, '0')}`;
             if (elNextNota) elNextNota.innerText = nextCode;
-        
             if (typeof calculateMitraStats === 'function') calculateMitraStats();
         };
-        // Simpan instance grafik secara global agar bisa di-reset saat filter berubah
         let instanceChartRekap = null;
         
         function initChartsEngine(dataHarianSistem = {}) {
             const chartContainer = document.getElementById('chart-rekap-container');
             const canvasLama = document.getElementById('chartPendapatan');
             if (!chartContainer || !canvasLama) return;
-        
-            // 1. Reset grafik lama agar tidak terjadi tumpang tindih (error bercabang)
             if (instanceChartRekap !== null) {
                 instanceChartRekap.destroy();
             }
-        
-            // 2. Buat ulang element canvas bersih di dalam kontainer
             chartContainer.innerHTML = '<canvas id="chartPendapatan" class="w-full h-36"></canvas>';
             const ctx = document.getElementById('chartPendapatan').getContext('2d');
-        
-            // 3. Urutkan tanggal dari yang terlama ke terbaru (karena grafik dibaca dari kiri ke kanan)
             const daftarTanggalUrut = Object.keys(dataHarianSistem).sort((a, b) => a.localeCompare(b));
             
             let labelsGrafik = [];
             let dataNotaGrafik = [];
             let dataPendapatanGrafik = [];
         
-            // Batasi maksimal 7-10 baris tanggal aktivitas terbaru supaya grafik tidak terlalu sempit
             const tanggalTerbatas = daftarTanggalUrut.slice(-10);
-        
             tanggalTerbatas.forEach(tglKey => {
-                // Format label tanggal (Contoh: "09 Jun")
                 const opsiFormat = { day: 'numeric', month: 'short' };
                 const tglLabelCantik = new Date(tglKey).toLocaleDateString('id-ID', opsiFormat);
                 
@@ -3578,14 +3433,12 @@
                 dataPendapatanGrafik.push(dataHarianSistem[tglKey].pendapatan || 0);
             });
         
-            // Jika belum ada riwayat sama sekali, beri tampilan default kosong
             if (labelsGrafik.length === 0) {
                 labelsGrafik = ['Belum Ada Data'];
                 dataNotaGrafik = [0];
                 dataPendapatanGrafik = [0];
             }
         
-            // 4. Render Grafik Kombinasi (Pendapatan & Jumlah Nota)
             instanceChartRekap = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -3621,12 +3474,11 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: true, // Tampilkan petunjuk warna di atas grafik
+                            display: true, 
                             labels: { boxWidth: 12, font: { size: 9, weight: 'bold' } }
                         }
                     },
                     scales: {
-                        // Skala Sebelah Kiri untuk nominal uang (Pendapatan)
                         yPendapatan: {
                             type: 'linear',
                             display: true,
@@ -3921,7 +3773,6 @@
         };
         window.showAdminOngkirMode = function(mode) {
             document.getElementById('admin-ongkir-popup').classList.remove('hidden');
-        
             document.getElementById('admin-ongkir-normal').classList.add('hidden');
             document.getElementById('admin-ongkir-jarak').classList.add('hidden');
             document.getElementById('admin-ongkir-rahasia').classList.add('hidden');
@@ -4036,7 +3887,6 @@
                 box.innerHTML = '';
                 return;
             }
-        
             box.innerHTML = matches.slice(0, 6).map(nama => `
                 <div onclick="pilihSuggestionOngkir('${type}', '${nama.replace(/'/g, "\\'")}')" class="px-3 py-2 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     ${nama}
@@ -4174,7 +4024,6 @@
                 }
                 return 0;
             };
-        
             const tarifAsal = cariTarif(asal);
             const hasil = (jarak * 2 * 1000) + 2000 + tarifAsal;
         
@@ -4184,12 +4033,12 @@
         window.toggleAdminOngkirHidden = function() {
             const box = document.getElementById('admin-ongkir-hidden-box');
             if (box) box.classList.toggle('hidden');
+            
         };
         window.hitungOngkirTigaArah = function() {
             const asal = document.getElementById('admin-ongkir-3-asal').value.trim();
             const titik = document.getElementById('admin-ongkir-3-titik').value.trim();
             const tujuan = document.getElementById('admin-ongkir-3-tujuan').value.trim();
-        
             if (!asal || !titik || !tujuan) {
                 alert('Lengkapi semua kolom.');
                 return;
@@ -4239,7 +4088,6 @@
                     ${nama}
                 </div>
             `).join('');
-        
             box.classList.remove('hidden');
         };
         
@@ -4261,7 +4109,6 @@
 
         window.openOngkirFeature = function() {
             if (!userSession || userSession.role !== 'kurir') return;
-        
             const currentKurir = cloudKurirList[userSession.id];
             if (!currentKurir) {
                 alert('Data akun tidak ditemukan.');
@@ -4270,20 +4117,18 @@
         
             if (currentKurir.ongkirLocked) {
                 const inputPass = prompt('Masukkan password khusus untuk membuka fitur ongkir:');
-                if (!inputPass) return;
-        
+                if (!inputPass) return;        
                 if (inputPass !== currentKurir.ongkirPassword) {
                     alert('Password ongkir salah!');
                     return;
                 }
-        
                 update(ref(db, `users/${userSession.id}`), {
                     ongkirLocked: false
                 });
             }
-        
             navigateTo('screen-ongkir');
         };
+        
         function hitungSelisihJam(jamMasuk, jamPulang) {
             if (!jamMasuk || !jamPulang) return '-';
         
@@ -4292,30 +4137,23 @@
         
             const masuk = hm * 60 + mm;
             const pulang = hp * 60 + mp;
-        
             if (pulang < masuk) return '-';
-        
             const selisih = pulang - masuk;
             const jam = Math.floor(selisih / 60);
-            const menit = selisih % 60;
-        
+            const menit = selisih % 60;        
             return `${jam}j ${menit}m`;
         }
         window.bukaModalAbsensiManual = function() {
             const modal = document.getElementById('modal-absensi-manual');
-            if (!modal) return;
-        
+            if (!modal) return;        
             const tgl = getWibRawDate();
             document.getElementById('manual-absensi-tanggal').value = tgl;
-        
             document.getElementById('manual-absensi-kurir').innerHTML = Object.entries(cloudKurirList || {})
                 .filter(([id, u]) => u && u.role === 'kurir')
                 .map(([id, u]) => `<option value="${id}">${u.nama || u.username} - ${u.leader || '-'}</option>`)
                 .join('');
-        
             modal.classList.remove('hidden');
         };
-
         
         window.closeAbsensiManualModal = function() {
             document.getElementById('modal-absensi-manual').classList.add('hidden');
@@ -4324,26 +4162,22 @@
         window.closeRiwayatAbsensiModal = function() {
             document.getElementById('modal-riwayat-absensi').classList.add('hidden');
         };
+        
         window.renderAdminAbsensi = function() {
             const tableBody = document.getElementById('container-admin-absensi');
             const statBox = document.getElementById('container-statistik-absensi');
             if (!tableBody || !statBox) return;
-        
             const inputTglEl = document.getElementById('absensi-filter-tgl');
             const inputBulanEl = document.getElementById('absensi-filter-bulan');
             const filterNama = (document.getElementById('absensi-filter-nama')?.value || '').toLowerCase().trim();
-        
             const todayRaw = getWibRawDate();
         
             if (inputTglEl && !inputTglEl.value) inputTglEl.value = todayRaw;
             if (inputBulanEl && !inputBulanEl.value) inputBulanEl.value = todayRaw.substring(0, 7);
-        
             const filterTgl = inputTglEl?.value || '';
-            const filterBulan = inputBulanEl?.value || '';
-        
+            const filterBulan = inputBulanEl?.value ||'';
             const dataAbsensi = Object.entries(window.cloudAbsensiList || {}).map(([key, a]) => ({ key, ...a }));
             const kurirList = Object.entries(cloudKurirList || {}).filter(([id, u]) => u && u.role === 'kurir');
-        
             let targetDates = [];
             if (filterTgl) {
                 targetDates = [filterTgl];
@@ -4352,13 +4186,10 @@
                     .map(a => a.tanggal)
                     .filter(t => t && t.substring(0, 7) === filterBulan);
             }
-        
             const ringkasanTanggal = filterTgl || todayRaw;
-        
             let hadirHariIni = 0;
             let belumMasuk = 0;
             let belumPulang = 0;
-        
             const statistik = {};
             kurirList.forEach(([id, u]) => {
                 statistik[id] = {
@@ -4369,7 +4200,6 @@
                     pulang: 0
                 };
             });
-        
             kurirList.forEach(([id, u]) => {
                 const dataHariIni = dataAbsensi.find(a => a.idKurir === id && a.tanggal === ringkasanTanggal);
                 if (dataHariIni) {
@@ -4379,7 +4209,6 @@
                     belumMasuk++;
                 }
             });
-        
             dataAbsensi.forEach(a => {
                 if (!a || !a.idKurir || !a.tanggal) return;
                 if (filterBulan && a.tanggal.substring(0, 7) !== filterBulan) return;
@@ -4388,19 +4217,15 @@
                     const leader = (a.leader || '').toLowerCase();
                     if (!nama.includes(filterNama) && !leader.includes(filterNama)) return;
                 }
-        
                 const k = statistik[a.idKurir];
                 if (!k) return;
-        
                 if (a.jamMasuk) k.masuk++;
                 if (a.jamPulang) k.pulang++;
             });
-        
             document.getElementById('absensi-total-kurir').innerText = kurirList.length;
             document.getElementById('absensi-hadir-hari-ini').innerText = hadirHariIni;
             document.getElementById('absensi-belum-masuk').innerText = belumMasuk;
             document.getElementById('absensi-belum-pulang').innerText = belumPulang;
-        
             const filtered = dataAbsensi
                 .filter(a => {
                     if (!a.tanggal) return false;
@@ -4416,13 +4241,10 @@
                         const leader = (a.leader || '').toLowerCase();
                         if (!nama.includes(filterNama) && !leader.includes(filterNama)) return false;
                     }
-        
                     return true;
                 })
                 .sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
-        
             tableBody.innerHTML = '';
-        
             if (filtered.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-xs text-slate-400">Belum ada data absensi.</td></tr>`;
             } else {
@@ -4456,7 +4278,6 @@
                     `;
                 });
             }
-        
             statBox.innerHTML = Object.entries(statistik).map(([id, s]) => `
                 <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl text-xs space-y-1">
                     <div class="font-bold">${s.nama}</div>
@@ -4466,12 +4287,12 @@
                 </div>
             `).join('');
         };
+        
         window.lihatRiwayatAbsensi = function(idKurir) {
             const data = Object.entries(window.cloudAbsensiList || {})
                 .filter(([key, a]) => a && a.idKurir === idKurir)
                 .map(([key, a]) => a)
                 .sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
-        
             const kurir = cloudKurirList[idKurir];
             const modal = document.getElementById('modal-riwayat-absensi');
             const content = document.getElementById('riwayat-absensi-content');
@@ -4482,7 +4303,6 @@
                 modal.classList.remove('hidden');
                 return;
             }
-        
             content.innerHTML = `
                 <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
                     <div class="font-bold text-sm">${kurir?.nama || '-'}</div>
@@ -4514,12 +4334,9 @@
                 alert('Lengkapi data absensi manual!');
                 return;
             }
-        
             const kurir = cloudKurirList[idKurir];
             if (!kurir) return alert('Kurir tidak ditemukan!');
-        
             const nodeKey = `${tanggal}_${idKurir}`;
-        
             set(ref(db, `absensi_sahabatku/${nodeKey}`), {
                 idKurir: idKurir,
                 leader: kurir.leader || '-',
@@ -4537,11 +4354,11 @@
                 alert('Gagal simpan absensi manual: ' + err.message);
             });
         };
+        
         window.updateAbsensiKurirSuggestions = function() {
             const input = document.getElementById('absensi-filter-nama');
             const box = document.getElementById('suggest-absensi-kurir');
             if (!input || !box) return;
-        
             const q = normalizeNama(input.value);
             if (!q) {
                 box.classList.add('hidden');
@@ -4584,8 +4401,6 @@
         
             renderAdminAbsensi();
         };
-
-
     </script>
 </body>
 </html>
