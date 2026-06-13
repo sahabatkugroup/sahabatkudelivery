@@ -279,6 +279,15 @@
                             <span class="text-[10px] text-slate-400">Wilayah & tarif</span>
                         </div>
                     </button>
+                    <button onclick="navigateTo('screen-admin-absensi')" class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-start space-y-2 shadow-sm text-left">
+                        <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-emerald-500">
+                            <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-bold block">Absensi Harian Kurir</span>
+                            <span class="text-[10px] text-slate-400">Rekap hadir, pulang, dan statistik</span>
+                        </div>
+                    </button>
                     <button onclick="navigateTo('screen-admin-testimonial')" class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-start space-y-2 shadow-sm text-left">
                         <div class="p-2.5 bg-pink-50 dark:bg-pink-950/40 rounded-xl text-pink-500">
                             <i data-lucide="message-circle-more" class="w-5 h-5"></i>
@@ -306,6 +315,12 @@
                             <label class="block text-[10px] text-slate-400 mb-1">Nama Lengkap</label>
                             <input type="text" id="ak-nama" placeholder="Contoh: Alfan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                         </div>
+                    
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Leader</label>
+                            <input type="text" id="ak-leader" placeholder="Contoh: Agus" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                        </div>
+                    
                         <div>
                             <label class="block text-[10px] text-slate-400 mb-1">Username</label>
                             <input type="text" id="ak-username" placeholder="username.kurir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
@@ -326,6 +341,7 @@
                             </select>
                         </div>
                     </div>
+
                     <div class="flex gap-2">
                         <button onclick="saveAkunKurir()" class="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-xl uppercase tracking-wider">Simpan Akun</button>
                         <button onclick="resetFormKurir()" class="px-3 py-2 bg-slate-100 text-slate-500 dark:bg-slate-800 text-xs rounded-xl">Batal</button>
@@ -470,7 +486,69 @@
                     <div id="tracking-map" style="height: 360px; border-radius: 16px; overflow: hidden;"></div>
                 </div>
             </div>
+            <div id="screen-admin-absensi" class="screen p-4 space-y-4">
+                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Rekap Absensi Kurir</h3>
+                        <button onclick="bukaModalAbsensiManual()" class="px-3 py-2 rounded-xl bg-primary text-white text-[10px] font-bold uppercase">
+                            + Absensi Manual
+                        </button>
+                    </div>
             
+                    <div class="grid grid-cols-1 gap-2">
+                        <input type="date" id="absensi-filter-tgl" onchange="renderAdminAbsensi()" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                        <input type="month" id="absensi-filter-bulan" onchange="renderAdminAbsensi()" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                        <div class="relative">
+                            <input type="text" id="absensi-filter-nama" oninput="updateAbsensiKurirSuggestions()" placeholder="Cari nama kurir..." class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                            <div id="suggest-absensi-kurir" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-darkCard border rounded-xl shadow-lg max-h-40 overflow-y-auto z-20"></div>
+                        </div>
+                    </div>
+            
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                            <div class="text-[10px] text-slate-400 uppercase">Total Kurir</div>
+                            <div class="text-lg font-black" id="absensi-total-kurir">0</div>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                            <div class="text-[10px] text-slate-400 uppercase">Hadir Hari Ini</div>
+                            <div class="text-lg font-black text-success" id="absensi-hadir-hari-ini">0</div>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                            <div class="text-[10px] text-slate-400 uppercase">Belum Absen Masuk</div>
+                            <div class="text-lg font-black text-rose-500" id="absensi-belum-masuk">0</div>
+                        </div>
+                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                            <div class="text-[10px] text-slate-400 uppercase">Belum Absen Pulang</div>
+                            <div class="text-lg font-black text-amber-500" id="absensi-belum-pulang">0</div>
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Statistik Per Kurir</h4>
+                    <div id="container-statistik-absensi" class="space-y-2"></div>
+                </div>
+            
+                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Daftar Absensi Kurir</h4>
+                    <table class="w-full text-[11px] text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-semibold">
+                                <th class="py-2">No</th>
+                                <th class="py-2">Nama Kurir</th>
+                                <th class="py-2">Leader</th>
+                                <th class="py-2">Jam Masuk</th>
+                                <th class="py-2">Jam Pulang</th>
+                                <th class="py-2">Total Jam Kerja</th>
+                                <th class="py-2">Status</th>
+                                <th class="py-2">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="container-admin-absensi" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div id="screen-admin-ongkir" class="screen p-4 space-y-4">
                 <div class="flex gap-2">
                     <button onclick="showAdminOngkirMode('normal')" class="flex-1 py-2 rounded-xl text-xs font-bold bg-primary text-white">Cek Ongkir</button>
@@ -954,6 +1032,35 @@
             </div>
         </div>
     </div>
+    <div id="modal-riwayat-absensi" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-darkCard w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-4 relative">
+            <button onclick="closeRiwayatAbsensiModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                ✕
+            </button>
+    
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Riwayat Absensi Kurir</h3>
+            <div id="riwayat-absensi-content" class="space-y-2 max-h-[60vh] overflow-y-auto"></div>
+        </div>
+    </div>
+    <div id="modal-absensi-manual" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-darkCard w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-4 relative">
+            <button onclick="closeAbsensiManualModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                ✕
+            </button>
+    
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Input Absensi Manual</h3>
+    
+            <input type="date" id="manual-absensi-tanggal" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+            <select id="manual-absensi-kurir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700"></select>
+            <input type="time" id="manual-absensi-masuk" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+            <input type="time" id="manual-absensi-pulang" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+    
+            <div class="flex gap-2">
+                <button onclick="simpanAbsensiManual()" class="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-xl uppercase">Simpan</button>
+                <button onclick="closeAbsensiManualModal()" class="px-3 py-2 bg-slate-100 text-slate-500 dark:bg-slate-800 text-xs rounded-xl">Batal</button>
+            </div>
+        </div>
+    </div>
     
     <div id="modal-sop" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-700">
@@ -1263,8 +1370,8 @@
                 jam: wib.toLocaleTimeString('id-ID', {
                     hour: '2-digit',
                     minute: '2-digit',
-                    second: '2-digit'
-                })
+                    hour12: false
+                }).replace(':', '.')
             };
         }
         window.addEventListener('DOMContentLoaded', () => {
@@ -1361,6 +1468,14 @@
                 cloudOngkirList = snapshot.val() || {};
                 if (typeof renderAdminOngkirList === 'function') renderAdminOngkirList();
             });
+            window.cloudAbsensiList = {};
+            onValue(ref(db, 'absensi_sahabatku'), (snapshot) => {
+                window.cloudAbsensiList = snapshot.val() || {};
+                if (currentScreen === 'screen-admin-absensi') {
+                    renderAdminAbsensi();
+                }
+            });
+            
             onValue(ref(db, 'testimonials'), (snapshot) => {
                 cloudTestimonialList = snapshot.val() || {};
                 if (typeof renderAdminTestimonial === 'function') {
@@ -1382,6 +1497,15 @@
                     pendingAutoLoginCheck = true;
                 }
             }
+            document.addEventListener('click', function(e) {
+                const box = document.getElementById('suggest-absensi-kurir');
+                const input = document.getElementById('absensi-filter-nama');
+                if (!box || !input) return;
+            
+                if (!box.contains(e.target) && e.target !== input) {
+                    box.classList.add('hidden');
+                }
+            });          
         });
         // =========================================================================
         // AUTENTIKASI LOGIN UTAMA (Murni Modern SDK v10 - Dengan Auto-Save Sesi)
@@ -1584,6 +1708,18 @@
                     renderAdminTestimonial();
                 }, 100);
             }
+            if (screenId === 'screen-admin-absensi') {
+                setTimeout(() => {
+                    const tgl = getWibRawDate();
+                    const tglEl = document.getElementById('absensi-filter-tgl');
+                    const blnEl = document.getElementById('absensi-filter-bulan');
+            
+                    if (tglEl && !tglEl.value) tglEl.value = tgl;
+                    if (blnEl && !blnEl.value) blnEl.value = tgl.substring(0, 7);
+            
+                    renderAdminAbsensi();
+                }, 50);
+            }
             
             if (screenId === currentScreen) return;
             
@@ -1735,6 +1871,7 @@
         window.saveAkunKurir = function() {
             const idEdit = document.getElementById('ak-id-edit').value;
             const nama = document.getElementById('ak-nama').value.trim();
+            const leader = document.getElementById('ak-leader').value.trim();
             const username = document.getElementById('ak-username').value.trim().toLowerCase(); 
             const password = document.getElementById('ak-password').value.trim();
             const tglGabung = document.getElementById('ak-tgl-gabung').value;
@@ -1744,9 +1881,9 @@
                 alert('Mohon lengkapi seluruh form akun kurir!');
                 return;
             }
-        
             const userData = {
                 nama: nama,
+                leader: leader,
                 username: username,
                 password: password,
                 tglGabung: tglGabung,
@@ -1780,10 +1917,10 @@
                 alert('Gagal menyimpan data: ' + error.message);
             });
         };
-        
         window.resetFormKurir = function() {
             document.getElementById('ak-id-edit').value = '';
             document.getElementById('ak-nama').value = '';
+            document.getElementById('ak-leader').value = '';
             document.getElementById('ak-username').value = '';
             document.getElementById('ak-password').value = '';
             document.getElementById('ak-tgl-gabung').value = '';
@@ -1795,16 +1932,18 @@
             const item = cloudKurirList[key];
             if (!item) return;
         
-            document.getElementById('edit-kurir-id').value = key;
-            document.getElementById('edit-kurir-nama').value = item.nama || '';
-            document.getElementById('edit-kurir-username').value = item.username || '';
-            document.getElementById('edit-kurir-password').value = item.password || '';
-            document.getElementById('edit-kurir-tgl-gabung').value = item.tglGabung || '';
-            document.getElementById('edit-kurir-status').value = item.status || 'aktif';
+            document.getElementById('ak-id-edit').value = key;
+            document.getElementById('ak-nama').value = item.nama || '';
+            document.getElementById('ak-leader').value = item.leader || '';
+            document.getElementById('ak-username').value = item.username || '';
+            document.getElementById('ak-password').value = item.password || '';
+            document.getElementById('ak-tgl-gabung').value = item.tglGabung || '';
+            document.getElementById('ak-status').value = item.status || 'aktif';
         
             document.getElementById('title-edit-kurir').innerText = 'Edit Akun: ' + (item.nama || '');
             document.getElementById('modal-edit-kurir').classList.remove('hidden');
         };
+
         window.closeEditKurirModal = function() {
             document.getElementById('modal-edit-kurir').classList.add('hidden');
         };
@@ -1857,7 +1996,6 @@
                 if (item.role === 'admin' || item.username === 'admin') continue;
 
                 const dotStatus = item.status === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500';
-                
                 container.innerHTML += `
                     <div class="bg-white dark:bg-darkCard p-3.5 rounded-xl border dark:border-slate-800 shadow-sm space-y-2 text-xs">
                         <div class="flex justify-between items-center">
@@ -1868,7 +2006,8 @@
                             <span class="text-[10px] text-slate-400">Gabung: ${item.tglGabung}</span>
                         </div>
                 
-                        <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg grid grid-cols-2 gap-1 font-mono text-[11px]">
+                        <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg grid grid-cols-1 gap-1 font-mono text-[11px]">
+                            <div class="dark:text-slate-300">Leader: <span class="text-emerald-600 font-bold">${item.leader || '-'}</span></div>
                             <div class="dark:text-slate-300">User: <span class="text-primary font-bold">@${item.username}</span></div>
                             <div class="dark:text-slate-300">Pass: <span class="text-amber-500 font-bold">${item.password}</span></div>
                         </div>
@@ -4145,6 +4284,307 @@
         
             navigateTo('screen-ongkir');
         };
+        function hitungSelisihJam(jamMasuk, jamPulang) {
+            if (!jamMasuk || !jamPulang) return '-';
+        
+            const [hm, mm] = jamMasuk.split('.').map(Number);
+            const [hp, mp] = jamPulang.split('.').map(Number);
+        
+            const masuk = hm * 60 + mm;
+            const pulang = hp * 60 + mp;
+        
+            if (pulang < masuk) return '-';
+        
+            const selisih = pulang - masuk;
+            const jam = Math.floor(selisih / 60);
+            const menit = selisih % 60;
+        
+            return `${jam}j ${menit}m`;
+        }
+        window.bukaModalAbsensiManual = function() {
+            const modal = document.getElementById('modal-absensi-manual');
+            if (!modal) return;
+        
+            const tgl = getWibRawDate();
+            document.getElementById('manual-absensi-tanggal').value = tgl;
+        
+            document.getElementById('manual-absensi-kurir').innerHTML = Object.entries(cloudKurirList || {})
+                .filter(([id, u]) => u && u.role === 'kurir')
+                .map(([id, u]) => `<option value="${id}">${u.nama || u.username} - ${u.leader || '-'}</option>`)
+                .join('');
+        
+            modal.classList.remove('hidden');
+        };
+
+        
+        window.closeAbsensiManualModal = function() {
+            document.getElementById('modal-absensi-manual').classList.add('hidden');
+        };
+        
+        window.closeRiwayatAbsensiModal = function() {
+            document.getElementById('modal-riwayat-absensi').classList.add('hidden');
+        };
+        window.renderAdminAbsensi = function() {
+            const tableBody = document.getElementById('container-admin-absensi');
+            const statBox = document.getElementById('container-statistik-absensi');
+            if (!tableBody || !statBox) return;
+        
+            const inputTglEl = document.getElementById('absensi-filter-tgl');
+            const inputBulanEl = document.getElementById('absensi-filter-bulan');
+            const filterNama = (document.getElementById('absensi-filter-nama')?.value || '').toLowerCase().trim();
+        
+            const todayRaw = getWibRawDate();
+        
+            if (inputTglEl && !inputTglEl.value) inputTglEl.value = todayRaw;
+            if (inputBulanEl && !inputBulanEl.value) inputBulanEl.value = todayRaw.substring(0, 7);
+        
+            const filterTgl = inputTglEl?.value || '';
+            const filterBulan = inputBulanEl?.value || '';
+        
+            const dataAbsensi = Object.entries(window.cloudAbsensiList || {}).map(([key, a]) => ({ key, ...a }));
+            const kurirList = Object.entries(cloudKurirList || {}).filter(([id, u]) => u && u.role === 'kurir');
+        
+            let targetDates = [];
+            if (filterTgl) {
+                targetDates = [filterTgl];
+            } else if (filterBulan) {
+                targetDates = dataAbsensi
+                    .map(a => a.tanggal)
+                    .filter(t => t && t.substring(0, 7) === filterBulan);
+            }
+        
+            const ringkasanTanggal = filterTgl || todayRaw;
+        
+            let hadirHariIni = 0;
+            let belumMasuk = 0;
+            let belumPulang = 0;
+        
+            const statistik = {};
+            kurirList.forEach(([id, u]) => {
+                statistik[id] = {
+                    nama: u.nama || '-',
+                    leader: u.leader || '-',
+                    tanggal: filterTgl || filterBulan || todayRaw,
+                    masuk: 0,
+                    pulang: 0
+                };
+            });
+        
+            kurirList.forEach(([id, u]) => {
+                const dataHariIni = dataAbsensi.find(a => a.idKurir === id && a.tanggal === ringkasanTanggal);
+                if (dataHariIni) {
+                    hadirHariIni++;
+                    if (dataHariIni.jamMasuk && !dataHariIni.jamPulang) belumPulang++;
+                } else {
+                    belumMasuk++;
+                }
+            });
+        
+            dataAbsensi.forEach(a => {
+                if (!a || !a.idKurir || !a.tanggal) return;
+                if (filterBulan && a.tanggal.substring(0, 7) !== filterBulan) return;
+                if (filterNama) {
+                    const nama = (a.namaKurir || '').toLowerCase();
+                    const leader = (a.leader || '').toLowerCase();
+                    if (!nama.includes(filterNama) && !leader.includes(filterNama)) return;
+                }
+        
+                const k = statistik[a.idKurir];
+                if (!k) return;
+        
+                if (a.jamMasuk) k.masuk++;
+                if (a.jamPulang) k.pulang++;
+            });
+        
+            document.getElementById('absensi-total-kurir').innerText = kurirList.length;
+            document.getElementById('absensi-hadir-hari-ini').innerText = hadirHariIni;
+            document.getElementById('absensi-belum-masuk').innerText = belumMasuk;
+            document.getElementById('absensi-belum-pulang').innerText = belumPulang;
+        
+            const filtered = dataAbsensi
+                .filter(a => {
+                    if (!a.tanggal) return false;
+        
+                    if (filterTgl) {
+                        if (a.tanggal !== filterTgl) return false;
+                    } else if (filterBulan) {
+                        if (a.tanggal.substring(0, 7) !== filterBulan) return false;
+                    }
+        
+                    if (filterNama) {
+                        const nama = (a.namaKurir || '').toLowerCase();
+                        const leader = (a.leader || '').toLowerCase();
+                        if (!nama.includes(filterNama) && !leader.includes(filterNama)) return false;
+                    }
+        
+                    return true;
+                })
+                .sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+        
+            tableBody.innerHTML = '';
+        
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="8" class="py-4 text-center text-xs text-slate-400">Belum ada data absensi.</td></tr>`;
+            } else {
+                filtered.forEach((a, index) => {
+                    const totalJam = hitungSelisihJam(a.jamMasuk, a.jamPulang);
+                    let status = 'Belum Absen';
+                    if (a.jamMasuk && !a.jamPulang) status = 'Belum Pulang';
+                    if (a.jamMasuk && a.jamPulang) status = 'Hadir';
+        
+                    tableBody.innerHTML += `
+                        <tr class="text-[11px]">
+                            <td class="py-2">${index + 1}</td>
+                            <td class="py-2 font-semibold">${a.namaKurir || '-'}</td>
+                            <td class="py-2">${a.leader || '-'}</td>
+                            <td class="py-2">${a.jamMasuk || '-'}</td>
+                            <td class="py-2">${a.jamPulang || '-'}</td>
+                            <td class="py-2">${totalJam}</td>
+                            <td class="py-2">
+                                <span class="px-2 py-1 rounded-full text-[9px] font-bold ${
+                                    status === 'Hadir' ? 'bg-emerald-50 text-emerald-600' :
+                                    status === 'Belum Pulang' ? 'bg-amber-50 text-amber-600' :
+                                    'bg-slate-100 text-slate-500'
+                                }">${status}</span>
+                            </td>
+                            <td class="py-2">
+                                <button onclick="lihatRiwayatAbsensi('${a.idKurir || ''}')" class="px-2 py-1 rounded-md bg-blue-50 text-blue-600 font-bold text-[10px]">
+                                    Lihat
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        
+            statBox.innerHTML = Object.entries(statistik).map(([id, s]) => `
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl text-xs space-y-1">
+                    <div class="font-bold">${s.nama}</div>
+                    <div class="text-[10px] text-slate-400">Leader: ${s.leader}</div>
+                    <div class="text-[10px] text-slate-400">Tanggal: ${s.tanggal}</div>
+                    <div class="text-[10px] text-slate-400">Total Masuk: ${s.masuk} | Total Pulang: ${s.pulang}</div>
+                </div>
+            `).join('');
+        };
+        window.lihatRiwayatAbsensi = function(idKurir) {
+            const data = Object.entries(window.cloudAbsensiList || {})
+                .filter(([key, a]) => a && a.idKurir === idKurir)
+                .map(([key, a]) => a)
+                .sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+        
+            const kurir = cloudKurirList[idKurir];
+            const modal = document.getElementById('modal-riwayat-absensi');
+            const content = document.getElementById('riwayat-absensi-content');
+            if (!modal || !content) return;
+        
+            if (data.length === 0) {
+                content.innerHTML = `<div class="text-center text-xs text-slate-400 py-4">Riwayat absensi tidak ditemukan.</div>`;
+                modal.classList.remove('hidden');
+                return;
+            }
+        
+            content.innerHTML = `
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl">
+                    <div class="font-bold text-sm">${kurir?.nama || '-'}</div>
+                    <div class="text-[10px] text-slate-400">Leader: ${kurir?.leader || '-'}</div>
+                </div>
+                ${data.map(a => `
+                    <div class="bg-white dark:bg-darkBg border dark:border-slate-700 p-3 rounded-xl text-xs">
+                        <div class="flex justify-between">
+                            <span class="font-bold">${a.tanggal || '-'}</span>
+                            <span class="text-primary font-bold">${hitungSelisihJam(a.jamMasuk, a.jamPulang)}</span>
+                        </div>
+                        <div class="mt-1 text-[10px] text-slate-500">
+                            Masuk: ${a.jamMasuk || '-'} | Pulang: ${a.jamPulang || '-'}
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        
+            modal.classList.remove('hidden');
+        };
+        
+        window.simpanAbsensiManual = function() {
+            const tanggal = document.getElementById('manual-absensi-tanggal').value;
+            const idKurir = document.getElementById('manual-absensi-kurir').value;
+            const jamMasuk = document.getElementById('manual-absensi-masuk').value.replace(':', '.');
+            const jamPulang = document.getElementById('manual-absensi-pulang').value.replace(':', '.');
+        
+            if (!tanggal || !idKurir || !jamMasuk) {
+                alert('Lengkapi data absensi manual!');
+                return;
+            }
+        
+            const kurir = cloudKurirList[idKurir];
+            if (!kurir) return alert('Kurir tidak ditemukan!');
+        
+            const nodeKey = `${tanggal}_${idKurir}`;
+        
+            set(ref(db, `absensi_sahabatku/${nodeKey}`), {
+                idKurir: idKurir,
+                leader: kurir.leader || '-',
+                namaKurir: kurir.nama || '-',
+                tanggal: tanggal,
+                jamMasuk: jamMasuk,
+                jamPulang: jamPulang || '',
+                fotoMasuk: '',
+                fotoPulang: ''
+            }).then(() => {
+                alert('Absensi manual berhasil disimpan!');
+                closeAbsensiManualModal();
+                renderAdminAbsensi();
+            }).catch(err => {
+                alert('Gagal simpan absensi manual: ' + err.message);
+            });
+        };
+        window.updateAbsensiKurirSuggestions = function() {
+            const input = document.getElementById('absensi-filter-nama');
+            const box = document.getElementById('suggest-absensi-kurir');
+            if (!input || !box) return;
+        
+            const q = normalizeNama(input.value);
+            if (!q) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                renderAdminAbsensi();
+                return;
+            }
+        
+            const matches = [];
+            Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
+                if (!u || u.role !== 'kurir') return;
+                const nama = normalizeNama(u.nama || '');
+                if (nama.includes(q)) matches.push(u.nama);
+            });
+        
+            if (!matches.length) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+                renderAdminAbsensi();
+                return;
+            }
+        
+            box.innerHTML = matches.slice(0, 6).map(nama => `
+                <div onclick="pilihAbsensiKurirSuggestion('${nama.replace(/'/g, "\\'")}')" class="px-3 py-2 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
+                    ${nama}
+                </div>
+            `).join('');
+        
+            box.classList.remove('hidden');
+        };
+        window.pilihAbsensiKurirSuggestion = function(nama) {
+            const input = document.getElementById('absensi-filter-nama');
+            const box = document.getElementById('suggest-absensi-kurir');
+        
+            if (input) input.value = nama;
+            if (box) {
+                box.classList.add('hidden');
+                box.innerHTML = '';
+            }
+        
+            renderAdminAbsensi();
+        };
+
 
     </script>
 </body>
