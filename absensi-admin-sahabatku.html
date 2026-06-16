@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Sahabatku Delivery</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        sahabatku: '#0080f7',
+                        darkBg: '#0f172a',
+                        darkCard: 'rgba(30, 41, 59, 0.7)'
+                    },
+                    borderRadius: {
+                        '2xl': '24px',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-24 transition-colors duration-300 dark:bg-darkBg dark:text-slate-100">
+
+    <div class="max-w-md mx-auto min-h-screen bg-slate-50/50 shadow-2xl relative dark:bg-darkBg border-x border-slate-100 dark:border-slate-800 overflow-hidden">
+        
+        <header class="sticky top-0 z-50 glass-card px-5 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl overflow-hidden bg-white shadow-lg shadow-sahabatku/30 ring-2 ring-white/20">
+                    <img src="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png" alt="Logo Sahabatku" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h1 class="text-sm font-bold tracking-tight text-sahabatku">Admin Panel</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Sahabatku Delivery</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="themeToggle" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-all">
+                    <i class="fa-solid fa-moon text-lg dark:hidden"></i>
+                    <i class="fa-solid fa-sun text-lg hidden dark:block"></i>
+                </button>
+                <button onclick="switchTab('pengajuan', document.getElementById('btn-nav-pengajuan'))" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 relative transition-all">
+                    <i class="fa-solid fa-bell text-lg"></i>
+                    <span id="badge-pending-notif" class="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse hidden">0</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="p-4 space-y-5 pb-20">
+            <div class="w-full bg-gradient-to-br from-sahabatku to-blue-600 rounded-2xl p-5 text-white shadow-lg shadow-sahabatku/30 relative overflow-hidden">
+                <div class="absolute -right-6 -bottom-6 text-white/10 text-9xl font-bold pointer-events-none">
+                    <i class="fa-solid fa-calendar-minus"></i>
+                </div>
+                <h2 class="text-lg font-bold mb-1">Monitoring Jadwal Off</h2>
+                <p class="text-xs text-blue-100 max-w-[80%]">Klik tanggal di kalender untuk input jadwal kurir</p>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 text-[10px]">
+                <button onclick="openPopupStatTotalKurir()" class="glass-card p-3 rounded-2xl shadow-sm text-center active:scale-95 transition">
+                    <div class="w-8 h-8 mx-auto rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-1">
+                        <i class="fa-solid fa-users text-sm"></i>
+                    </div>
+                    <p class="text-[10px] font-medium text-slate-400 truncate">Total Kurir</p>
+                    <p id="stat-total-kurir" class="text-sm font-bold mt-0.5">0</p>
+                </button>
+            
+                <button onclick="openPopupOffHariIni()" class="glass-card p-3 rounded-2xl shadow-sm text-center active:scale-95 transition">
+                    <div class="w-8 h-8 mx-auto rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-1">
+                        <i class="fa-solid fa-calendar-day text-sm"></i>
+                    </div>
+                    <p class="text-[10px] font-medium text-slate-400 truncate">Off Hari Ini</p>
+                    <p id="stat-off-hari-ini" class="text-sm font-bold mt-0.5">0</p>
+                </button>
+            
+                <button onclick="openPopupOffBulanIni()" class="glass-card p-3 rounded-2xl shadow-sm text-center active:scale-95 transition">
+                    <div class="w-8 h-8 mx-auto rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-1">
+                        <i class="fa-solid fa-calendar-days text-sm"></i>
+                    </div>
+                    <p class="text-[10px] font-medium text-slate-400 truncate">Off Bulan Ini</p>
+                    <p id="stat-off-bulan-ini" class="text-sm font-bold mt-0.5">0</p>
+                </button>
+            
+                <button onclick="openPopupPengajuan()" class="glass-card p-3 rounded-2xl shadow-sm text-center active:scale-95 transition">
+                    <div class="w-8 h-8 mx-auto rounded-xl bg-purple-50 dark:bg-purple-950/40 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-1">
+                        <i class="fa-solid fa-clock-rotate-left text-sm"></i>
+                    </div>
+                    <p class="text-[10px] font-medium text-slate-400 truncate">Pengajuan</p>
+                    <p id="stat-pending" class="text-sm font-bold mt-0.5">0</p>
+                </button>
+            </div>
+
+            <div id="tab-panel-jadwal" class="space-y-5">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-calendar text-sahabatku"></i>
+                        <h3 class="font-bold text-sm">Kalender Monitoring Off</h3>
+                    </div>
+                
+                    <div class="flex items-center gap-2">
+                        <button id="btn-prev-bulan" class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <span id="kalender-bulan-tahun" class="text-xs font-bold text-sahabatku">...</span>
+                        <button id="btn-next-bulan" class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
+                    <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400">
+                        <div>Min</div><div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div>
+                    </div>
+                
+                    <div id="calendar-days-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+                </div>
+                <div class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-sm">Jadwal OFF</h3>
+                    </div>
+                
+                    <input id="search-jadwal" type="text" placeholder="Cari nama kurir / tanggal..." class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                    <div id="jadwal-off-list" class="space-y-3"></div>
+                    <div class="flex flex-wrap gap-2 text-[10px] pt-2">
+                        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span><span>Off Reguler</span></div>
+                        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-500"></span><span>Tidak Ambil Off</span></div>
+                        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Izin</span></div>
+                        <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span><span>Sakit</span></div>
+                    </div>
+                </div>
+            </div>
+            <div id="tab-panel-pengajuan" class="space-y-4 hidden">
+                <input id="search-pengajuan" type="text" placeholder="Cari nama kurir / tanggal..." class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-sm">Persetujuan Pengajuan Kurir</h3>
+                    <span id="count-pengajuan-tab" class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                </div>
+                <div id="list-pengajuan-pending" class="space-y-3">
+                    <div class="text-center py-10 text-xs text-slate-400">Tidak ada pengajuan yang tertunda.</div>
+                </div>
+            </div>
+
+            <div id="tab-panel-menu" class="glass-card p-5 rounded-2xl shadow-sm space-y-4 hidden">
+                <div class="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <h3 class="font-bold text-sm">Rekap Kurir</h3>
+                    <button onclick="openManualAbsensi()" class="px-3 py-2 rounded-xl bg-sahabatku text-white text-[10px] font-bold">
+                        Absensi Manual
+                    </button>
+                </div>
+            
+                <div class="space-y-3">
+                    <input id="search-rekap" type="text" placeholder="Cari nama kurir..." class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                    <div class="grid grid-cols-2 gap-2 text-[10px]">
+                    <div class="grid grid-cols-2 gap-2 text-[10px] mt-2">
+                        <button id="btn-filter-rekap" class="py-2 rounded-xl bg-sahabatku text-white font-bold">Rekap Kurir</button>
+                        <button id="btn-filter-absensi" class="py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">Absensi Bulan Ini</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] mt-2">
+                        <button onclick="openPopupExportBulan()" class="py-2 rounded-xl bg-emerald-500 text-white font-bold">Export</button>
+                        <button onclick="openPopupHapusBulan()" class="py-2 rounded-xl bg-red-500 text-white font-bold">Hapus Bulan</button>
+                    </div>
+                </div>
+            
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs min-w-[760px]">
+                        <thead id="rekap-thead">
+                            <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+                                <th class="py-2">No</th>
+                                <th class="py-2">Nama Kurir</th>
+                                <th class="py-2">Nama Leader</th>
+                                <th class="py-2">Total Off</th>
+                                <th class="py-2">Total Izin</th>
+                                <th class="py-2">Total Sakit</th>
+                                <th class="py-2">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rekap-kurir"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <nav class="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md h-16 glass-card border-t border-slate-100 dark:border-slate-800 flex items-center justify-around px-2 z-50">
+            <button onclick="switchTab('jadwal', this)" class="tab-btn flex flex-col items-center gap-0.5 text-sahabatku font-bold">
+                <i class="fa-solid fa-calendar-alt text-lg"></i>
+                <span class="text-[10px]">Dashboard</span>
+            </button>
+            <button id="btn-nav-pengajuan" onclick="switchTab('pengajuan', this)" class="tab-btn flex flex-col items-center gap-0.5 text-slate-400 hover:text-sahabatku transition-colors relative">
+                <i class="fa-solid fa-envelope-open-text text-lg"></i>
+                <span class="text-[10px]">Pengajuan</span>
+                <span id="badge-pending-bottom" class="absolute top-0 right-2 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center hidden">0</span>
+            </button>
+            <button onclick="switchTab('menu', this)" class="tab-btn flex flex-col items-center gap-0.5 text-slate-400 hover:text-sahabatku transition-colors">
+                <i class="fa-solid fa-bars text-lg"></i>
+                <span class="text-[10px]">Sistem</span>
+            </button>
+        </nav>
+    </div>
+    <div id="popup-izin" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999]">
+        <div class="bg-white dark:bg-slate-900 w-[92%] max-w-md rounded-2xl p-5 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="popup-izin-title" class="font-bold text-sm">Input Jadwal</h3>
+                <button onclick="closePopupIzin()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+    
+            <div id="popup-izin-content" class="space-y-4"></div>
+        </div>
+    </div>
+    <div id="popup-detail-kurir" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999]">
+        <div class="bg-white dark:bg-slate-900 w-[92%] max-w-md rounded-2xl p-5 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="popup-detail-title" class="font-bold text-sm">Detail Kurir</h3>
+                <button onclick="closePopupDetailKurir()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+            <div id="popup-detail-content" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <div id="popup-manual-absensi" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999]">
+        <div class="bg-white dark:bg-slate-900 w-[92%] max-w-md rounded-2xl p-5 shadow-xl">
+            <h3 class="font-bold text-sm mb-4">Absensi Manual</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Tanggal</label>
+                    <input id="manual-tanggal" type="date" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Nama Kurir</label>
+                    <select id="manual-kurir" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                        <option value="">-- Pilih Kurir --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Jam Masuk</label>
+                    <input id="manual-masuk" type="time" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Jam Pulang</label>
+                    <input id="manual-pulang" type="time" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="closeManualAbsensi()" class="w-1/2 py-3 rounded-xl border border-slate-200 text-xs font-bold">Batal</button>
+                    <button id="btn-save-manual-absensi" class="w-1/2 py-3 rounded-xl bg-sahabatku text-white text-xs font-bold">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="popup-jadwal-kurir" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999]">
+        <div class="bg-white dark:bg-slate-900 w-[92%] max-w-md rounded-2xl p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-sm">Input Jadwal</h3>
+                <button onclick="closePopupJadwalKurir()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+    
+            <div class="space-y-3">
+                <input id="jadwal-key" type="hidden">
+    
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Nama Kurir</label>
+                    <select id="jadwal-nama" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                        <option value="">-- Pilih Kurir --</option>
+                    </select>
+                </div>
+    
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Tanggal Mulai</label>
+                    <input id="jadwal-mulai" type="date" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                </div>
+    
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Tanggal Selesai</label>
+                    <input id="jadwal-selesai" type="date" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                </div>
+    
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Jenis Off</label>
+                    <select id="jadwal-jenis" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                        <option value="Off Reguler">Off Reguler</option>
+                        <option value="Tidak Ambil Off">Tidak Ambil Off</option>
+                        <option value="Izin">Izin</option>
+                        <option value="Sakit">Sakit</option>
+                    </select>
+                </div>
+    
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Keterangan</label>
+                    <textarea id="jadwal-ket" rows="3" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"></textarea>
+                </div>
+    
+                <div class="flex gap-2 pt-2">
+                    <button onclick="closePopupJadwalKurir()" class="w-1/2 py-3 rounded-xl border border-slate-200 text-xs font-bold">Batal</button>
+                    <button id="btn-save-jadwal-kurir" class="w-1/2 py-3 rounded-xl bg-sahabatku text-white text-xs font-bold">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="popup-kalender-detail" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999]">
+        <div class="bg-white dark:bg-slate-900 w-[92%] max-w-md rounded-2xl p-5 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="popup-kalender-title" class="font-bold text-sm">Rekap Tanggal</h3>
+                <button onclick="closePopupKalenderDetail()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+            <div id="popup-kalender-content" class="space-y-4"></div>
+        </div>
+    </div>
+    <div id="popup-hapus-bulan" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999]">
+        <div class="bg-white dark:bg-slate-900 w-[92%] max-w-md rounded-2xl p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-sm">Hapus Data Bulan</h3>
+                <button onclick="closePopupHapusBulan()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+    
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Pilih Bulan</label>
+                    <input id="hapus-bulan-input" type="month" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                </div>
+    
+                <div class="flex gap-2 pt-2">
+                    <button onclick="closePopupHapusBulan()" class="w-1/2 py-3 rounded-xl border border-slate-200 text-xs font-bold">Batal</button>
+                    <button id="btn-hapus-bulan" class="w-1/2 py-3 rounded-xl bg-red-500 text-white text-xs font-bold">Hapus</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="popup-export-bulan" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999]">
+        <div class="bg-white dark:bg-slate-900 w-[92%] max-w-md rounded-2xl p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-sm">Export Rekap Bulan</h3>
+                <button onclick="closePopupExportBulan()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+    
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Pilih Bulan</label>
+                    <input id="export-bulan-input" type="month" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                </div>
+    
+                <div class="flex gap-2 pt-2">
+                    <button onclick="closePopupExportBulan()" class="w-1/2 py-3 rounded-xl border border-slate-200 text-xs font-bold">Batal</button>
+                    <button id="btn-export-bulan" class="w-1/2 py-3 rounded-xl bg-emerald-500 text-white text-xs font-bold">Export</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="popup-detail-list" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999]">
+        <div class="bg-white dark:bg-slate-900 w-[92%] max-w-md rounded-2xl p-5 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="popup-detail-list-title" class="font-bold text-sm">Detail</h3>
+                <button onclick="closePopupDetailList()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+            <div id="popup-detail-list-content" class="space-y-3"></div>
+        </div>
+    </div>
+    
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
+        authDomain: "aplikasi-sahabatkugroup.firebaseapp.com",
+        databaseURL: "https://aplikasi-sahabatkugroup-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "aplikasi-sahabatkugroup",
+        storageBucket: "aplikasi-sahabatkugroup.firebasestorage.app",
+        messagingSenderId: "323288632862",
+        appId: "1:323288632862:web:57f12fbb5b18ad0fbd680f",
+        measurementId: "G-788RL05MFR"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    
+    let DATA_USERS = {};
+    let DATA_JADWAL = {};
+    let DATA_PENGAJUAN = {};
+    let DATA_ABSENSI = {};
+    let currentViewDate = new Date();
+    let rekapMode = 'kurir';
+    let selectedKurir = null;
+    let editingJadwalKey = null;
+    let editingAbsensiKey = null;
+    
+    function applySavedTheme() {
+        const savedTheme = localStorage.getItem('theme');
+    
+        if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else if (savedTheme === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.classList.toggle('dark', prefersDark);
+        }
+    }
+    document.getElementById('themeToggle').addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+
+    applySavedTheme();
+    function switchTab(tab, btn) {
+        document.getElementById('tab-panel-jadwal').classList.add('hidden');
+        document.getElementById('tab-panel-pengajuan').classList.add('hidden');
+        document.getElementById('tab-panel-menu').classList.add('hidden');
+    
+        document.getElementById(`tab-panel-${tab}`).classList.remove('hidden');
+    
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('text-sahabatku', 'font-bold');
+            b.classList.add('text-slate-400');
+        });
+    
+        if (btn) {
+            btn.classList.add('text-sahabatku', 'font-bold');
+            btn.classList.remove('text-slate-400');
+        }
+    }
+    window.switchTab = switchTab;
+    window.closePopupIzin = function() {
+        const popup = document.getElementById('popup-izin');
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+    };
+    
+    function getColorByJenis(jenis) {
+        if (jenis === 'Off Reguler') return 'bg-blue-500';
+        if (jenis === 'Tidak Ambil Off') return 'bg-gray-500';
+        if (jenis === 'Izin') return 'bg-amber-500';
+        if (jenis === 'Sakit') return 'bg-red-500';
+        return 'bg-slate-400';
+    }
+    
+    function openManualAbsensi() {
+        const popup = document.getElementById('popup-manual-absensi');
+        popup.classList.remove('hidden');
+        popup.classList.add('flex');
+    }
+    window.openManualAbsensi = openManualAbsensi;
+    
+    window.closeManualAbsensi = function() {
+        const popup = document.getElementById('popup-manual-absensi');
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+    };
+    
+    window.closePopupJadwalKurir = function() {
+        const popup = document.getElementById('popup-jadwal-kurir');
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+    };
+    
+    window.closePopupDetailKurir = function() {
+        const popup = document.getElementById('popup-detail-kurir');
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+    };
+    
+    window.closePopupKalenderDetail = function() {
+        const popup = document.getElementById('popup-kalender-detail');
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+    };
+    
+    window.openPopupHapusBulan = function() {
+        const popup = document.getElementById('popup-hapus-bulan');
+        popup.classList.remove('hidden');
+        popup.classList.add('flex');
+    };
+    
+    window.closePopupHapusBulan = function() {
+        const popup = document.getElementById('popup-hapus-bulan');
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+    };
+    
+    window.tambahJadwalKurir = function(namaKurir = '') {
+        editingJadwalKey = null;
+        document.getElementById('jadwal-key').value = '';
+        document.getElementById('jadwal-nama').value = namaKurir;
+        document.getElementById('jadwal-mulai').value = '';
+        document.getElementById('jadwal-selesai').value = '';
+        document.getElementById('jadwal-jenis').value = 'Off Reguler';
+        document.getElementById('jadwal-ket').value = '';
+        document.getElementById('popup-jadwal-kurir').classList.remove('hidden');
+        document.getElementById('popup-jadwal-kurir').classList.add('flex');
+    };
+    
+    window.tambahJadwalDariTanggal = function(tanggal) {
+        document.getElementById('popup-kalender-detail').classList.add('hidden');
+        document.getElementById('popup-kalender-detail').classList.remove('flex');
+        editingJadwalKey = null;
+        document.getElementById('jadwal-key').value = '';
+        document.getElementById('jadwal-nama').value = '';
+        document.getElementById('jadwal-mulai').value = tanggal;
+        document.getElementById('jadwal-selesai').value = tanggal;
+        document.getElementById('jadwal-jenis').value = 'Off Reguler';
+        document.getElementById('jadwal-ket').value = '';
+        document.getElementById('popup-jadwal-kurir').classList.remove('hidden');
+        document.getElementById('popup-jadwal-kurir').classList.add('flex');
+    };
+    
+    window.openManualAbsensiFromTanggal = function(tanggal) {
+        document.getElementById('popup-kalender-detail').classList.add('hidden');
+        document.getElementById('popup-kalender-detail').classList.remove('flex');
+        document.getElementById('manual-tanggal').value = tanggal;
+        openManualAbsensi();
+    };
+    
+    function renderKurirOptions() {
+        const selectJadwal = document.getElementById('jadwal-nama');
+        const selectManual = document.getElementById('manual-kurir');
+        if (selectJadwal) selectJadwal.innerHTML = '<option value="">-- Pilih Kurir --</option>';
+        if (selectManual) selectManual.innerHTML = '<option value="">-- Pilih Kurir --</option>';
+    
+        Object.entries(DATA_USERS).forEach(([key, user]) => {
+            if (user.role === 'kurir' && user.status === 'aktif') {
+                const namaKurir = user.nama || user.username || key;
+    
+                if (selectJadwal) {
+                    const o = document.createElement('option');
+                    o.value = namaKurir;
+                    o.textContent = `${namaKurir} (${user.leader || 'Kurir'})`;
+                    selectJadwal.appendChild(o);
+                }
+    
+                if (selectManual) {
+                    const o = document.createElement('option');
+                    o.value = namaKurir;
+                    o.textContent = `${namaKurir} (${user.leader || 'Kurir'})`;
+                    selectManual.appendChild(o);
+                }
+            }
+        });
+    }
+    
+    function updateTotalKurir() {
+        const total = Object.values(DATA_USERS).filter(u => u.role === 'kurir' && u.status === 'aktif').length;
+        document.getElementById('stat-total-kurir').textContent = total;
+    }
+    
+    onValue(ref(db, 'users'), (snapshot) => {
+        DATA_USERS = snapshot.val() || {};
+        renderKurirOptions();
+        updateTotalKurir();
+        renderRekap();
+    });
+    
+    onValue(ref(db, 'jadwal_off'), (snapshot) => {
+        DATA_JADWAL = snapshot.val() || {};
+        renderJadwalList();
+        calculateStatsAndCalendar();
+        renderRekap();
+    });
+    
+    onValue(ref(db, 'pengajuan'), (snapshot) => {
+        DATA_PENGAJUAN = snapshot.val() || {};
+        renderPengajuanList();
+    });
+    
+    onValue(ref(db, 'absensi_sahabatku'), (snapshot) => {
+        DATA_ABSENSI = snapshot.val() || {};
+        renderRekap();
+    });
+    
+    function renderPengajuanList() {
+        const container = document.getElementById('list-pengajuan-pending');
+        if (!container) return;
+    
+        const search = (document.getElementById('search-pengajuan')?.value || '').toLowerCase().trim();
+        let pending = 0;
+        container.innerHTML = '';
+    
+        Object.entries(DATA_PENGAJUAN).forEach(([key, item]) => {
+            const nama = (item.namaKurir || item.nama || '').toLowerCase();
+            const tanggal = (item.tanggalOff || item.tanggal || '').toLowerCase();
+    
+            if (search && !nama.includes(search) && !tanggal.includes(search)) return;
+            if (item.status !== 'Pending' && item.status) return;
+    
+            pending++;
+            const div = document.createElement('div');
+            div.className = "glass-card p-4 rounded-2xl shadow-sm border-l-4 border-amber-500 space-y-3";
+            div.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="text-xs font-bold">${item.namaKurir || item.nama || '-'}</h4>
+                        <p class="text-[10px] text-slate-400">Pengajuan: <span class="text-amber-500 font-bold">${item.jenisPengajuan || 'Izin'}</span></p>
+                    </div>
+                </div>
+                <div class="p-2.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl text-[11px] space-y-1">
+                    <p><strong>Tanggal:</strong> ${item.tanggalOff || item.tanggal || '-'}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="prosesPengajuan('${key}', 'Ditolak')" class="py-2 rounded-xl text-red-500 border border-red-200 dark:border-red-900 font-bold text-xs">Tolak</button>
+                    <button onclick="prosesPengajuan('${key}', 'Disetujui')" class="py-2 rounded-xl bg-sahabatku text-white font-bold text-xs shadow-sm">Setujui</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    
+        if (pending === 0) {
+            container.innerHTML = '<div class="text-center py-10 text-xs text-slate-400"><i class="fa-solid fa-circle-check text-emerald-500 text-xl block mb-1"></i>Semua pengajuan kurir sudah bersih.</div>';
+        }
+    
+        document.getElementById('stat-pending').textContent = pending;
+        document.getElementById('count-pengajuan-tab').textContent = pending;
+    
+        const bTop = document.getElementById('badge-pending-notif');
+        const bBot = document.getElementById('badge-pending-bottom');
+        if (pending > 0) {
+            bTop.textContent = pending; bTop.classList.remove('hidden');
+            bBot.textContent = pending; bBot.classList.remove('hidden');
+        } else {
+            bTop.classList.add('hidden');
+            bBot.classList.add('hidden');
+        }
+    }
+    
+    function renderJadwalList() {
+        const container = document.getElementById('jadwal-off-list');
+        if (!container) return;
+    
+        const search = (document.getElementById('search-jadwal')?.value || '').toLowerCase().trim();
+        const bulanSekarang = currentViewDate.toISOString().slice(0, 7);
+    
+        const list = Object.entries(DATA_JADWAL)
+            .map(([key, item]) => ({ key, ...item }))
+            .filter(item => {
+                const cocokSearch =
+                    (item.nama || '').toLowerCase().includes(search) ||
+                    (item.keterangan || '').toLowerCase().includes(search) ||
+                    (item.tanggalMulai || '').includes(search) ||
+                    (item.tanggalSelesai || '').includes(search);
+    
+                const cocokBulan =
+                    (item.tanggalMulai || '').startsWith(bulanSekarang) ||
+                    (item.tanggalSelesai || '').startsWith(bulanSekarang);
+    
+                return cocokSearch && cocokBulan;
+            })
+            .sort((a, b) => (a.tanggalMulai || '').localeCompare(b.tanggalMulai || ''));
+    
+        if (list.length === 0) {
+            container.innerHTML = `
+                <div class="py-8 text-center text-xs text-slate-400">
+                    Belum ada jadwal OFF bulan ini.
+                </div>
+            `;
+            return;
+        }
+    
+        const grouped = {};
+        list.forEach(item => {
+            const tanggalKey = item.tanggalMulai || item.tanggalSelesai || '-';
+            if (!grouped[tanggalKey]) grouped[tanggalKey] = [];
+            grouped[tanggalKey].push(item);
+        });
+    
+        const groupKeys = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
+    
+        container.innerHTML = groupKeys.map((tanggal, index) => {
+            const items = grouped[tanggal];
+            const groupId = `group-${index}`;
+    
+            let headerClass = 'bg-slate-50 dark:bg-slate-800/60';
+            const jenisUtama = items[0]?.jenisOff || '-';
+            if (jenisUtama === 'Off Reguler') headerClass = 'bg-blue-500/10 dark:bg-blue-500/20';
+            if (jenisUtama === 'Tidak Ambil Off') headerClass = 'bg-gray-500/10 dark:bg-gray-500/20';
+            if (jenisUtama === 'Izin') headerClass = 'bg-amber-500/10 dark:bg-amber-500/20';
+            if (jenisUtama === 'Sakit') headerClass = 'bg-red-500/10 dark:bg-red-500/20';
+    
+            return `
+                <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 shadow-sm overflow-hidden">
+                    <button
+                        onclick="toggleJadwalGroup('${groupId}')"
+                        class="w-full px-4 py-3 flex items-center justify-between text-left ${headerClass} border-b border-slate-200 dark:border-slate-700"
+                    >
+                        <div>
+                            <div class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Tanggal</div>
+                            <div class="text-sm font-bold text-slate-800 dark:text-slate-100">${tanggal}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] px-2 py-1 rounded-full bg-sahabatku text-white font-bold">${items.length} kurir</span>
+                            <i id="${groupId}-icon" class="fa-solid fa-chevron-down text-xs text-slate-500"></i>
+                        </div>
+                    </button>
+    
+                    <div id="${groupId}" class="hidden px-3 py-3 space-y-2">
+                        ${items.map(item => {
+                            const user = Object.values(DATA_USERS).find(u => (u.nama || u.username) === item.nama);
+                            return `
+                                <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 p-3 shadow-sm">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-[10px] px-2 py-1 rounded-full ${getColorByJenis(item.jenisOff)} text-white font-bold">
+                                                    ${item.jenisOff || '-'}
+                                                </span>
+                                                <span class="text-[10px] text-slate-400">${user?.leader || item.leader || '-'}</span>
+                                            </div>
+                                            <div class="mt-2 font-bold text-sm truncate">${item.nama || '-'}</div>
+                                            <div class="text-[10px] text-slate-500 mt-1 truncate">
+                                                ${item.keterangan || 'Tanpa keterangan'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.toggleJadwalGroup = function(groupId) {
+        const el = document.getElementById(groupId);
+        const icon = document.getElementById(`${groupId}-icon`);
+        if (!el || !icon) return;
+    
+        const isHidden = el.classList.contains('hidden');
+    
+        if (isHidden) {
+            el.classList.remove('hidden');
+            el.style.maxHeight = '0px';
+            el.style.opacity = '0';
+            el.style.overflow = 'hidden';
+    
+            requestAnimationFrame(() => {
+                el.style.transition = 'max-height 0.35s ease, opacity 0.25s ease';
+                el.style.maxHeight = el.scrollHeight + 'px';
+                el.style.opacity = '1';
+            });
+    
+            icon.className = 'fa-solid fa-chevron-up text-xs text-slate-500';
+        } else {
+            el.style.transition = 'max-height 0.35s ease, opacity 0.25s ease';
+            el.style.maxHeight = el.scrollHeight + 'px';
+            el.style.opacity = '1';
+    
+            requestAnimationFrame(() => {
+                el.style.maxHeight = '0px';
+                el.style.opacity = '0';
+            });
+    
+            setTimeout(() => {
+                el.classList.add('hidden');
+                el.style.maxHeight = '';
+                el.style.opacity = '';
+                el.style.overflow = '';
+            }, 350);
+    
+            icon.className = 'fa-solid fa-chevron-down text-xs text-slate-500';
+        }
+    };
+
+    function getStatusAbsensiTanggal(tanggal, namaKurir) {
+        const jadwal = Object.values(DATA_JADWAL).find(j =>
+            j.nama === namaKurir &&
+            j.tanggalMulai && j.tanggalSelesai &&
+            j.tanggalMulai <= tanggal &&
+            j.tanggalSelesai >= tanggal
+        );
+        if (jadwal) return jadwal.jenisOff || 'Off';
+    
+        const abs = Object.values(DATA_ABSENSI).filter(a => a.tanggal === tanggal && a.namaKurir === namaKurir);
+        if (abs.length === 0) return 'Belum Absen';
+    
+        const a = abs[0];
+        if (a.jamMasuk && a.jamPulang) return 'Absen lengkap';
+        if (a.jamMasuk && !a.jamPulang) return 'Belum absen pulang';
+        if (!a.jamMasuk && a.jamPulang) return 'Belum absen masuk';
+        return 'Belum Absen';
+    }
+    
+    function openPopupKalenderDetail(tanggal) {
+        const popup = document.getElementById('popup-kalender-detail');
+        const title = document.getElementById('popup-kalender-title');
+        const content = document.getElementById('popup-kalender-content');
+    
+        const listJadwal = Object.entries(DATA_JADWAL)
+            .filter(([_, j]) => j.tanggalMulai && j.tanggalSelesai && j.tanggalMulai <= tanggal && j.tanggalSelesai >= tanggal)
+            .map(([key, item]) => ({ key, ...item }));
+    
+        const listAbsensi = Object.entries(DATA_ABSENSI)
+            .filter(([_, a]) => a.tanggal === tanggal)
+            .map(([key, item]) => ({ key, ...item }));
+    
+        title.textContent = `Rekap Tanggal ${tanggal}`;
+    
+        content.innerHTML = `
+            <div class="space-y-4">
+                <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800">
+                    <h4 class="text-xs font-bold mb-2">Jadwal / Off / Izin / Sakit</h4>
+                    <div class="space-y-2">
+                        ${listJadwal.length ? listJadwal.map(j => `
+                            <div class="p-2 rounded-lg bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 text-xs">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div>
+                                        <div class="font-bold">${j.nama || '-'}</div>
+                                        <div class="text-[10px] text-slate-500">${j.jenisOff || '-'} | ${j.keterangan || '-'}</div>
+                                    </div>
+                                    <div class="flex gap-2 shrink-0">
+                                        <button onclick="editJadwal('${j.key}')" class="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px]">Edit</button>
+                                        <button onclick="hapusJadwal('${j.key}')" class="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px]">Hapus</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') : `<div class="text-xs text-slate-400">Tidak ada jadwal.</div>`}
+                    </div>
+                </div>
+    
+                <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800">
+                    <h4 class="text-xs font-bold mb-2">Absensi</h4>
+                    <div class="space-y-2">
+                        ${listAbsensi.length ? listAbsensi.map(a => `
+                            <div class="p-2 rounded-lg bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 text-xs">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div>
+                                        <div class="font-bold">${a.namaKurir || '-'}</div>
+                                        <div class="text-[10px] text-slate-500">Masuk: ${a.jamMasuk || '-'} | Pulang: ${a.jamPulang || '-'}</div>
+                                    </div>
+                                    <div class="flex gap-2 shrink-0">
+                                        <button onclick="editAbsensi('${a.key}')" class="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px]">Edit</button>
+                                        <button onclick="hapusAbsensi('${a.key}')" class="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px]">Hapus</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') : `<div class="text-xs text-slate-400">Belum ada absensi.</div>`}
+                    </div>
+                </div>
+    
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="tambahJadwalDariTanggal('${tanggal}')" class="py-3 rounded-xl bg-sahabatku text-white text-xs font-bold">Input Jadwal</button>
+                    <button onclick="openManualAbsensiFromTanggal('${tanggal}')" class="py-3 rounded-xl bg-slate-800 text-white text-xs font-bold">Absensi Manual</button>
+                </div>
+            </div>
+        `;
+    
+        popup.classList.remove('hidden');
+        popup.classList.add('flex');
+    }
+    window.openPopupKalenderDetail = openPopupKalenderDetail;
+    
+    function calculateStatsAndCalendar() {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+    
+        const tahun = currentViewDate.getFullYear();
+        const bulan = currentViewDate.getMonth();
+        const bulanView = `${tahun}-${String(bulan + 1).padStart(2, '0')}`;
+    
+        let hitungHariIni = 0;
+        let hitungBulanIni = 0;
+    
+        Object.values(DATA_JADWAL).forEach(j => {
+            if (j.tanggalMulai && j.tanggalSelesai && j.tanggalMulai <= todayStr && j.tanggalSelesai >= todayStr) {
+                hitungHariIni++;
+            }
+            if (j.tanggalMulai && j.tanggalMulai.startsWith(bulanView)) {
+                hitungBulanIni++;
+            }
+        });
+    
+        document.getElementById('stat-off-hari-ini').textContent = hitungHariIni;
+        document.getElementById('stat-off-bulan-ini').textContent = hitungBulanIni;
+    
+        const grid = document.getElementById('calendar-days-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+    
+        const namaBulan = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+        document.getElementById('kalender-bulan-tahun').textContent = `${namaBulan[bulan]} ${tahun}`;
+    
+        const indexHariPertama = new Date(tahun, bulan, 1).getDay();
+        const totalHariBulanIni = new Date(tahun, bulan + 1, 0).getDate();
+    
+        for (let i = 0; i < indexHariPertama; i++) grid.appendChild(document.createElement('div'));
+    
+        for (let h = 1; h <= totalHariBulanIni; h++) {
+            const tanggal = `${tahun}-${String(bulan + 1).padStart(2, '0')}-${String(h).padStart(2, '0')}`;
+            const dataHari = Object.values(DATA_JADWAL).filter(j =>
+                j.tanggalMulai && j.tanggalSelesai &&
+                tanggal >= j.tanggalMulai && tanggal <= j.tanggalSelesai
+            );
+    
+            const dayBox = document.createElement('div');
+            dayBox.className = "relative font-semibold flex flex-col items-center justify-center h-14 rounded-xl cursor-pointer transition-all text-[10px] sm:text-xs p-1";
+            dayBox.innerHTML = `<span class="relative z-10">${h}</span>`;
+    
+            if (tanggal === todayStr) {
+                dayBox.classList.add('bg-sahabatku', 'text-white', 'shadow-md', 'shadow-sahabatku/20');
+            } else if (dataHari.length > 0) {
+                dayBox.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-800', 'dark:text-slate-100');
+            } else {
+                dayBox.classList.add('text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-200/60', 'dark:hover:bg-slate-800');
+            }
+    
+            dayBox.addEventListener('click', () => openPopupKalenderDetail(tanggal));
+            if (tanggal === todayStr) {
+                dayBox.classList.add('ring-2', 'ring-sahabatku', 'bg-sahabatku', 'text-white', 'shadow-md', 'shadow-sahabatku/20');
+                dayBox.innerHTML = `<span class="text-[10px] font-bold">Hari ini</span><span class="text-lg font-bold">${h}</span>`;
+            } else {
+                dayBox.innerHTML = `<span class="relative z-10">${h}</span>`;
+            }
+            if (dataHari.length > 0) {
+                const jenisList = [...new Set(dataHari.map(d => d.jenisOff || '-'))].slice(0, 3);
+                const dotWrap = document.createElement('div');
+                dotWrap.className = "flex gap-1 mt-1 flex-wrap justify-center";
+                jenisList.forEach(jenis => {
+                    const dot = document.createElement('span');
+                    dot.className = `w-2 h-2 rounded-full ${getColorByJenis(jenis)}`;
+                    dotWrap.appendChild(dot);
+                });
+                dayBox.appendChild(dotWrap);
+            }
+    
+            grid.appendChild(dayBox);
+        }
+    }
+    window.calculateStatsAndCalendar = calculateStatsAndCalendar;
+    
+    function renderRekap() {
+        const tbody = document.getElementById('rekap-kurir');
+        const thead = document.getElementById('rekap-thead');
+        if (!tbody || !thead) return;
+    
+        const search = (document.getElementById('search-rekap')?.value || '').toLowerCase().trim();
+        const bulanIni = new Date().toISOString().slice(0, 7);
+    
+        const rekap = {};
+    
+        Object.values(DATA_USERS).forEach(user => {
+            if (user.role === 'kurir' && user.status === 'aktif') {
+                const nama = user.nama || user.username || '-';
+                rekap[nama] = {
+                    nama,
+                    leader: user.leader || '-',
+                    off: 0,
+                    izin: 0,
+                    sakit: 0,
+                    masuk: 0,
+                    pulang: 0
+                };
+            }
+        });
+    
+        Object.values(DATA_JADWAL).forEach(item => {
+            const nama = item.nama;
+            if (!rekap[nama]) return;
+    
+            if (item.jenisOff === 'Off Reguler') rekap[nama].off++;
+            if (item.jenisOff === 'Izin') rekap[nama].izin++;
+            if (item.jenisOff === 'Sakit') rekap[nama].sakit++;
+        });
+    
+        Object.values(DATA_ABSENSI).forEach(item => {
+            if (!item.tanggal || !item.namaKurir) return;
+            if (!item.tanggal.startsWith(bulanIni)) return;
+    
+            const nama = item.namaKurir;
+            if (!rekap[nama]) return;
+    
+            if (item.jamMasuk) rekap[nama].masuk++;
+            if (item.jamPulang) rekap[nama].pulang++;
+        });
+    
+        const data = Object.values(rekap).filter(r =>
+            r.nama.toLowerCase().includes(search) || r.leader.toLowerCase().includes(search)
+        );
+    
+        if (rekapMode === 'absensi') {
+            thead.innerHTML = `
+                <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+                    <th class="py-2">No</th>
+                    <th class="py-2">Nama Kurir</th>
+                    <th class="py-2">Total Absen Masuk</th>
+                    <th class="py-2">Total Absen Pulang</th>
+                    <th class="py-2">Aksi</th>
+                </tr>
+            `;
+    
+            tbody.innerHTML = data.map((r, i) => `
+                <tr class="border-b border-slate-100 dark:border-slate-800">
+                    <td class="py-3 text-xs font-semibold">${i + 1}</td>
+                    <td class="py-3"><div class="font-bold text-xs">${r.nama}</div></td>
+                    <td class="py-3">
+                        <span class="inline-flex px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 text-[10px] font-bold">${r.masuk}</span>
+                    </td>
+                    <td class="py-3">
+                        <span class="inline-flex px-2 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 text-[10px] font-bold">${r.pulang}</span>
+                    </td>
+                    <td class="py-3">
+                        <button onclick="lihatKurir('${r.nama}')" class="px-3 py-1.5 rounded-xl bg-sahabatku text-white text-[10px] font-bold">Aksi</button>
+                    </td>
+                </tr>
+            `).join('');
+    
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-xs text-slate-400">Belum ada data absensi.</td></tr>`;
+            }
+            return;
+        }
+    
+        thead.innerHTML = `
+            <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+                <th class="py-2">No</th>
+                <th class="py-2">Nama Kurir</th>
+                <th class="py-2">Nama Leader</th>
+                <th class="py-2">Total Off</th>
+                <th class="py-2">Total Izin</th>
+                <th class="py-2">Total Sakit</th>
+                <th class="py-2">Aksi</th>
+            </tr>
+        `;
+    
+        tbody.innerHTML = data.map((r, i) => `
+            <tr class="border-b border-slate-100 dark:border-slate-800">
+                <td class="py-3 text-xs font-semibold">${i + 1}</td>
+                <td class="py-3"><div class="font-bold text-xs">${r.nama}</div></td>
+                <td class="py-3 text-[10px] text-slate-400">${r.leader}</td>
+                <td class="py-3"><span class="inline-flex px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 text-[10px] font-bold">${r.off}</span></td>
+                <td class="py-3"><span class="inline-flex px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300 text-[10px] font-bold">${r.izin}</span></td>
+                <td class="py-3"><span class="inline-flex px-2 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 text-[10px] font-bold">${r.sakit}</span></td>
+                <td class="py-3">
+                    <button onclick="lihatKurir('${r.nama}')" class="px-3 py-1.5 rounded-xl bg-sahabatku text-white text-[10px] font-bold">Aksi</button>
+                </td>
+            </tr>
+        `).join('');
+    
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-xs text-slate-400">Belum ada data kurir.</td></tr>`;
+        }
+    }
+
+    window.renderRekap = renderRekap;
+    
+    window.lihatKurir = function(namaKurir) {
+        selectedKurir = namaKurir;
+        const popup = document.getElementById('popup-detail-kurir');
+        const title = document.getElementById('popup-detail-title');
+        const content = document.getElementById('popup-detail-content');
+    
+        const jadwal = Object.entries(DATA_JADWAL)
+            .filter(([_, item]) => item.nama === namaKurir)
+            .map(([key, item]) => ({ key, ...item }));
+    
+        const absensi = Object.entries(DATA_ABSENSI)
+            .filter(([_, item]) => item.namaKurir === namaKurir)
+            .map(([key, item]) => ({ key, ...item }))
+            .sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+    
+        title.textContent = `Detail ${namaKurir}`;
+    
+        content.innerHTML = `
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-xs font-bold">Rincian Jadwal Off</h4>
+                    <button onclick="tambahJadwalKurir('${namaKurir}')" class="px-3 py-1.5 rounded-xl bg-sahabatku text-white text-[10px] font-bold">Tambah</button>
+                </div>
+                <div class="space-y-2">
+                    ${jadwal.length ? jadwal.map(item => `
+                        <div class="p-3 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
+                            <div class="flex justify-between gap-2">
+                                <div>
+                                    <p class="text-xs font-bold">${item.tanggalMulai || '-'} s/d ${item.tanggalSelesai || '-'}</p>
+                                    <p class="text-[10px] text-slate-400">${item.jenisOff || '-'}</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">${item.keterangan || 'Tanpa keterangan'}</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="editJadwal('${item.key}')" class="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px]">Edit</button>
+                                    <button onclick="hapusJadwal('${item.key}')" class="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px]">Hapus</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') : `<div class="text-xs text-slate-400">Belum ada jadwal off.</div>`}
+                </div>
+            </div>
+    
+            <div>
+                <h4 class="text-xs font-bold mb-2">Riwayat Absensi</h4>
+                <div class="space-y-2">
+                    ${absensi.length ? absensi.map(item => `
+                        <div class="p-3 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
+                            <div class="flex items-start justify-between gap-2">
+                                <div>
+                                    <p class="text-xs font-bold">${item.tanggal || '-'}</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">Masuk: ${item.jamMasuk || '-'} | Pulang: ${item.jamPulang || '-'}</p>
+                                    <p class="text-[10px] font-bold mt-1">${getStatusAbsensiTanggal(item.tanggal, item.namaKurir)}</p>
+                                </div>
+                                <div class="flex gap-2 shrink-0">
+                                    <button onclick="editAbsensi('${item.key}')" class="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px]">Edit</button>
+                                    <button onclick="hapusAbsensi('${item.key}')" class="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px]">Hapus</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') : `<div class="text-xs text-slate-400">Belum ada absensi.</div>`}
+                </div>
+            </div>
+        `;
+    
+        popup.classList.remove('hidden');
+        popup.classList.add('flex');
+    };
+    window.openPopupDetailList = function(title, html) {
+        document.getElementById('popup-detail-list-title').textContent = title;
+        document.getElementById('popup-detail-list-content').innerHTML = html;
+        const popup = document.getElementById('popup-detail-list');
+        popup.classList.remove('hidden');
+        popup.classList.add('flex');
+    };
+    
+    window.closePopupDetailList = function() {
+        const popup = document.getElementById('popup-detail-list');
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+    };
+    window.openPopupStatTotalKurir = function() {
+        const list = Object.values(DATA_USERS)
+            .filter(u => u.role === 'kurir' && u.status === 'aktif')
+            .map(u => `
+                <div class="p-3 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-xs">${u.nama || u.username || '-'}</div>
+                        <div class="text-[10px] text-slate-400">${u.leader || '-'}</div>
+                    </div>
+                </div>
+            `)
+            .join('');
+    
+        openPopupDetailList('Total Kurir', list || '<div class="text-xs text-slate-400">Tidak ada kurir.</div>');
+    };
+
+    
+    window.openPopupOffHariIni = function() {
+        const today = new Date().toISOString().split('T')[0];
+        const items = [];
+    
+        Object.values(DATA_USERS).forEach(u => {
+            if (u.role !== 'kurir' || u.status !== 'aktif') return;
+            const nama = u.nama || u.username || '-';
+    
+            const jadwal = Object.values(DATA_JADWAL).find(j =>
+                j.nama === nama &&
+                j.tanggalMulai && j.tanggalSelesai &&
+                j.tanggalMulai <= today &&
+                j.tanggalSelesai >= today
+            );
+    
+            if (jadwal) {
+                items.push(`
+                    <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs">
+                        <div class="font-bold">${nama}</div>
+                        <div class="text-[10px] mt-1">
+                            <span class="px-2 py-1 rounded-full text-white ${getColorByJenis(jadwal.jenisOff)}">${jadwal.jenisOff}</span>
+                        </div>
+                    </div>
+                `);
+            }
+        });
+    
+        openPopupDetailList('Off Hari Ini', items.join('') || '<div class="text-xs text-slate-400">Tidak ada off hari ini.</div>');
+    };
+    
+    window.editAbsensi = function(key) {
+        const item = DATA_ABSENSI[key];
+        if (!item) return;
+        editingAbsensiKey = key;
+        document.getElementById('manual-tanggal').value = item.tanggal || '';
+        document.getElementById('manual-kurir').value = item.namaKurir || '';
+        document.getElementById('manual-masuk').value = item.jamMasuk || '';
+        document.getElementById('manual-pulang').value = item.jamPulang || '';
+        openManualAbsensi();
+    };
+    
+    window.hapusAbsensi = function(key) {
+        if (confirm('Hapus absensi ini?')) {
+            remove(ref(db, `absensi_sahabatku/${key}`)).catch(e => alert(e.message));
+        }
+    };
+    
+    window.editJadwal = function(key) {
+        const item = DATA_JADWAL[key];
+        if (!item) return;
+    
+        editingJadwalKey = key;
+        document.getElementById('jadwal-key').value = key;
+        document.getElementById('jadwal-nama').value = item.nama || '';
+        document.getElementById('jadwal-mulai').value = item.tanggalMulai || '';
+        document.getElementById('jadwal-selesai').value = item.tanggalSelesai || '';
+        document.getElementById('jadwal-jenis').value = item.jenisOff || 'Off Reguler';
+        document.getElementById('jadwal-ket').value = item.keterangan || '';
+    
+        const popup = document.getElementById('popup-jadwal-kurir');
+        popup.classList.remove('hidden');
+        popup.classList.add('flex');
+        popup.scrollTop = 0;
+    };
+
+    window.hapusJadwal = function(key) {
+        if (confirm('Hapus jadwal off kurir ini?')) {
+            remove(ref(db, `jadwal_off/${key}`)).catch(e => alert(e.message));
+        }
+    };
+    
+    window.prosesPengajuan = function(key, statusBaru) {
+        const item = DATA_PENGAJUAN[key];
+        if (!item) return;
+    
+        if (statusBaru === 'Disetujui') {
+            const newRef = push(ref(db, 'jadwal_off'));
+            set(newRef, {
+                nama: item.namaKurir || item.nama,
+                tanggalMulai: item.tanggalOff || item.tanggal,
+                tanggalSelesai: item.tanggalOff || item.tanggal,
+                jenisOff: item.jenisPengajuan || 'Izin',
+                keterangan: item.keterangan || '',
+                status: "Aktif",
+                timestamp: new Date().toISOString()
+            });
+        }
+    
+        update(ref(db, `pengajuan/${key}`), { status: statusBaru }).then(() => {
+            push(ref(db, 'notifikasi'), {
+                title: `Pengajuan ${statusBaru}`,
+                body: `Pengajuan dari ${item.namaKurir || item.nama} telah ${statusBaru.toLowerCase()}`,
+                timestamp: new Date().toISOString()
+            });
+        }).catch(e => alert(e.message));
+    };
+    
+    document.getElementById('btn-prev-bulan').addEventListener('click', () => {
+        currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() - 1, 1);
+        calculateStatsAndCalendar();
+        renderJadwalList();
+    });
+    
+    document.getElementById('btn-next-bulan').addEventListener('click', () => {
+        currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 1);
+        calculateStatsAndCalendar();
+        renderJadwalList();
+    });
+    
+    document.getElementById('btn-filter-rekap')?.addEventListener('click', () => {
+        rekapMode = 'kurir';
+        renderRekap();
+    });
+    document.getElementById('btn-filter-absensi')?.addEventListener('click', () => {
+        rekapMode = 'absensi';
+        renderRekap();
+    });
+    document.getElementById('search-rekap')?.addEventListener('input', renderRekap);
+    document.getElementById('search-jadwal')?.addEventListener('input', () => renderJadwalList());
+    document.getElementById('search-pengajuan')?.addEventListener('input', renderPengajuanList);
+    
+    document.getElementById('btn-save-jadwal-kurir').addEventListener('click', () => {
+        const nama = document.getElementById('jadwal-nama').value;
+        const tanggalMulai = document.getElementById('jadwal-mulai').value;
+        const tanggalSelesai = document.getElementById('jadwal-selesai').value;
+        const jenisOff = document.getElementById('jadwal-jenis').value;
+        const keterangan = document.getElementById('jadwal-ket').value.trim();
+    
+        if (!nama || !tanggalMulai || !tanggalSelesai || !jenisOff) {
+            alert('Lengkapi data jadwal.');
+            return;
+        }
+    
+        const payload = {
+            nama,
+            tanggalMulai,
+            tanggalSelesai,
+            jenisOff,
+            keterangan,
+            status: 'Aktif',
+            timestamp: new Date().toISOString()
+        };
+    
+        if (editingJadwalKey) {
+            update(ref(db, `jadwal_off/${editingJadwalKey}`), payload)
+                .then(() => {
+                    editingJadwalKey = null;
+                    closePopupJadwalKurir();
+                })
+                .catch(err => alert(err.message));
+        } else {
+            set(push(ref(db, 'jadwal_off')), payload)
+                .then(() => closePopupJadwalKurir())
+                .catch(err => alert(err.message));
+        }
+    });
+    
+    document.getElementById('btn-save-manual-absensi').addEventListener('click', () => {
+        const tanggal = document.getElementById('manual-tanggal').value;
+        const namaKurir = document.getElementById('manual-kurir').value;
+        const jamMasuk = document.getElementById('manual-masuk').value;
+        const jamPulang = document.getElementById('manual-pulang').value;
+    
+        if (!tanggal || !namaKurir) {
+            alert('Tanggal dan nama kurir wajib diisi.');
+            return;
+        }
+    
+        const user = Object.values(DATA_USERS).find(u => (u.nama || u.username) === namaKurir);
+        const idKurir = Object.keys(DATA_USERS).find(k => (DATA_USERS[k].nama || DATA_USERS[k].username) === namaKurir);
+        const key = editingAbsensiKey || `${tanggal}_${idKurir || namaKurir}`;
+    
+        set(ref(db, `absensi_sahabatku/${key}`), {
+            tanggal,
+            idKurir: idKurir || '',
+            namaKurir,
+            leader: user?.leader || '',
+            jamMasuk,
+            jamPulang,
+            fotoMasuk: "",
+            fotoPulang: ""
+        }).then(() => {
+            editingAbsensiKey = null;
+            closeManualAbsensi();
+            alert('Absensi manual berhasil disimpan.');
+        }).catch(err => alert(err.message));
+    });
+    
+    window.exportRekapBulanIni = function(bulanPilih = '') {
+        const bulanIni = bulanPilih || new Date().toISOString().slice(0, 7);
+        const dataKurir = Object.values(DATA_USERS).filter(u => u.role === 'kurir' && u.status === 'aktif');
+    
+        const rows = [];
+        rows.push([
+            'No',
+            'Nama Kurir',
+            'Nama Leader',
+            'Total Off',
+            'Total Tidak Ambil Off',
+            'Total Izin',
+            'Total Sakit',
+            'Total Absen Masuk',
+            'Total Absen Pulang'
+        ]);
+    
+        dataKurir.forEach((u, index) => {
+            const nama = u.nama || u.username || '-';
+            const leader = u.leader || '-';
+    
+            let totalOff = 0;
+            let totalTidakAmbilOff = 0;
+            let totalIzin = 0;
+            let totalSakit = 0;
+            let totalMasuk = 0;
+            let totalPulang = 0;
+    
+            Object.values(DATA_JADWAL).forEach(j => {
+                if (j.nama === nama && j.tanggalMulai && j.tanggalMulai.startsWith(bulanIni)) {
+                    if (j.jenisOff === 'Off Reguler') totalOff++;
+                    if (j.jenisOff === 'Tidak Ambil Off') totalTidakAmbilOff++;
+                    if (j.jenisOff === 'Izin') totalIzin++;
+                    if (j.jenisOff === 'Sakit') totalSakit++;
+                }
+            });
+    
+            Object.values(DATA_ABSENSI).forEach(a => {
+                if (a.namaKurir === nama && a.tanggal && a.tanggal.startsWith(bulanIni)) {
+                    if (a.jamMasuk) totalMasuk++;
+                    if (a.jamPulang) totalPulang++;
+                }
+            });
+    
+            rows.push([index + 1, nama, leader, totalOff, totalTidakAmbilOff, totalIzin, totalSakit, totalMasuk, totalPulang]);
+        });
+    
+        const csv = rows.map(r => r.map(v => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rekap-kurir-${bulanIni}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    };
+    window.openPopupOffBulanIni = function() {
+        const bulanIni = new Date().toISOString().slice(0, 7);
+        const rekap = {};
+    
+        Object.values(DATA_USERS).forEach(u => {
+            if (u.role === 'kurir' && u.status === 'aktif') {
+                const nama = u.nama || u.username || '-';
+                rekap[nama] = {
+                    nama,
+                    off: [],
+                    tidakAmbilOff: [],
+                    izin: [],
+                    sakit: []
+                };
+            }
+        });
+    
+        Object.values(DATA_JADWAL).forEach(j => {
+            const nama = j.nama;
+            if (!rekap[nama] || !(j.tanggalMulai || '').startsWith(bulanIni)) return;
+    
+            const tanggalText = j.tanggalMulai === j.tanggalSelesai
+                ? j.tanggalMulai
+                : `${j.tanggalMulai} - ${j.tanggalSelesai}`;
+    
+            if (j.jenisOff === 'Off Reguler') rekap[nama].off.push(tanggalText);
+            if (j.jenisOff === 'Tidak Ambil Off') rekap[nama].tidakAmbilOff.push(tanggalText);
+            if (j.jenisOff === 'Izin') rekap[nama].izin.push(tanggalText);
+            if (j.jenisOff === 'Sakit') rekap[nama].sakit.push(tanggalText);
+        });
+    
+        const items = Object.values(rekap).map(r => `
+            <div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs space-y-3">
+                <div class="font-bold text-sm">${r.nama}</div>
+    
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="p-2 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                        <div class="text-[10px] text-slate-400">Total Off</div>
+                        <div class="text-sm font-bold text-blue-500">${r.off.length}</div>
+                        <div class="mt-1 text-[10px] text-slate-500">${r.off.join('<br>') || '-'}</div>
+                    </div>
+    
+                    <div class="p-2 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                        <div class="text-[10px] text-slate-400">Total Tidak Ambil Off</div>
+                        <div class="text-sm font-bold text-gray-500">${r.tidakAmbilOff.length}</div>
+                        <div class="mt-1 text-[10px] text-slate-500">${r.tidakAmbilOff.join('<br>') || '-'}</div>
+                    </div>
+    
+                    <div class="p-2 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                        <div class="text-[10px] text-slate-400">Total Izin</div>
+                        <div class="text-sm font-bold text-amber-500">${r.izin.length}</div>
+                        <div class="mt-1 text-[10px] text-slate-500">${r.izin.join('<br>') || '-'}</div>
+                    </div>
+    
+                    <div class="p-2 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700">
+                        <div class="text-[10px] text-slate-400">Total Sakit</div>
+                        <div class="text-sm font-bold text-red-500">${r.sakit.length}</div>
+                        <div class="mt-1 text-[10px] text-slate-500">${r.sakit.join('<br>') || '-'}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    
+        openPopupDetailList(
+            'Off Bulan Ini',
+            items || '<div class="text-xs text-slate-400">Tidak ada data off bulan ini.</div>'
+        );
+    };
+    
+    window.openPopupPengajuan = function() {
+        const items = Object.values(DATA_PENGAJUAN)
+            .filter(item => !item.status || item.status === 'Pending')
+            .map(item => `
+                <div class="p-3 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                    <div class="font-bold">${item.namaKurir || item.nama || '-'}</div>
+                    <div class="text-[10px] text-slate-500">
+                        ${item.tanggalOff || item.tanggal || '-'}
+                    </div>
+                    <div class="text-[10px]">
+                        <span class="px-2 py-1 rounded-full bg-amber-500 text-white font-bold">
+                            ${item.jenisPengajuan || '-'}
+                        </span>
+                    </div>
+                    <div class="text-[10px] text-slate-400">
+                        Status: ${item.status || 'Pending'}
+                    </div>
+                </div>
+            `)
+            .join('');
+    
+        openPopupDetailList('Pengajuan', items || '<div class="text-xs text-slate-400">Tidak ada pengajuan.</div>');
+    };
+
+    
+    window.hapusJadwalBulanLalu = function() {
+        const bulanInput = document.getElementById('hapus-bulan-input').value;
+        if (!bulanInput) {
+            alert('Pilih bulan terlebih dahulu.');
+            return;
+        }
+    
+        if (!confirm(`Yakin hapus semua data bulan ${bulanInput}?`)) return;
+    
+        Object.entries(DATA_JADWAL).forEach(([key, item]) => {
+            const mulai = item.tanggalMulai || '';
+            const selesai = item.tanggalSelesai || '';
+            if (mulai.startsWith(bulanInput) || selesai.startsWith(bulanInput)) {
+                remove(ref(db, `jadwal_off/${key}`)).catch(e => alert(e.message));
+            }
+        });
+    
+        Object.entries(DATA_ABSENSI).forEach(([key, item]) => {
+            const tanggal = item.tanggal || '';
+            if (tanggal.startsWith(bulanInput)) {
+                remove(ref(db, `absensi_sahabatku/${key}`)).catch(e => alert(e.message));
+            }
+        });
+    
+        alert(`Data bulan ${bulanInput} sedang dihapus.`);
+        closePopupHapusBulan();
+    };
+    window.openPopupExportBulan = function() {
+        const popup = document.getElementById('popup-export-bulan');
+        popup.classList.remove('hidden');
+        popup.classList.add('flex');
+    };
+    
+    window.closePopupExportBulan = function() {
+        const popup = document.getElementById('popup-export-bulan');
+        popup.classList.add('hidden');
+        popup.classList.remove('flex');
+    };
+    
+    document.getElementById('btn-export-bulan')?.addEventListener('click', () => {
+        const bulan = document.getElementById('export-bulan-input').value;
+        if (!bulan) {
+            alert('Pilih bulan terlebih dahulu.');
+            return;
+        }
+        exportRekapBulanIni(bulan);
+        closePopupExportBulan();
+    });
+    document.getElementById('kalender-bulan-tahun').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('btn-hapus-bulan')?.addEventListener('click', window.hapusJadwalBulanLalu);
+    document.addEventListener('DOMContentLoaded', () => {
+        currentViewDate = new Date();
+        calculateStatsAndCalendar();
+        renderRekap();
+        switchTab('jadwal', document.querySelector('.tab-btn'));
+    });
+
+    </script>
+</body>
+</html>
+    
+
+    </script>
