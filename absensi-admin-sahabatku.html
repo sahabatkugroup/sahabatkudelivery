@@ -162,7 +162,21 @@
                 <input id="search-pengajuan" type="text" placeholder="Cari nama kurir / tanggal..." class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
                 <div class="flex items-center justify-between">
                     <h3 class="font-bold text-sm">Persetujuan Pengajuan Kurir</h3>
-                    <span id="count-pengajuan-tab" class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-mode-select-pengajuan" class="text-[10px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">
+                            Select
+                        </button>
+                        <span id="count-pengajuan-tab" class="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                </div>
+                
+                <div id="pengajuan-actions-bar" class="hidden flex gap-2 mt-2">
+                    <button id="btn-select-all-pengajuan" class="text-[10px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">
+                        Select All
+                    </button>
+                    <button id="btn-hapus-pengajuan-terpilih" class="text-[10px] px-3 py-2 rounded-xl bg-red-500 text-white font-bold">
+                        Hapus Terpilih
+                    </button>
                 </div>
                 <div id="list-pengajuan-pending" class="space-y-3">
                     <div class="text-center py-10 text-xs text-slate-400">Tidak ada pengajuan yang tertunda.</div>
@@ -409,6 +423,7 @@
     let selectedKurir = null;
     let editingJadwalKey = null;
     let editingAbsensiKey = null;
+    let modeSelectPengajuan = false;
     
     function applySavedTheme() {
         const savedTheme = localStorage.getItem('theme');
@@ -598,33 +613,119 @@
     
         const search = (document.getElementById('search-pengajuan')?.value || '').toLowerCase().trim();
         let pending = 0;
+    
         container.innerHTML = '';
     
         Object.entries(DATA_PENGAJUAN).forEach(([key, item]) => {
             const nama = (item.namaKurir || item.nama || '').toLowerCase();
-            const tanggal = (item.tanggalOff || item.tanggal || '').toLowerCase();
+            const tanggal = (item.tanggalOff || item.tanggal || item.tanggalPindah || '').toLowerCase();
+            const jenis = (item.jenisPengajuan || item.jenisOff || '-').toLowerCase();
+            const keterangan = (item.keterangan || '').toLowerCase();
     
-            if (search && !nama.includes(search) && !tanggal.includes(search)) return;
-            if (item.status !== 'Pending' && item.status) return;
+            if (search && !nama.includes(search) && !tanggal.includes(search) && !jenis.includes(search) && !keterangan.includes(search)) return;
+            if (item.status && item.status !== 'Pending') return;
     
             pending++;
+    
             const div = document.createElement('div');
-            div.className = "glass-card p-4 rounded-2xl shadow-sm border-l-4 border-amber-500 space-y-3";
+            div.className = "glass-card p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-3";
+            div.dataset.key = key;
+    
+            const isPindahOff = (item.jenisPengajuan || '').toLowerCase().includes('pindah');
+            const isTukarOff = (item.jenisPengajuan || '').toLowerCase().includes('tukar');
+            const isIzinSakit = ['izin', 'sakit'].some(v => (item.jenisPengajuan || '').toLowerCase().includes(v));
+    
+            let detailHTML = '';
+    
+            if (isPindahOff) {
+                detailHTML = `
+                    <div class="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                        <div class="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60">
+                            <p class="text-slate-400">Tgl Pengajuan</p>
+                            <p class="font-bold">${item.tanggalPengajuan || item.timestamp?.slice(0,10) || '-'}</p>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60">
+                            <p class="text-slate-400">Tgl Pindah</p>
+                            <p class="font-bold">${item.tanggalPindah || item.tanggalOff || '-'}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (isTukarOff) {
+                detailHTML = `
+                    <div class="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                        <div class="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60">
+                            <p class="text-slate-400">Kurir Pengajuan</p>
+                            <p class="font-bold">${item.namaKurir || item.nama || '-'}</p>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60">
+                            <p class="text-slate-400">Kurir Tukar</p>
+                            <p class="font-bold">${item.kurirTukar || '-'}</p>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60">
+                            <p class="text-slate-400">Tgl Pengajuan</p>
+                            <p class="font-bold">${item.tanggalPengajuan || item.timestamp?.slice(0,10) || '-'}</p>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60">
+                            <p class="text-slate-400">Tgl Tukar</p>
+                            <p class="font-bold">${item.tanggalTukar || item.tanggalOff || '-'}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                detailHTML = `
+                    <div class="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                        <div class="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60">
+                            <p class="text-slate-400">Tanggal Pengajuan</p>
+                            <p class="font-bold">${item.tanggalPengajuan || item.timestamp?.slice(0,10) || '-'}</p>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60">
+                            <p class="text-slate-400">Tanggal</p>
+                            <p class="font-bold">${item.tanggalOff || item.tanggal || '-'}</p>
+                        </div>
+                    </div>
+                `;
+            }
+    
             div.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h4 class="text-xs font-bold">${item.namaKurir || item.nama || '-'}</h4>
-                        <p class="text-[10px] text-slate-400">Pengajuan: <span class="text-amber-500 font-bold">${item.jenisPengajuan || 'Izin'}</span></p>
+                <div class="flex items-start gap-3">
+                    <div class="check-wrap ${modeSelectPengajuan ? '' : 'hidden'} mt-1">
+                        <input type="checkbox" class="pengajuan-check accent-sahabatku" data-key="${key}">
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <h4 class="text-xs font-bold truncate">${item.namaKurir || item.nama || '-'}</h4>
+                            <span class="text-[10px] px-2 py-1 rounded-full font-bold text-white bg-amber-500">
+                                ${item.status || 'Pending'}
+                            </span>
+                        </div>
+    
+                        <div class="mt-1 text-[10px] text-slate-400">
+                            Jenis: <b>${item.jenisPengajuan || item.jenisOff || '-'}</b>
+                        </div>
+    
+                        ${detailHTML}
+    
+                        <div class="mt-2 p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60 text-[10px]">
+                            <p class="text-slate-400">Keterangan</p>
+                            <p class="font-semibold">${item.keterangan || '-'}</p>
+                        </div>
+    
+                        <div class="mt-2 text-[10px] text-slate-400 flex flex-wrap gap-2">
+                            <span>Leader: <b>${item.leader || '-'}</b></span>
+                        </div>
                     </div>
                 </div>
-                <div class="p-2.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl text-[11px] space-y-1">
-                    <p><strong>Tanggal:</strong> ${item.tanggalOff || item.tanggal || '-'}</p>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="prosesPengajuan('${key}', 'Ditolak')" class="py-2 rounded-xl text-red-500 border border-red-200 dark:border-red-900 font-bold text-xs">Tolak</button>
-                    <button onclick="prosesPengajuan('${key}', 'Disetujui')" class="py-2 rounded-xl bg-sahabatku text-white font-bold text-xs shadow-sm">Setujui</button>
+    
+                <div class="grid grid-cols-2 gap-2 ${modeSelectPengajuan ? 'hidden' : ''}">
+                    <button onclick="prosesPengajuan('${key}', 'Ditolak')" class="py-2 rounded-xl text-red-500 border border-red-200 dark:border-red-900 font-bold text-xs">
+                        Tolak
+                    </button>
+                    <button onclick="prosesPengajuan('${key}', 'Disetujui')" class="py-2 rounded-xl bg-sahabatku text-white font-bold text-xs shadow-sm">
+                        Setujui
+                    </button>
                 </div>
             `;
+    
             container.appendChild(div);
         });
     
@@ -644,8 +745,36 @@
             bTop.classList.add('hidden');
             bBot.classList.add('hidden');
         }
-    }
     
+        const bar = document.getElementById('pengajuan-actions-bar');
+        if (bar) bar.classList.toggle('hidden', !modeSelectPengajuan);
+    }
+    window.toggleModeSelectPengajuan = function() {
+        modeSelectPengajuan = !modeSelectPengajuan;
+        renderPengajuanList();
+    };
+    
+    window.hapusPengajuanTerpilih = function() {
+        const selected = [...document.querySelectorAll('.pengajuan-check:checked')].map(cb => cb.dataset.key);
+    
+        if (selected.length === 0) {
+            alert('Pilih pengajuan terlebih dahulu.');
+            return;
+        }
+    
+        if (!confirm(`Hapus ${selected.length} pengajuan terpilih?`)) return;
+    
+        selected.forEach(key => {
+            remove(ref(db, `pengajuan/${key}`)).catch(e => alert(e.message));
+        });
+    };
+    
+    window.selectAllPengajuan = function() {
+        const checks = [...document.querySelectorAll('.pengajuan-check')];
+        const allChecked = checks.every(c => c.checked);
+        checks.forEach(c => c.checked = !allChecked);
+    };
+
     function renderJadwalList() {
         const container = document.getElementById('jadwal-off-list');
         if (!container) return;
@@ -1237,26 +1366,49 @@
         const item = DATA_PENGAJUAN[key];
         if (!item) return;
     
+        const jenis = (item.jenisPengajuan || '').toLowerCase();
+        const updateData = {
+            status: statusBaru,
+            updatedAt: new Date().toISOString()
+        };
+    
         if (statusBaru === 'Disetujui') {
-            const newRef = push(ref(db, 'jadwal_off'));
-            set(newRef, {
-                nama: item.namaKurir || item.nama,
-                tanggalMulai: item.tanggalOff || item.tanggal,
-                tanggalSelesai: item.tanggalOff || item.tanggal,
+            let payloadJadwal = {
+                nama: item.namaKurir || item.nama || '-',
+                tanggalMulai: item.tanggalOff || item.tanggal || item.tanggalPindah || '',
+                tanggalSelesai: item.tanggalAkhir || item.tanggalOff || item.tanggal || item.tanggalPindah || '',
                 jenisOff: item.jenisPengajuan || 'Izin',
                 keterangan: item.keterangan || '',
-                status: "Aktif",
+                status: 'Aktif',
+                sourcePengajuan: key,
                 timestamp: new Date().toISOString()
-            });
+            };
+    
+            if (jenis.includes('pindah')) {
+                payloadJadwal.jenisOff = 'Pindah Off';
+                payloadJadwal.keterangan = `Pindah off dari ${item.tanggalPengajuan || '-'} ke ${item.tanggalPindah || item.tanggalOff || '-'}`;
+            } else if (jenis.includes('tukar')) {
+                payloadJadwal.jenisOff = 'Tukar Off';
+                payloadJadwal.keterangan = `Tukar off dengan ${item.kurirTukar || '-'} pada ${item.tanggalTukar || item.tanggalOff || '-'}`;
+            } else if (jenis.includes('izin')) {
+                payloadJadwal.jenisOff = 'Izin';
+            } else if (jenis.includes('sakit')) {
+                payloadJadwal.jenisOff = 'Sakit';
+            }
+    
+            const newRef = push(ref(db, 'jadwal_off'));
+            set(newRef, payloadJadwal);
         }
     
-        update(ref(db, `pengajuan/${key}`), { status: statusBaru }).then(() => {
-            push(ref(db, 'notifikasi'), {
-                title: `Pengajuan ${statusBaru}`,
-                body: `Pengajuan dari ${item.namaKurir || item.nama} telah ${statusBaru.toLowerCase()}`,
-                timestamp: new Date().toISOString()
-            });
-        }).catch(e => alert(e.message));
+        update(ref(db, `pengajuan/${key}`), updateData)
+            .then(() => {
+                push(ref(db, 'notifikasi'), {
+                    title: `Pengajuan ${statusBaru}`,
+                    body: `Pengajuan dari ${item.namaKurir || item.nama || '-'} telah ${statusBaru.toLowerCase()}`,
+                    timestamp: new Date().toISOString()
+                });
+            })
+            .catch(e => alert(e.message));
     };
     
     document.getElementById('btn-prev-bulan').addEventListener('click', () => {
@@ -1317,6 +1469,17 @@
                 .then(() => closePopupJadwalKurir())
                 .catch(err => alert(err.message));
         }
+    });
+    document.getElementById('btn-mode-select-pengajuan')?.addEventListener('click', () => {
+        toggleModeSelectPengajuan();
+    });
+    
+    document.getElementById('btn-select-all-pengajuan')?.addEventListener('click', () => {
+        selectAllPengajuan();
+    });
+    
+    document.getElementById('btn-hapus-pengajuan-terpilih')?.addEventListener('click', () => {
+        hapusPengajuanTerpilih();
     });
     
     document.getElementById('btn-save-manual-absensi').addEventListener('click', () => {
