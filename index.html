@@ -608,11 +608,11 @@
                     <h3 class="text-lg font-black">KPI Kurir Sahabatku</h3>
                     <p class="text-xs text-white/80">Penghargaan, top 5, ranking, dan analisa performa bulanan</p>
                 </div>
-            
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-4 gap-2">
                     <button onclick="renderKPISection('penghargaan')" class="py-2 rounded-xl bg-violet-600 text-white text-[10px] font-bold uppercase">Penghargaan</button>
                     <button onclick="renderKPISection('top5')" class="py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-[10px] font-bold uppercase">Top 5</button>
                     <button onclick="renderKPISection('ranking')" class="py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-[10px] font-bold uppercase">Ranking</button>
+                    <button onclick="renderKPISection('rekapjadwal')" class="py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-[10px] font-bold uppercase">Rekap Jadwal</button>
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="month" id="kpi-filter-bulan" onchange="renderKPISection(currentKPISection)" class="flex-1 px-3 py-3 rounded-2xl border text-xs font-semibold bg-slate-50 dark:bg-darkBg dark:border-slate-700">
@@ -1339,6 +1339,15 @@
             </div>
         </div>
     </div>
+    <div id="modal-kpi-detail" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
+        <div class="bg-white dark:bg-darkCard w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm sm:text-base font-black">Detail Perhitungan KPI</h3>
+                <button onclick="closeKpiDetailModal()" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold">✕</button>
+            </div>
+            <div id="container-kpi-detail" class="space-y-3"></div>
+        </div>
+    </div>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -1763,10 +1772,170 @@
                 populateLeaderDropdown();
                 renderLeaderList();
             });
-
             onValue(ref(db, 'jadwal_off'), (snapshot) => {
                 cloudJadwalOff = snapshot.val() || {};
             });
+            
+            window.calcRekapJadwalKurir = function() {
+                const bulan = getKpiMonth();
+                const rekapMap = {};
+            
+                const getNamaKurir = (obj) => (obj?.nama || obj?.namaKurir || obj?.username || '').trim();
+                const getKeyKurir = (obj) => (obj?.idKurir || obj?.username || obj?.namaKurir || obj?.nama || '').trim();
+            
+                // Siapkan data dasar kurir
+                Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
+                    if (!u || u.role !== 'kurir') return;
+            
+                    const nama = getNamaKurir(u);
+                    const key = getKeyKurir({ ...u, idKurir: id });
+            
+                    if (!nama && !key) return;
+            
+                    rekapMap[key] = {
+                        idKurir: key,
+                        namaKurir: nama || key,
+                        leader: (u.leader || '-').trim(),
+                        totalOff: 0,
+                        totalTidakAmbilOff: 0,
+                        totalIzin: 0,
+                        totalSakit: 0,
+                        totalAbsenMasuk: 0,
+                        totalAbsenPulang: 0,
+                        hadirScore: 0,
+                        _tanggalMap: {}
+                    };
+                });
+            
+                // Hitung absensi
+                Object.entries(cloudAbsensiList || {}).forEach(([keyAbs, a]) => {
+                    if (!a) return;
+            
+                    const nama = (a.namaKurir || '').trim();
+                    const idKurir = (a.idKurir || a.kurirId || '').trim();
+                    const tgl = (a.tanggal || '').trim();
+            
+                    if (!tgl || tgl.slice(0, 7) !== bulan) return;
+            
+                    const key = idKurir || nama;
+                    if (!key) return;
+            
+                    if (!rekapMap[key]) {
+                        rekapMap[key] = {
+                            idKurir: key,
+                            namaKurir: nama || key,
+                            leader: (a.leader || '-').trim(),
+                            totalOff: 0,
+                            totalTidakAmbilOff: 0,
+                            totalIzin: 0,
+                            totalSakit: 0,
+                            totalAbsenMasuk: 0,
+                            totalAbsenPulang: 0,
+                            hadirScore: 0,
+                            _tanggalMap: {}
+                        };
+                    }
+            
+                    const row = rekapMap[key];
+            
+                    // total absen masuk/pulang
+                    if (a.jamMasuk) row.totalAbsenMasuk++;
+                    if (a.jamPulang) row.totalAbsenPulang++;
+            
+                    // hitung hadir per tanggal:
+                    // masuk + pulang = 1
+                    // salah satu saja = 0.5
+                    if (!row._tanggalMap[tgl]) {
+                        row._tanggalMap[tgl] = { masuk: false, pulang: false };
+                    }
+            
+                    if (a.jamMasuk) row._tanggalMap[tgl].masuk = true;
+                    if (a.jamPulang) row._tanggalMap[tgl].pulang = true;
+            
+                    const status = (a.status || '').toLowerCase();
+                    if (status === 'izin') row.totalIzin++;
+                    if (status === 'sakit') row.totalSakit++;
+                });
+            
+                // Hitung jadwal off
+                Object.values(cloudJadwalOff || {}).forEach(j => {
+                    if (!j) return;
+            
+                    const nama = (j.nama || '').trim();
+                    const tglMulai = (j.tanggalMulai || '').trim();
+                    const tglSelesai = (j.tanggalSelesai || tglMulai || '').trim();
+            
+                    if (!nama || !tglMulai || tglMulai.slice(0, 7) !== bulan) return;
+            
+                    const key = nama;
+                    if (!rekapMap[key]) {
+                        rekapMap[key] = {
+                            idKurir: key,
+                            namaKurir: nama,
+                            leader: '-',
+                            totalOff: 0,
+                            totalTidakAmbilOff: 0,
+                            totalIzin: 0,
+                            totalSakit: 0,
+                            totalAbsenMasuk: 0,
+                            totalAbsenPulang: 0,
+                            hadirScore: 0,
+                            _tanggalMap: {}
+                        };
+                    }
+            
+                    const row = rekapMap[key];
+            
+                    // off dihitung per tanggal range
+                    const start = new Date(tglMulai);
+                    const end = new Date(tglSelesai);
+                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        const tglLoop = `${y}-${m}-${dd}`;
+            
+                        if (tglLoop.slice(0, 7) !== bulan) continue;
+            
+                        row.totalOff++;
+            
+                        const statusOff = (j.status || '').toLowerCase();
+                        if (statusOff !== 'aktif') {
+                            row.totalTidakAmbilOff++;
+                        }
+            
+                        // kalau off aktif, tetap dianggap off
+                        if (!row._tanggalMap[tglLoop]) {
+                            row._tanggalMap[tglLoop] = { masuk: false, pulang: false, off: true };
+                        } else {
+                            row._tanggalMap[tglLoop].off = true;
+                        }
+                    }
+                });
+            
+                // Final hitung kehadiran
+                Object.values(rekapMap).forEach(row => {
+                    let score = 0;
+            
+                    Object.values(row._tanggalMap).forEach(v => {
+                        if (v.masuk && v.pulang) score += 1;
+                        else if (v.masuk || v.pulang) score += 0.5;
+                        else if (v.off) {
+                            // off aktif tidak menambah hadir
+                        }
+                    });
+            
+                    row.hadirScore = score;
+                    delete row._tanggalMap;
+                });
+            
+                return Object.values(rekapMap)
+                    .sort((a, b) => a.namaKurir.localeCompare(b.namaKurir))
+                    .map(item => ({
+                        ...item,
+                        kehadiran: item.hadirScore
+                    }));
+            };
         
             onValue(ref(db, 'testimonials'), (snapshot) => {
                 cloudTestimonialList = snapshot.val() || {};
@@ -2570,6 +2739,69 @@
                 .then(() => alert("Akun kurir berhasil dihapus."))
                 .catch(err => alert("Gagal menghapus: " + err.message));
             }
+        };
+        let selectedKpiDetail = null;
+        
+        window.openKpiDetailModal = function(idKurir) {
+            const bulan = getKpiMonth();
+            const data = buildKPIData(bulan);
+            const item = data.find(x => x.id === idKurir);
+            if (!item) return;
+        
+            selectedKpiDetail = item;
+        
+            const badge = getRatingBadge(item.rating);
+            const container = document.getElementById('container-kpi-detail');
+            if (!container) return;
+        
+            container.innerHTML = `
+                <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 space-y-2">
+                    <div class="text-lg font-black">${item.nama}</div>
+                    <div class="text-xs text-slate-500">Leader: ${item.leader || '-'}</div>
+                    <div class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r ${badge.bg} text-white text-[10px] font-black">
+                        ${badge.emoji} ${badge.label}
+                    </div>
+                </div>
+        
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="p-3 rounded-2xl bg-white dark:bg-slate-800 border">
+                        <div class="text-[10px] text-slate-400 uppercase">Kehadiran</div>
+                        <div class="font-black mt-1">${item.hadir} (${item.kehadiranScore.toFixed(1)} poin)</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-white dark:bg-slate-800 border">
+                        <div class="text-[10px] text-slate-400 uppercase">Penghasilan</div>
+                        <div class="font-black mt-1">Rp ${item.totalPenghasilan.toLocaleString('id-ID')}</div>
+                        <div class="text-[10px] text-slate-400 mt-1">${item.totalPenghasilanScore.toFixed(1)} poin</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-white dark:bg-slate-800 border">
+                        <div class="text-[10px] text-slate-400 uppercase">Total Nota</div>
+                        <div class="font-black mt-1">${item.totalNota}</div>
+                        <div class="text-[10px] text-slate-400 mt-1">${item.totalNotaScore.toFixed(1)} poin</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-white dark:bg-slate-800 border">
+                        <div class="text-[10px] text-slate-400 uppercase">Trx Mitra</div>
+                        <div class="font-black mt-1">${item.trxMitra}</div>
+                        <div class="text-[10px] text-slate-400 mt-1">${item.trxMitraScore.toFixed(1)} poin</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-white dark:bg-slate-800 border col-span-2">
+                        <div class="text-[10px] text-slate-400 uppercase">Off Berlebihan</div>
+                        <div class="font-black mt-1">${item.off} off</div>
+                        <div class="text-[10px] text-slate-400 mt-1">${item.offScore.toFixed(1)} poin</div>
+                        <div class="text-[10px] text-slate-500 mt-1">Normal maksimal 2 off/bulan</div>
+                    </div>
+                </div>
+        
+                <div class="p-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white">
+                    <div class="text-[10px] uppercase tracking-wider opacity-80">Total Rating</div>
+                    <div class="text-3xl font-black mt-1">${item.rating}%</div>
+                </div>
+            `;
+        
+            document.getElementById('modal-kpi-detail').classList.remove('hidden');
+        };
+        
+        window.closeKpiDetailModal = function() {
+            document.getElementById('modal-kpi-detail').classList.add('hidden');
         };
 
         function renderAdminKurirList() {
@@ -5086,24 +5318,32 @@
         
         function calcKpiForKurir(namaKurir, bulan) {
             const daysInMonth = getDaysInMonth(bulan);
+            const namaTarget = (namaKurir || '').trim().toLowerCase();
         
-            let hadir = 0;
-            let masukTepat = 0;
-            let off = 0;
+            const kurirObj = Object.values(cloudKurirList || {}).find(u => {
+                if (!u || u.role !== 'kurir') return false;
+                const nama = (u.nama || '').trim().toLowerCase();
+                const username = (u.username || '').trim().toLowerCase();
+                return nama === namaTarget || username === namaTarget;
+            });
+        
+            const usernameTarget = (kurirObj?.username || '').trim().toLowerCase();
+            const namaResmi = kurirObj?.nama || namaKurir || '-';
+            const leaderResmi = kurirObj?.leader || '-';
+        
+            const rekap = getRekapJadwalKurirByName(namaResmi, bulan);
+        
             let totalNota = 0;
             let trxMitra = 0;
             let totalPenghasilan = 0;
         
-            Object.values(cloudAbsensiList || {}).forEach(a => {
-                if (!a || a.namaKurir !== namaKurir) return;
-                if (!a.tanggal || a.tanggal.slice(0, 7) !== bulan) return;
-        
-                if (a.jamMasuk && a.jamPulang) hadir++;
-                if (a.jamMasuk && a.jamMasuk <= '08.00') masukTepat++;
-            });
-        
             Object.values(cloudNotaList || {}).forEach(n => {
-                if (!n || n.kurirNama !== namaKurir) return;
+                if (!n) return;
+        
+                const kurirUsername = (n.kurirUsername || '').trim().toLowerCase();
+                const kurirNama = (n.kurirNama || '').trim().toLowerCase();
+        
+                if (kurirUsername !== usernameTarget && kurirNama !== namaTarget) return;
                 if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
         
                 totalNota++;
@@ -5113,58 +5353,194 @@
             });
         
             Object.values(cloudLogMitra || {}).forEach(log => {
-                if (!log || log.kurirNama !== namaKurir) return;
+                if (!log) return;
+        
+                const kurirUsername = (log.kurirUsername || '').trim().toLowerCase();
+                const kurirNama = (log.kurirNama || '').trim().toLowerCase();
+        
+                if (kurirUsername !== usernameTarget && kurirNama !== namaTarget) return;
                 if (!log.tglRaw || log.tglRaw.slice(0, 7) !== bulan) return;
+        
                 trxMitra += parseInt(log.trxInput) || 0;
             });
         
-            Object.values(cloudJadwalOff || {}).forEach(j => {
-                if (!j || j.nama !== namaKurir) return;
-                if (!j.tanggalMulai || j.tanggalMulai.slice(0, 7) !== bulan) return;
-                off++;
-            });
+            // Bobot KPI
+            // 1. Kehadiran (20%)
+            const kehadiranScore = Math.min((rekap.totalHadirScore / daysInMonth) * 20, 20);
         
-            const kehadiranScore = (hadir / daysInMonth) * 30;
-            const totalPenghasilanScore = Math.min((totalPenghasilan / (daysInMonth * 100000)) * 10, 10);
-            const targetNotaScore = Math.min((totalNota / (daysInMonth * 15)) * 30, 30);
-            const ketepatanAbsenScore = (masukTepat / daysInMonth) * 20;
-            const offScore = off <= 3 ? 10 : Math.max(0, 10 - ((off - 3) * 2));
+            // 2. Total Penghasilan (20%)
+            const totalPenghasilanScore = Math.min((totalPenghasilan / (daysInMonth * 100000)) * 20, 20);
+        
+            // 3. Total Nota (30%)
+            const totalNotaScore = Math.min((totalNota / (daysInMonth * 15)) * 30, 30);
+        
+            // 4. Trx Mitra (20%)
+            const trxMitraScore = Math.min((trxMitra / (daysInMonth * 10)) * 20, 20);
+        
+            // 5. Off Berlebihan (10%)
+            const offNormal = 2;
+            const offScore = rekap.totalOff <= offNormal
+                ? 10
+                : Math.max(0, 10 - ((rekap.totalOff - offNormal) * 2));
         
             const rating = Math.min(100, Math.round(
                 kehadiranScore +
                 totalPenghasilanScore +
-                targetNotaScore +
-                ketepatanAbsenScore +
+                totalNotaScore +
+                trxMitraScore +
                 offScore
             ));
         
             return {
-                hadir,
-                masukTepat,
-                off,
+                nama: namaResmi,
+                username: usernameTarget,
+                leader: leaderResmi,
+                hadir: rekap.totalHadirScore,
+                hadirFull: rekap.hadirFull,
+                hadirHalf: rekap.hadirHalf,
+                masukTepat: rekap.totalAbsenMasuk,
+                off: rekap.totalOff,
                 trxMitra,
                 totalNota,
                 totalPenghasilan,
+                kehadiranScore,
+                totalPenghasilanScore,
+                totalNotaScore,
+                trxMitraScore,
+                offScore,
                 rating
+            };
+        }
+        function getRekapJadwalKurirByName(namaKurir, bulan) {
+            const namaTarget = (namaKurir || '').trim().toLowerCase();
+            if (!namaTarget) {
+                return {
+                    hadirFull: 0,
+                    hadirHalf: 0,
+                    totalHadirScore: 0,
+                    totalOff: 0,
+                    totalTidakAmbilOff: 0,
+                    totalIzin: 0,
+                    totalSakit: 0,
+                    totalAbsenMasuk: 0,
+                    totalAbsenPulang: 0
+                };
+            }
+        
+            const tanggalMap = {};
+            let totalOff = 0;
+            let totalTidakAmbilOff = 0;
+            let totalIzin = 0;
+            let totalSakit = 0;
+            let totalAbsenMasuk = 0;
+            let totalAbsenPulang = 0;
+        
+            const cocokNama = (a) => {
+                const n = (a || '').trim().toLowerCase();
+                return n === namaTarget;
+            };
+        
+            Object.values(cloudAbsensiList || {}).forEach(a => {
+                if (!a) return;
+        
+                const nama = (a.namaKurir || '').trim();
+                const tgl = (a.tanggal || '').trim();
+                if (!tgl || tgl.slice(0, 7) !== bulan) return;
+                if (!cocokNama(nama)) return;
+        
+                if (!tanggalMap[tgl]) {
+                    tanggalMap[tgl] = { masuk: false, pulang: false, off: false };
+                }
+        
+                if (a.jamMasuk) {
+                    tanggalMap[tgl].masuk = true;
+                    totalAbsenMasuk++;
+                }
+                if (a.jamPulang) {
+                    tanggalMap[tgl].pulang = true;
+                    totalAbsenPulang++;
+                }
+        
+                const status = (a.status || '').toLowerCase();
+                if (status === 'izin') totalIzin++;
+                if (status === 'sakit') totalSakit++;
+            });
+        
+            Object.values(cloudJadwalOff || {}).forEach(j => {
+                if (!j) return;
+        
+                const nama = (j.nama || '').trim();
+                const tglMulai = (j.tanggalMulai || '').trim();
+                const tglSelesai = (j.tanggalSelesai || tglMulai || '').trim();
+                if (!tglMulai || tglMulai.slice(0, 7) !== bulan) return;
+                if (!cocokNama(nama)) return;
+        
+                const start = new Date(tglMulai);
+                const end = new Date(tglSelesai);
+        
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const tglLoop = `${y}-${m}-${dd}`;
+        
+                    if (tglLoop.slice(0, 7) !== bulan) continue;
+        
+                    totalOff++;
+        
+                    const statusOff = (j.status || '').toLowerCase();
+                    if (statusOff !== 'aktif') totalTidakAmbilOff++;
+        
+                    if (!tanggalMap[tglLoop]) {
+                        tanggalMap[tglLoop] = { masuk: false, pulang: false, off: true };
+                    } else {
+                        tanggalMap[tglLoop].off = true;
+                    }
+                }
+            });
+        
+            let hadirFull = 0;
+            let hadirHalf = 0;
+        
+            Object.values(tanggalMap).forEach(v => {
+                if (v.masuk && v.pulang) hadirFull += 1;
+                else if (v.masuk || v.pulang) hadirHalf += 1;
+            });
+        
+            return {
+                hadirFull,
+                hadirHalf,
+                totalHadirScore: hadirFull + (hadirHalf * 0.5),
+                totalOff,
+                totalTidakAmbilOff,
+                totalIzin,
+                totalSakit,
+                totalAbsenMasuk,
+                totalAbsenPulang
             };
         }
         
         function buildKPIData(bulan) {
             const data = [];
+        
             Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
                 if (!u || u.role !== 'kurir') return;
                 if (u.status && u.status !== 'aktif') return;
         
-                const nama = u.nama || u.username || '-';
-                const row = calcKpiForKurir(nama, bulan);
+                const nama = (u.nama || '').trim();
+                const username = (u.username || '').trim();
+        
+                const row = calcKpiForKurir(username || nama, bulan);
         
                 data.push({
                     id,
-                    nama,
-                    leader: u.leader || '-',
+                    nama: row.nama || nama || '-',
+                    username: row.username || username || '-',
+                    leader: row.leader || u.leader || '-',
                     ...row
                 });
             });
+        
             return data.sort((a, b) => b.rating - a.rating);
         }
         
@@ -5183,6 +5559,68 @@
             const topKurirTerbaik = [...data].sort((a, b) => b.rating - a.rating)[0];
             const topTrxMitra = [...data].sort((a, b) => b.trxMitra - a.trxMitra)[0];
             const topAktif = [...data].sort((a, b) => b.rating - a.rating)[0];
+            if (section === 'rekapjadwal') {
+                const rekap = window.calcRekapJadwalKurir();
+            
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        ${rekap.length ? rekap.map((r, i) => `
+                            <div class="bg-white dark:bg-darkCard rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-3">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-violet-600 dark:text-violet-300 font-black text-xs">
+                                                ${i + 1}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="font-bold text-sm truncate">${r.namaKurir}</div>
+                                                <div class="text-[10px] text-slate-400 truncate">Leader: ${r.leader || '-'}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <div class="text-[10px] text-slate-400 uppercase font-bold">Kehadiran</div>
+                                        <div class="text-lg font-black text-success">${r.kehadiran}</div>
+                                    </div>
+                                </div>
+            
+                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                                        <div class="text-[10px] text-slate-400 uppercase">Total Off</div>
+                                        <div class="font-bold">${r.totalOff}</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                                        <div class="text-[10px] text-slate-400 uppercase">Tidak Ambil Off</div>
+                                        <div class="font-bold text-rose-500">${r.totalTidakAmbilOff}</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                                        <div class="text-[10px] text-slate-400 uppercase">Izin</div>
+                                        <div class="font-bold text-amber-500">${r.totalIzin}</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                                        <div class="text-[10px] text-slate-400 uppercase">Sakit</div>
+                                        <div class="font-bold text-blue-500">${r.totalSakit}</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                                        <div class="text-[10px] text-slate-400 uppercase">Absen Masuk</div>
+                                        <div class="font-bold">${r.totalAbsenMasuk}</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                                        <div class="text-[10px] text-slate-400 uppercase">Absen Pulang</div>
+                                        <div class="font-bold">${r.totalAbsenPulang}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') : `
+                            <div class="text-center text-xs text-slate-400 py-6 bg-white dark:bg-darkCard rounded-2xl border">
+                                Belum ada data rekap jadwal.
+                            </div>
+                        `}
+                    </div>
+                `;
+            
+                return;
+            }
         
             if (section === 'penghargaan') {
                 container.innerHTML = `
@@ -5294,9 +5732,8 @@
                 `;
                 return;
             }
-        
             container.innerHTML = `
-                <div class="space-y-4">
+                <div class="space-y-3">
                     ${data.map((x, i) => {
                         const badge = getRatingBadge(x.rating);
                         const podium = getPodiumClass(i + 1);
@@ -5304,54 +5741,62 @@
                         const isTop3 = i < 3;
             
                         return `
-                            <div class="relative overflow-hidden rounded-[28px] border border-white/60 dark:border-slate-700 bg-white/90 dark:bg-darkCard shadow-[0_10px_30px_rgba(15,23,42,0.12)] backdrop-blur-md">
+                            <div onclick="openKpiDetailModal('${x.id || ''}')" 
+                                 class="relative overflow-hidden rounded-2xl sm:rounded-[28px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-darkCard shadow-lg cursor-pointer active:scale-[0.99] transition-transform">
+                                
                                 <div class="absolute inset-0 opacity-60 bg-gradient-to-br ${isTop3 ? 'from-white via-white to-violet-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800' : 'from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800'}"></div>
-                                <div class="relative p-4">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div class="flex items-center gap-3 min-w-0">
-                                            <div class="relative w-16 h-16 shrink-0 rounded-[22px] bg-gradient-to-br ${isTop3 ? podium : 'from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800'} p-[2px] shadow-lg">
-                                                <div class="w-full h-full rounded-[20px] bg-white dark:bg-darkCard flex items-center justify-center ring-4 ${badge.ring}">
+            
+                                <div class="relative p-3 sm:p-4">
+                                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        
+                                        <div class="flex items-start gap-3 min-w-0">
+                                            <div class="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl sm:rounded-[22px] bg-gradient-to-br ${isTop3 ? podium : 'from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800'} p-[2px] shadow-lg">
+                                                <div class="w-full h-full rounded-[18px] sm:rounded-[20px] bg-white dark:bg-darkCard flex items-center justify-center ring-4 ${badge.ring}">
                                                     <div class="text-center leading-none">
-                                                        <div class="text-lg font-black">${getKpiAvatarName(x.nama)}</div>
-                                                        <div class="text-[9px] font-black uppercase text-slate-400 mt-1">#${i + 1}</div>
+                                                        <div class="text-base sm:text-lg font-black">${getKpiAvatarName(x.nama)}</div>
+                                                        <div class="text-[8px] sm:text-[9px] font-black uppercase text-slate-400 mt-1">#${i + 1}</div>
                                                     </div>
                                                 </div>
                                             </div>
             
                                             <div class="min-w-0">
-                                                <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isTop3 ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}">
+                                                <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${isTop3 ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}">
                                                     ${isTop3 ? 'TOP RANK' : 'RANK'} ${i + 1}
                                                 </div>
-                                                <div class="text-lg font-black mt-2 truncate">${x.nama}</div>
-                                                <div class="text-xs text-slate-500 dark:text-slate-400">Leader: ${x.leader || '-'}</div>
+                                                <div class="text-base sm:text-lg font-black mt-2 truncate">${x.nama}</div>
+                                                <div class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">Leader: ${x.leader || '-'}</div>
                                             </div>
                                         </div>
             
-                                        <div class="text-right shrink-0">
-                                            <div class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r ${badge.bg || 'from-slate-100 to-slate-200'} text-white text-[10px] font-black shadow-md">
+                                        <div class="flex items-center justify-between sm:flex-col sm:items-end gap-2 shrink-0">
+                                            <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r ${badge.bg || 'from-slate-100 to-slate-200'} text-white text-[9px] sm:text-[10px] font-black shadow-md">
                                                 <span>${badge.emoji}</span>
                                                 <span>${badge.label}</span>
                                             </div>
-                                            <div class="mt-2 text-3xl font-black ${badge.color || 'text-slate-900 dark:text-white'}">${x.rating}%</div>
+                                            <div class="text-2xl sm:text-3xl font-black ${badge.color || 'text-slate-900 dark:text-white'}">
+                                                ${x.rating}%
+                                            </div>
                                         </div>
                                     </div>
             
                                     <div class="mt-4 grid grid-cols-2 gap-2">
                                         <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
                                             <div class="text-[10px] text-slate-400 uppercase font-bold">Trx Mitra</div>
-                                            <div class="text-base font-black mt-1">${x.trxMitra}</div>
+                                            <div class="text-sm sm:text-base font-black mt-1">${x.trxMitra}</div>
                                         </div>
                                         <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
                                             <div class="text-[10px] text-slate-400 uppercase font-bold">Total Nota</div>
-                                            <div class="text-base font-black mt-1">${x.totalNota}</div>
+                                            <div class="text-sm sm:text-base font-black mt-1">${x.totalNota}</div>
                                         </div>
                                         <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
                                             <div class="text-[10px] text-slate-400 uppercase font-bold">Penghasilan</div>
-                                            <div class="text-base font-black mt-1 text-emerald-600 dark:text-emerald-400">Rp ${x.totalPenghasilan.toLocaleString('id-ID')}</div>
+                                            <div class="text-sm sm:text-base font-black mt-1 text-emerald-600 dark:text-emerald-400">
+                                                Rp ${x.totalPenghasilan.toLocaleString('id-ID')}
+                                            </div>
                                         </div>
                                         <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
                                             <div class="text-[10px] text-slate-400 uppercase font-bold">Rating</div>
-                                            <div class="text-base font-black mt-1">${x.rating}%</div>
+                                            <div class="text-sm sm:text-base font-black mt-1">${x.rating}%</div>
                                         </div>
                                     </div>
             
@@ -5360,9 +5805,13 @@
                                             <span>Progress Ranking</span>
                                             <span>${x.rating}%</span>
                                         </div>
-                                        <div class="h-3 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                        <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
                                             <div class="h-full ${progress} rounded-full shadow-inner transition-all duration-500" style="width:${x.rating}%"></div>
                                         </div>
+                                    </div>
+            
+                                    <div class="mt-3 text-[10px] text-primary font-bold">
+                                        Tap card untuk lihat detail perhitungan
                                     </div>
                                 </div>
                             </div>
@@ -5371,13 +5820,13 @@
                 </div>
             
                 <div class="mt-4 p-4 rounded-3xl bg-white/90 dark:bg-darkCard border border-slate-100 dark:border-slate-800 shadow-lg">
-                    <h4 class="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Keterangan Perhitungan Rating</h4>
+                    <h4 class="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Keterangan Perhitungan Ranking</h4>
                     <div class="text-[11px] text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed">
-                        <p><b>1. Kehadiran (30%)</b> = Hadir berdasarkan absen masuk + pulang.</p>
-                        <p><b>2. Total Penghasilan (10%)</b> = Nilai penghasilan bulanan kurir.</p>
-                        <p><b>3. Target Nota (30%)</b> = Performa jumlah nota bulanan.</p>
-                        <p><b>4. Ketepatan Absen (20%)</b> = Rajin absen masuk tepat waktu.</p>
-                        <p><b>5. Off Berlebihan (10%)</b> = Jumlah off normal vs berlebih.</p>
+                        <p><b>1. Kehadiran (20%)</b> = Hadir dari absen masuk + pulang. Masuk atau pulang saja dihitung setengah.</p>
+                        <p><b>2. Total Penghasilan (20%)</b> = Penghasilan bulanan dari ongkir + biaya tambahan.</p>
+                        <p><b>3. Total Nota (30%)</b> = Jumlah nota bulanan yang berhasil diinput.</p>
+                        <p><b>4. Trx Mitra (20%)</b> = Total transaksi mitra bulanan.</p>
+                        <p><b>5. OFF Berlebihan (10%)</b> = Normal maksimal 2 OFF/bulan, lebih dari itu poin berkurang.</p>
                     </div>
                 </div>
             `;
