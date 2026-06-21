@@ -657,6 +657,27 @@
       }).join('');
     }
     window.autoBuatTidakAmbilOff = async (nama, tanggal) => {
+      // Cari data user berdasarkan nama untuk mengambil password-nya
+      const userNode = Object.values(DATA_USERS).find(u => (u.nama === nama || u.username === nama));
+      
+      if (!userNode) {
+        alert('Data user tidak ditemukan.');
+        return;
+      }
+    
+      const correctPassword = userNode.password || "";
+    
+      // Munculkan Pop-up Prompt untuk verifikasi input password
+      const inputPassword = prompt(`Masukkan password untuk kurir ${nama}:`);
+      
+      if (inputPassword === null) return; // Jika user menekan batal
+    
+      if (inputPassword !== correctPassword) {
+        alert('Password yang Anda masukkan salah!');
+        return;
+      }
+    
+      // Jika password benar, lanjutkan proses push data ke Firebase
       await set(push(ref(db, 'pengajuan')), {
         namaKurir: nama,
         jenisPengajuan: 'Tidak Ambil Off',
@@ -1302,12 +1323,27 @@
       const kurirTukar = document.getElementById('form-pengajuan-kurir-tukar').value;
       const tanggalTukar = document.getElementById('form-pengajuan-tanggal-tukar').value;
       const keterangan = document.getElementById('form-pengajuan-ket').value.trim();
-
+    
       if (!namaKurir || !jenisPengajuan) return alert('Nama kurir dan jenis pengajuan wajib diisi.');
       if ((jenisPengajuan === 'Off Reguler' || jenisPengajuan === 'Tidak Ambil Off' || jenisPengajuan === 'Izin' || jenisPengajuan === 'Sakit') && !tanggalOff) return alert('Tanggal wajib diisi.');
       if (jenisPengajuan === 'Pindah Off' && (!tanggalOff || !tanggalPindah)) return alert('Tanggal lama dan tanggal pindah wajib diisi.');
       if (jenisPengajuan === 'Tukar Off' && (!tanggalOff || !kurirTukar || !tanggalTukar)) return alert('Lengkapi data tukar off.');
-
+    
+      // Ambil data user dari DATA_USERS berdasarkan namaKurir yang dipilih
+      const userNode = Object.values(DATA_USERS).find(u => (u.nama === namaKurir || u.username === namaKurir));
+      
+      if (!userNode) {
+        return alert('Data kurir tidak valid di database.');
+      }
+    
+      const correctPassword = userNode.password || "";
+    
+      const inputPassword = prompt(`Verifikasi Pengajuan: Masukkan password untuk ${namaKurir}:`);
+      
+      if (inputPassword === null) return; // Batal klik
+      if (inputPassword !== correctPassword) {
+        return alert('Password salah! Pengajuan gagal dikirim.');
+      }
       set(push(ref(db, 'pengajuan')), {
         namaKurir, jenisPengajuan, tanggalOff, tanggalPindah, kurirTukar, tanggalTukar, keterangan,
         status: 'Pending', timestamp: new Date().toISOString()
@@ -1321,7 +1357,6 @@
         updatePengajuanVisibility();
       });
     });
-
     window.prosesPengajuan = async (key, statusBaru) => {
       const item = DATA_PENGAJUAN[key];
       if (!item) return;
