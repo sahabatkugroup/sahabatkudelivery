@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ABSENSI SAHABATKU</title>
+  <title>ABSENSI ADMIN SAHABATKU</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -60,7 +60,7 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button id="btn-toggle-mode" class="px-3 py-2 rounded-xl bg-sahabatku text-white text-[10px] font-bold">Admin Panel</button>
+        <button id="btn-toggle-mode" class="hidden px-3 py-2 rounded-xl bg-sahabatku text-white text-[10px] font-bold">Admin Panel</button>
         <button id="themeToggle" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
           <i class="fa-solid fa-moon dark:hidden"></i>
           <i class="fa-solid fa-sun hidden dark:block"></i>
@@ -444,11 +444,11 @@
     });
 
     function showMode(mode) {
-      currentMode = mode;
-      document.getElementById('kurir-root').classList.toggle('hidden', mode !== 'kurir');
-      document.getElementById('admin-root').classList.toggle('hidden', mode !== 'admin');
-      document.getElementById('btn-toggle-mode').textContent = mode === 'kurir' ? 'Admin Panel' : 'Kurir Panel';
-      document.getElementById('app-title').textContent = mode === 'kurir' ? 'Kurir Panel' : 'Admin Panel';
+      currentMode = 'admin';
+      document.getElementById('kurir-root').classList.add('hidden');
+      document.getElementById('admin-root').classList.remove('hidden');
+      document.getElementById('btn-toggle-mode').textContent = 'Kurir Panel';
+      document.getElementById('app-title').textContent = 'Admin Panel';
     }
 
     document.getElementById('btn-toggle-mode').addEventListener('click', () => {
@@ -612,7 +612,7 @@
         wrap.innerHTML = `
           <div class="px-3 py-2 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-[10px] text-emerald-700 dark:text-emerald-300">
             <i class="fa-solid fa-circle-check mr-1"></i>
-            Tidak ada off hari ini.
+            Tidak ada OFF HARI INI!.
           </div>
         `;
         return;
@@ -667,7 +667,7 @@
         timestamp: new Date().toISOString()
       });
     
-      toast('Pengajuan tidak ambil off berhasil');
+      toast('Pengajuan TIDAK AMBIL OFF berhasil');
     };
 
     function renderKurirJadwalList() {
@@ -1471,8 +1471,8 @@
           <div><div class="font-bold">${j.nama}</div><div class="text-[10px] text-slate-400">${j.keterangan || '-'}</div></div>
           <span class="px-2 py-1 rounded-full text-white text-[10px] font-bold ${jenisColor(j.jenisOff)}">${j.jenisOff}</span>
         </div>`).join('');
-      document.getElementById('popup-detail-title').textContent = 'Off Hari Ini';
-      document.getElementById('popup-detail-content').innerHTML = list || '<div class="text-xs text-slate-400">Tidak ada off hari ini.</div>';
+      document.getElementById('popup-detail-title').textContent = 'Off HARI INI!';
+      document.getElementById('popup-detail-content').innerHTML = list || '<div class="text-xs text-slate-400">TIDAK ADA YANG OFF HARI INI!.</div>';
       document.getElementById('popup-detail').classList.remove('hidden');
       document.getElementById('popup-detail').classList.add('flex');
     };
@@ -1526,8 +1526,7 @@
     const now = new Date();
     currentViewDate = new Date(now.getFullYear(), now.getMonth(), 1);
     syncToCurrentMonth();
-    showMode('kurir');
-    switchKurirTab('jadwal');
+    showMode('admin');
     switchAdminTab('jadwal');
     renderAll();
   </script>
