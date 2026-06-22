@@ -1777,20 +1777,24 @@
                 const bulan = getKpiMonth();
                 const rekapMap = {};
             
-                const getNamaKurir = (obj) => (obj?.nama || obj?.namaKurir || obj?.username || '').trim();
-                const getKeyKurir = (obj) => (obj?.idKurir || obj?.username || obj?.namaKurir || obj?.nama || '').trim();
+                const norm = (v) => (v || '').toString().trim().toLowerCase();
             
-                // Siapkan data dasar kurir
+                const getKeyKurir = (obj, fallbackId = '') => {
+                    return norm(obj?.idKurir || obj?.kurirId || obj?.username || obj?.kurirUsername || fallbackId);
+                };
+            
+                // Siapkan data dasar kurir dari users
                 Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
                     if (!u || u.role !== 'kurir') return;
             
-                    const nama = getNamaKurir(u);
-                    const key = getKeyKurir({ ...u, idKurir: id });
+                    const key = norm(id);
+                    const nama = (u.nama || '').trim();
             
-                    if (!nama && !key) return;
+                    if (!key) return;
             
                     rekapMap[key] = {
                         idKurir: key,
+                        username: (u.username || '').trim().toLowerCase(),
                         namaKurir: nama || key,
                         leader: (u.leader || '-').trim(),
                         totalOff: 0,
@@ -1808,19 +1812,17 @@
                 Object.entries(cloudAbsensiList || {}).forEach(([keyAbs, a]) => {
                     if (!a) return;
             
-                    const nama = (a.namaKurir || '').trim();
-                    const idKurir = (a.idKurir || a.kurirId || '').trim();
                     const tgl = (a.tanggal || '').trim();
-            
                     if (!tgl || tgl.slice(0, 7) !== bulan) return;
             
-                    const key = idKurir || nama;
+                    const key = getKeyKurir(a);
                     if (!key) return;
             
                     if (!rekapMap[key]) {
                         rekapMap[key] = {
                             idKurir: key,
-                            namaKurir: nama || key,
+                            username: norm(a.username || a.kurirUsername || ''),
+                            namaKurir: (a.namaKurir || a.nama || key).trim(),
                             leader: (a.leader || '-').trim(),
                             totalOff: 0,
                             totalTidakAmbilOff: 0,
@@ -1835,13 +1837,9 @@
             
                     const row = rekapMap[key];
             
-                    // total absen masuk/pulang
                     if (a.jamMasuk) row.totalAbsenMasuk++;
                     if (a.jamPulang) row.totalAbsenPulang++;
             
-                    // hitung hadir per tanggal:
-                    // masuk + pulang = 1
-                    // salah satu saja = 0.5
                     if (!row._tanggalMap[tgl]) {
                         row._tanggalMap[tgl] = { masuk: false, pulang: false };
                     }
@@ -1849,7 +1847,7 @@
                     if (a.jamMasuk) row._tanggalMap[tgl].masuk = true;
                     if (a.jamPulang) row._tanggalMap[tgl].pulang = true;
             
-                    const status = (a.status || '').toLowerCase();
+                    const status = norm(a.status);
                     if (status === 'izin') row.totalIzin++;
                     if (status === 'sakit') row.totalSakit++;
                 });
@@ -1858,17 +1856,16 @@
                 Object.values(cloudJadwalOff || {}).forEach(j => {
                     if (!j) return;
             
-                    const nama = (j.nama || '').trim();
+                    const key = norm(j.idKurir || j.kurirId || j.username || j.kurirUsername);
                     const tglMulai = (j.tanggalMulai || '').trim();
                     const tglSelesai = (j.tanggalSelesai || tglMulai || '').trim();
             
-                    if (!nama || !tglMulai || tglMulai.slice(0, 7) !== bulan) return;
-            
-                    const key = nama;
+                    if (!key || !tglMulai || tglMulai.slice(0, 7) !== bulan) return;
                     if (!rekapMap[key]) {
                         rekapMap[key] = {
                             idKurir: key,
-                            namaKurir: nama,
+                            username: norm(j.username || j.kurirUsername || ''),
+                            namaKurir: (j.nama || key).trim(),
                             leader: '-',
                             totalOff: 0,
                             totalTidakAmbilOff: 0,
@@ -1883,9 +1880,9 @@
             
                     const row = rekapMap[key];
             
-                    // off dihitung per tanggal range
                     const start = new Date(tglMulai);
                     const end = new Date(tglSelesai);
+            
                     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                         const y = d.getFullYear();
                         const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -1896,12 +1893,9 @@
             
                         row.totalOff++;
             
-                        const statusOff = (j.status || '').toLowerCase();
-                        if (statusOff !== 'aktif') {
-                            row.totalTidakAmbilOff++;
-                        }
+                        const statusOff = norm(j.status);
+                        if (statusOff !== 'aktif') row.totalTidakAmbilOff++;
             
-                        // kalau off aktif, tetap dianggap off
                         if (!row._tanggalMap[tglLoop]) {
                             row._tanggalMap[tglLoop] = { masuk: false, pulang: false, off: true };
                         } else {
@@ -1910,16 +1904,12 @@
                     }
                 });
             
-                // Final hitung kehadiran
                 Object.values(rekapMap).forEach(row => {
                     let score = 0;
             
                     Object.values(row._tanggalMap).forEach(v => {
                         if (v.masuk && v.pulang) score += 1;
                         else if (v.masuk || v.pulang) score += 0.5;
-                        else if (v.off) {
-                            // off aktif tidak menambah hadir
-                        }
                     });
             
                     row.hadirScore = score;
@@ -5328,21 +5318,21 @@
             return 'bg-rose-500';
         }
         
-        function calcKpiForKurir(namaKurir, bulan, stats = {}) {
-            const namaTarget = (namaKurir || '').trim().toLowerCase();
+        function calcKpiForKurir(identifier, bulan, stats = {}) {
+            const target = (identifier || '').trim().toLowerCase();
+            const norm = (v) => (v || '').toString().trim().toLowerCase();
         
-            const kurirObj = Object.values(cloudKurirList || {}).find(u => {
+            const kurirObj = Object.entries(cloudKurirList || {}).find(([id, u]) => {
                 if (!u || u.role !== 'kurir') return false;
-                const nama = (u.nama || '').trim().toLowerCase();
-                const username = (u.username || '').trim().toLowerCase();
-                return nama === namaTarget || username === namaTarget;
+                return norm(id) === target || norm(u.username) === target;
             });
         
-            const usernameTarget = (kurirObj?.username || '').trim().toLowerCase();
-            const namaResmi = kurirObj?.nama || namaKurir || '-';
-            const leaderResmi = kurirObj?.leader || '-';
+            const idTarget = norm(kurirObj?.[0] || '');
+            const usernameTarget = norm(kurirObj?.[1]?.username || '');
+            const namaResmi = kurirObj?.[1]?.nama || '-';
+            const leaderResmi = kurirObj?.[1]?.leader || '-';
         
-            const rekap = getRekapJadwalKurirByName(namaResmi, bulan);
+            const rekap = getRekapJadwalKurirByName(idTarget || usernameTarget, bulan);
         
             let totalNota = 0;
             let trxMitra = 0;
@@ -5351,10 +5341,9 @@
             Object.values(cloudNotaList || {}).forEach(n => {
                 if (!n) return;
         
-                const kurirUsername = (n.kurirUsername || '').trim().toLowerCase();
-                const kurirNama = (n.kurirNama || '').trim().toLowerCase();
-        
-                if (kurirUsername !== usernameTarget && kurirNama !== namaTarget) return;
+                const notaUsername = norm(n.kurirUsername);
+                const notaId = norm(n.kurirId);
+                if (notaUsername !== usernameTarget && notaId !== idTarget) return;
                 if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
         
                 totalNota++;
@@ -5366,36 +5355,24 @@
             Object.values(cloudLogMitra || {}).forEach(log => {
                 if (!log) return;
         
-                const kurirUsername = (log.kurirUsername || '').trim().toLowerCase();
-                const kurirNama = (log.kurirNama || '').trim().toLowerCase();
-        
-                if (kurirUsername !== usernameTarget && kurirNama !== namaTarget) return;
+                const logUsername = norm(log.kurirUsername);
+                const logId = norm(log.kurirId);
+                if (logUsername !== usernameTarget && logId !== idTarget) return;
                 if (!log.tglRaw || log.tglRaw.slice(0, 7) !== bulan) return;
         
                 trxMitra += parseInt(log.trxInput) || 0;
             });
         
-            // 1) Kehadiran = 20%
             const kehadiranScore = Math.min((rekap.totalHadirScore / getDaysInMonth(bulan)) * 20, 20);
         
-            // 2) 3 komponen utama berbasis ranking bulanan
             const maxPenghasilan = stats.maxPenghasilan || 0;
             const maxNota = stats.maxNota || 0;
             const maxTrxMitra = stats.maxTrxMitra || 0;
         
-            const totalPenghasilanScore = maxPenghasilan > 0
-                ? (totalPenghasilan / maxPenghasilan) * 20
-                : 0;
+            const totalPenghasilanScore = maxPenghasilan > 0 ? (totalPenghasilan / maxPenghasilan) * 20 : 0;
+            const totalNotaScore = maxNota > 0 ? (totalNota / maxNota) * 30 : 0;
+            const trxMitraScore = maxTrxMitra > 0 ? (trxMitra / maxTrxMitra) * 20 : 0;
         
-            const totalNotaScore = maxNota > 0
-                ? (totalNota / maxNota) * 30
-                : 0;
-        
-            const trxMitraScore = maxTrxMitra > 0
-                ? (trxMitra / maxTrxMitra) * 20
-                : 0;
-        
-            // 3) Off bulanan = 10%
             const offNormal = 2;
             const offScore = rekap.totalOff <= offNormal
                 ? 10
@@ -5429,9 +5406,9 @@
                 rating
             };
         }
-        function getRekapJadwalKurirByName(namaKurir, bulan) {
-            const namaTarget = (namaKurir || '').trim().toLowerCase();
-            if (!namaTarget) {
+        function getRekapJadwalKurirByName(identifier, bulan) {
+            const target = (identifier || '').trim().toLowerCase();
+            if (!target) {
                 return {
                     hadirFull: 0,
                     hadirHalf: 0,
@@ -5445,6 +5422,7 @@
                 };
             }
         
+            const norm = (v) => (v || '').toString().trim().toLowerCase();
             const tanggalMap = {};
             let totalOff = 0;
             let totalTidakAmbilOff = 0;
@@ -5453,18 +5431,18 @@
             let totalAbsenMasuk = 0;
             let totalAbsenPulang = 0;
         
-            const cocokNama = (a) => {
-                const n = (a || '').trim().toLowerCase();
-                return n === namaTarget;
+            const cocokKurir = (a) => {
+                const idKurir = norm(a?.idKurir || a?.kurirId);
+                const username = norm(a?.username || a?.kurirUsername);
+                return target === idKurir || target === username;
             };
         
             Object.values(cloudAbsensiList || {}).forEach(a => {
                 if (!a) return;
         
-                const nama = (a.namaKurir || '').trim();
                 const tgl = (a.tanggal || '').trim();
                 if (!tgl || tgl.slice(0, 7) !== bulan) return;
-                if (!cocokNama(nama)) return;
+                if (!cocokKurir(a)) return;
         
                 if (!tanggalMap[tgl]) {
                     tanggalMap[tgl] = { masuk: false, pulang: false, off: false };
@@ -5479,7 +5457,7 @@
                     totalAbsenPulang++;
                 }
         
-                const status = (a.status || '').toLowerCase();
+                const status = norm(a.status);
                 if (status === 'izin') totalIzin++;
                 if (status === 'sakit') totalSakit++;
             });
@@ -5487,11 +5465,13 @@
             Object.values(cloudJadwalOff || {}).forEach(j => {
                 if (!j) return;
         
-                const nama = (j.nama || '').trim();
+                const idKurir = norm(j.idKurir || j.kurirId);
+                const username = norm(j.username || j.kurirUsername);
                 const tglMulai = (j.tanggalMulai || '').trim();
                 const tglSelesai = (j.tanggalSelesai || tglMulai || '').trim();
+        
                 if (!tglMulai || tglMulai.slice(0, 7) !== bulan) return;
-                if (!cocokNama(nama)) return;
+                if (target !== idKurir && target !== username) return;
         
                 const start = new Date(tglMulai);
                 const end = new Date(tglSelesai);
@@ -5506,7 +5486,7 @@
         
                     totalOff++;
         
-                    const statusOff = (j.status || '').toLowerCase();
+                    const statusOff = norm(j.status);
                     if (statusOff !== 'aktif') totalTidakAmbilOff++;
         
                     if (!tanggalMap[tglLoop]) {
@@ -5540,15 +5520,17 @@
         
         function buildKPIData(bulan) {
             const rawData = [];
+            const norm = (v) => (v || '').toString().trim().toLowerCase();
         
             Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
                 if (!u || u.role !== 'kurir') return;
                 if (u.status && u.status !== 'aktif') return;
         
                 const nama = (u.nama || '').trim();
-                const username = (u.username || '').trim();
+                const username = norm(u.username || '');
+                const idKurir = norm(id || '');
         
-                const rekap = getRekapJadwalKurirByName(nama || username, bulan);
+                const rekap = getRekapJadwalKurirByName(idKurir || username, bulan);
         
                 let totalNota = 0;
                 let trxMitra = 0;
@@ -5557,10 +5539,9 @@
                 Object.values(cloudNotaList || {}).forEach(n => {
                     if (!n) return;
         
-                    const kurirUsername = (n.kurirUsername || '').trim().toLowerCase();
-                    const kurirNama = (n.kurirNama || '').trim().toLowerCase();
-        
-                    if (kurirUsername !== username.toLowerCase() && kurirNama !== nama.toLowerCase()) return;
+                    const notaUsername = norm(n.kurirUsername);
+                    const notaId = norm(n.kurirId);
+                    if (notaUsername !== username && notaId !== idKurir) return;
                     if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
         
                     totalNota++;
@@ -5572,10 +5553,9 @@
                 Object.values(cloudLogMitra || {}).forEach(log => {
                     if (!log) return;
         
-                    const kurirUsername = (log.kurirUsername || '').trim().toLowerCase();
-                    const kurirNama = (log.kurirNama || '').trim().toLowerCase();
-        
-                    if (kurirUsername !== username.toLowerCase() && kurirNama !== nama.toLowerCase()) return;
+                    const logUsername = norm(log.kurirUsername);
+                    const logId = norm(log.kurirId);
+                    if (logUsername !== username && logId !== idKurir) return;
                     if (!log.tglRaw || log.tglRaw.slice(0, 7) !== bulan) return;
         
                     trxMitra += parseInt(log.trxInput) || 0;
@@ -5593,13 +5573,7 @@
                     off: rekap.totalOff,
                     trxMitra,
                     totalNota,
-                    totalPenghasilan,
-                    kehadiranScore: 0,
-                    totalPenghasilanScore: 0,
-                    totalNotaScore: 0,
-                    trxMitraScore: 0,
-                    offScore: 0,
-                    rating: 0
+                    totalPenghasilan
                 });
             });
         
@@ -5610,7 +5584,7 @@
             };
         
             const finalData = rawData.map(item => {
-                const finalRow = calcKpiForKurir(item.username || item.nama, bulan, stats);
+                const finalRow = calcKpiForKurir(item.id || item.username, bulan, stats);
                 return {
                     ...item,
                     ...finalRow,
