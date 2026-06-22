@@ -15,6 +15,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -4346,6 +4347,17 @@
             if(isDark) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
             else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
         }
+        function loadChartJs() {
+            return new Promise((resolve, reject) => {
+                if (window.Chart) return resolve();
+        
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                s.onload = () => resolve();
+                s.onerror = () => reject(new Error('Gagal load Chart.js'));
+                document.head.appendChild(s);
+            });
+        }
         window.loadRekapKurir = function() {
             if (!userSession || userSession.role !== 'kurir') return;
             
@@ -4486,7 +4498,11 @@
                     tabelBody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-400 py-4 italic">Belum ada aktivitas pengiriman di bulan ini.</td></tr>`;
                 }
             }
-            initChartsEngine(rekapHarianMap);
+            loadChartJs().then(() => {
+                initChartsEngine(rekapHarianMap);
+            }).catch(err => {
+                console.error(err);
+            });
         };
         window.updateKurirDashboard = function() {
             if (!userSession || userSession.role !== 'kurir') return;
