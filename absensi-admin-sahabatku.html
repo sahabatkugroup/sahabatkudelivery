@@ -1005,10 +1005,12 @@
             <td class="py-3">${r.masuk}</td>
             <td class="py-3">${r.pulang}</td>
             <td class="py-3">
-              <button onclick="openAbsensiForName('${r.nama}')"
-                class="px-3 py-1.5 rounded-xl bg-sahabatku text-white text-[10px] font-bold">
-                Input Manual
-              </button>
+              <div class="flex gap-2">
+                <button onclick="openAbsensiDetail('${r.nama}')"
+                  class="px-3 py-1.5 rounded-xl bg-slate-700 text-white text-[10px] font-bold">
+                  Detail
+                </button>
+              </div>
             </td>
           </tr>
         `).join('') || `<tr><td colspan="6" class="py-6 text-center text-xs text-slate-400">Belum ada data.</td></tr>`;
@@ -1045,6 +1047,38 @@
         `).join('') || `<tr><td colspan="8" class="py-6 text-center text-xs text-slate-400">Belum ada data.</td></tr>`;
       }
     }
+    window.openAdminTanggalDetail = function(tanggal) {
+      const items = Object.entries(DATA_JADWAL)
+        .map(([key, item]) => ({ key, ...item }))
+        .filter(i => (i.tanggalMulai || i.tanggal || '') === tanggal);
+    
+      document.getElementById('popup-detail-title').textContent = `Monitoring ${fmt(tanggal)}`;
+    
+      document.getElementById('popup-detail-content').innerHTML = `
+        <div class="space-y-3">
+          <button onclick="openJadwalPopup('', { tanggalMulai: '${tanggal}', tanggalSelesai: '${tanggal}' })"
+            class="w-full py-3 rounded-xl bg-sahabatku text-white text-xs font-bold">
+            Input Jadwal
+          </button>
+    
+          ${items.length ? items.map(i => `
+            <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="font-bold text-sm">${i.nama || '-'}</div>
+                  <div class="text-[11px] text-slate-500 mt-1">${i.keterangan || '-'}</div>
+                </div>
+                <span class="px-2 py-1 rounded-full text-white text-[10px] font-bold ${jenisColor(i.jenisOff)}">${i.jenisOff || '-'}</span>
+              </div>
+            </div>
+          `).join('') : '<div class="text-xs text-slate-400">Tidak ada jadwal.</div>'}
+        </div>
+      `;
+    
+      document.getElementById('popup-detail').classList.remove('hidden');
+      document.getElementById('popup-detail').classList.add('flex');
+    };
+    
     window.openAdminDetailRekapKurir = function(namaKurir) {
       const bulan = getBulanAktif();
       const list = Object.entries(DATA_JADWAL)
@@ -1074,6 +1108,128 @@
     
       document.getElementById('popup-detail').classList.remove('hidden');
       document.getElementById('popup-detail').classList.add('flex');
+    };
+    window.openAbsensiDetail = function(namaKurir) {
+      const bulan = getBulanAktif();
+      const y = currentViewDate.getFullYear();
+      const m = currentViewDate.getMonth();
+      const totalHari = new Date(y, m + 1, 0).getDate();
+      const today = new Date().toISOString().split('T')[0];
+    
+      const listAbsensi = Object.entries(DATA_ABSENSI)
+        .map(([key, item]) => ({ key, ...item }))
+        .filter(a =>
+          a.namaKurir === namaKurir &&
+          a.tanggal &&
+          a.tanggal.startsWith(bulan)
+        );
+    
+      const listJadwal = Object.entries(DATA_JADWAL)
+        .map(([key, item]) => ({ key, ...item }))
+        .filter(j =>
+          j.nama === namaKurir &&
+          getTanggalItem(j).startsWith(bulan)
+        );
+    
+      const mapAbsensi = {};
+      listAbsensi.forEach(a => {
+        mapAbsensi[a.tanggal] = a;
+      });
+    
+      const mapJadwal = {};
+      listJadwal.forEach(j => {
+        const tgl = getTanggalItem(j);
+        if (!mapJadwal[tgl]) mapJadwal[tgl] = j; // ambil 1 status saja
+      });
+    
+      let html = '';
+      let scrollTargetId = '';
+    
+      for (let d = 1; d <= totalHari; d++) {
+        const tanggal = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const abs = mapAbsensi[tanggal];
+        const jadwal = mapJadwal[tanggal];
+    
+        let status = 'Belum Absen';
+        let warna = 'border-slate-200 bg-slate-50 dark:bg-slate-800/60';
+        let badge = 'bg-slate-100 text-slate-600';
+    
+        if (tanggal === today) scrollTargetId = `abs-row-${tanggal}`;
+    
+        if (jadwal?.jenisOff) {
+          status = jadwal.jenisOff;
+    
+          if (jadwal.jenisOff === 'Off Reguler') {
+            warna = 'border-blue-300 bg-blue-50 dark:bg-blue-950/30';
+            badge = 'bg-blue-100 text-blue-700';
+          } else if (jadwal.jenisOff === 'Tidak Ambil Off') {
+            warna = 'border-slate-300 bg-slate-50 dark:bg-slate-950/30';
+            badge = 'bg-slate-100 text-slate-700';
+          } else if (jadwal.jenisOff === 'Izin') {
+            warna = 'border-amber-300 bg-amber-50 dark:bg-amber-950/30';
+            badge = 'bg-amber-100 text-amber-700';
+          } else if (jadwal.jenisOff === 'Sakit') {
+            warna = 'border-red-300 bg-red-50 dark:bg-red-950/30';
+            badge = 'bg-red-100 text-red-700';
+          }
+        } else if (abs?.jamMasuk && abs?.jamPulang) {
+          status = 'Lengkap';
+          warna = 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30';
+          badge = 'bg-emerald-100 text-emerald-700';
+        } else if (abs?.jamMasuk && !abs?.jamPulang) {
+          status = 'Belum Pulang';
+          warna = 'border-amber-300 bg-amber-50 dark:bg-amber-950/30';
+          badge = 'bg-amber-100 text-amber-700';
+        } else if (abs) {
+          status = 'Belum Absen';
+          warna = 'border-red-300 bg-red-50 dark:bg-red-950/30';
+          badge = 'bg-red-100 text-red-700';
+        }
+    
+        html += `
+          <div id="abs-row-${tanggal}" class="p-3 rounded-2xl border ${warna}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-bold text-sm">${fmt(tanggal)}</div>
+                <div class="text-[10px] mt-1">
+                  Masuk: <b>${abs?.jamMasuk || '-'}</b> | Pulang: <b>${abs?.jamPulang || '-'}</b>
+                </div>
+                <div class="mt-2 inline-flex px-2 py-1 rounded-full text-[10px] font-bold ${badge}">
+                  ${status}
+                </div>
+    
+                ${jadwal ? `
+                  <div class="text-[10px] mt-2 px-2 py-1 inline-flex rounded-full font-bold ${
+                    jadwal.jenisOff === 'Off Reguler' ? 'text-blue-700 bg-blue-100' :
+                    jadwal.jenisOff === 'Tidak Ambil Off' ? 'text-slate-700 bg-slate-200' :
+                    jadwal.jenisOff === 'Izin' ? 'text-amber-700 bg-amber-100' :
+                    jadwal.jenisOff === 'Sakit' ? 'text-red-700 bg-red-100' :
+                    'text-slate-700 bg-slate-200'
+                  }">
+                    ${jadwal.jenisOff}
+                  </div>
+                  <div class="text-[10px] text-slate-500 mt-1">${jadwal.keterangan || ''}</div>
+                ` : ''}
+              </div>
+              <button onclick="openAbsensiEdit('${tanggal}', '${namaKurir}')"
+                class="px-3 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-bold shrink-0">
+                Edit
+              </button>
+
+            </div>
+          </div>
+        `;
+      }
+    
+      document.getElementById('popup-detail-title').textContent = `Absensi ${namaKurir}`;
+      document.getElementById('popup-detail-content').innerHTML = html;
+      document.getElementById('popup-detail').classList.remove('hidden');
+      document.getElementById('popup-detail').classList.add('flex');
+    
+      setTimeout(() => {
+        const el = document.getElementById(scrollTargetId);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
     };
     
     function renderKurirRekap() {
@@ -1172,7 +1328,18 @@
         box.className = 'h-14 rounded-xl text-xs flex flex-col items-center justify-center p-1 ' +
           (t === today ? 'bg-sahabatku text-white shadow-md ring-2 ring-blue-300' : list.length ? 'bg-slate-100 dark:bg-slate-800' : '');
         box.innerHTML = `<span>${d}</span>`;
-        box.onclick = () => openJadwalPopup('', { tanggalMulai: t, tanggalSelesai: t });
+        box.onclick = () => openAdminTanggalDetail(t);
+    
+        if (list.length) {
+          const wrap = document.createElement('div');
+          wrap.className = 'flex gap-1 mt-1 flex-wrap justify-center';
+          [...new Set(list.map(x => x.jenisOff))].slice(0, 2).forEach(j => {
+            const dot = document.createElement('span');
+            dot.className = `w-2 h-2 rounded-full ${jenisColor(j)}`;
+            wrap.appendChild(dot);
+          });
+          box.appendChild(wrap);
+        }
     
         grid.appendChild(box);
       }
@@ -1250,6 +1417,25 @@
       openAbsensiPopup('', { namaKurir: nama, tanggal: new Date().toISOString().split('T')[0] });
       document.getElementById('absensi-nama').value = nama;
       document.getElementById('absensi-tanggal').value = new Date().toISOString().split('T')[0];
+    };
+    window.openAbsensiEdit = function(tanggal, namaKurir) {
+      const item = Object.entries(DATA_ABSENSI).find(([key, a]) =>
+        a.tanggal === tanggal && a.namaKurir === namaKurir
+      );
+    
+      if (item) {
+        const [key, data] = item;
+        editingAbsensiKey = key;
+        openAbsensiPopup(key, data);
+      } else {
+        editingAbsensiKey = null;
+        openAbsensiPopup('', {
+          tanggal,
+          namaKurir,
+          jamMasuk: '',
+          jamPulang: ''
+        });
+      }
     };
 
     window.closeAbsensiPopup = () => {
@@ -1450,17 +1636,42 @@
       else await set(push(ref(db, 'jadwal_off')), payload);
       closeJadwalPopup();
     });
-
     document.getElementById('btn-save-absensi').addEventListener('click', async () => {
       const tanggal = document.getElementById('absensi-tanggal').value;
       const namaKurir = document.getElementById('absensi-nama').value;
       const jamMasuk = document.getElementById('absensi-masuk').value;
       const jamPulang = document.getElementById('absensi-pulang').value;
+    
+      const kurirData = Object.values(DATA_USERS).find(u =>
+        (u.nama || u.username || '') === namaKurir
+      );
+      const leader = kurirData?.leader || '';
+    
       if (!tanggal || !namaKurir) return alert('Tanggal dan nama kurir wajib diisi.');
-      const key = editingAbsensiKey || `${tanggal}_${namaKurir}`;
-      await set(ref(db, `absensi_sahabatku/${key}`), { tanggal, namaKurir, jamMasuk, jamPulang, timestamp: new Date().toISOString() });
+    
+      const existing = Object.entries(DATA_ABSENSI).find(([key, a]) =>
+        a.tanggal === tanggal && a.namaKurir === namaKurir
+      );
+      const key = editingAbsensiKey || existing?.[0] || `${tanggal}_${namaKurir}`;
+      await set(ref(db, `absensi_sahabatku/${key}`), {
+        tanggal,
+        namaKurir,
+        leader,
+        jamMasuk,
+        jamPulang,
+        timestamp: new Date().toISOString()
+      });
+
+    
+      editingAbsensiKey = null;
       closeAbsensiPopup();
+      toast('Absensi berhasil disimpan');
+    
+      // langsung tampilkan hasil terbaru
+      renderAll();
+      openAbsensiDetail(namaKurir);
     });
+
 
     window.openAdminPopupKurir = () => {
       const list = getKurirAktif().map(u => `<div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs"><div class="font-bold">${u.nama}</div><div class="text-[10px] text-slate-400">${u.leader}</div></div>`).join('');
