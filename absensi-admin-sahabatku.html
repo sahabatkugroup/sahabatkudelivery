@@ -1109,27 +1109,47 @@
       document.getElementById('popup-detail').classList.remove('hidden');
       document.getElementById('popup-detail').classList.add('flex');
     };
-    window.openAbsensiDetail = function(namaKurir) {
+    window.openAbsensiDetail = function(identifier) {
+      const target = (identifier || '').trim().toLowerCase();
       const bulan = getBulanAktif();
       const y = currentViewDate.getFullYear();
       const m = currentViewDate.getMonth();
       const totalHari = new Date(y, m + 1, 0).getDate();
       const today = new Date().toISOString().split('T')[0];
     
+      const kurirData = Object.entries(DATA_USERS).find(([id, u]) => {
+        const idL = (id || '').trim().toLowerCase();
+        const userL = (u.username || '').trim().toLowerCase();
+        const namaL = (u.nama || '').trim().toLowerCase();
+        return idL === target || userL === target || namaL === target;
+      });
+    
+      const idTarget = kurirData?.[0] || target;
+      const u = kurirData?.[1] || {};
+      const namaKurir = u.nama || identifier || '-';
+    
       const listAbsensi = Object.entries(DATA_ABSENSI)
         .map(([key, item]) => ({ key, ...item }))
-        .filter(a =>
-          a.namaKurir === namaKurir &&
-          a.tanggal &&
-          a.tanggal.startsWith(bulan)
-        );
+        .filter(a => {
+          const idKurir = (a.idKurir || '').trim().toLowerCase();
+          const username = (a.username || '').trim().toLowerCase();
+          const nama = (a.namaKurir || '').trim().toLowerCase();
+    
+          return a.tanggal &&
+            a.tanggal.startsWith(bulan) &&
+            (idKurir === idTarget || username === (u.username || '').trim().toLowerCase() || nama === target);
+        });
     
       const listJadwal = Object.entries(DATA_JADWAL)
         .map(([key, item]) => ({ key, ...item }))
-        .filter(j =>
-          j.nama === namaKurir &&
-          getTanggalItem(j).startsWith(bulan)
-        );
+        .filter(j => {
+          const idKurir = (j.idKurir || '').trim().toLowerCase();
+          const username = (j.username || '').trim().toLowerCase();
+          const nama = (j.nama || '').trim().toLowerCase();
+    
+          return getTanggalItem(j).startsWith(bulan) &&
+            (idKurir === idTarget || username === (u.username || '').trim().toLowerCase() || nama === target);
+        });
     
       const mapAbsensi = {};
       listAbsensi.forEach(a => {
@@ -1139,7 +1159,7 @@
       const mapJadwal = {};
       listJadwal.forEach(j => {
         const tgl = getTanggalItem(j);
-        if (!mapJadwal[tgl]) mapJadwal[tgl] = j; // ambil 1 status saja
+        if (!mapJadwal[tgl]) mapJadwal[tgl] = j;
       });
     
       let html = '';
@@ -1211,11 +1231,10 @@
                   <div class="text-[10px] text-slate-500 mt-1">${jadwal.keterangan || ''}</div>
                 ` : ''}
               </div>
-              <button onclick="openAbsensiEdit('${tanggal}', '${namaKurir}')"
+              <button onclick="openAbsensiEdit('${tanggal}', '${identifier}')"
                 class="px-3 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-bold shrink-0">
                 Edit
               </button>
-
             </div>
           </div>
         `;
@@ -1418,10 +1437,20 @@
       document.getElementById('absensi-nama').value = nama;
       document.getElementById('absensi-tanggal').value = new Date().toISOString().split('T')[0];
     };
-    window.openAbsensiEdit = function(tanggal, namaKurir) {
-      const item = Object.entries(DATA_ABSENSI).find(([key, a]) =>
-        a.tanggal === tanggal && a.namaKurir === namaKurir
-      );
+    window.openAbsensiEdit = function(tanggal, identifier) {
+      const target = (identifier || '').trim().toLowerCase();
+    
+      const item = Object.entries(DATA_ABSENSI).find(([key, a]) => {
+        const idKurir = (a.idKurir || '').trim().toLowerCase();
+        const username = (a.username || '').trim().toLowerCase();
+        const namaKurir = (a.namaKurir || '').trim().toLowerCase();
+    
+        return a.tanggal === tanggal && (
+          idKurir === target ||
+          username === target ||
+          namaKurir === target
+        );
+      });
     
       if (item) {
         const [key, data] = item;
@@ -1429,9 +1458,22 @@
         openAbsensiPopup(key, data);
       } else {
         editingAbsensiKey = null;
+        const kurirData = Object.entries(DATA_USERS).find(([id, u]) => {
+          const idL = (id || '').trim().toLowerCase();
+          const userL = (u.username || '').trim().toLowerCase();
+          const namaL = (u.nama || '').trim().toLowerCase();
+          return idL === target || userL === target || namaL === target;
+        });
+    
+        const idKurir = kurirData?.[0] || '';
+        const u = kurirData?.[1] || {};
+    
         openAbsensiPopup('', {
           tanggal,
-          namaKurir,
+          idKurir,
+          username: (u.username || '').trim(),
+          namaKurir: (u.nama || identifier || '').trim(),
+          leader: (u.leader || '').trim(),
           jamMasuk: '',
           jamPulang: ''
         });
@@ -1642,32 +1684,38 @@
       const jamMasuk = document.getElementById('absensi-masuk').value;
       const jamPulang = document.getElementById('absensi-pulang').value;
     
-      const kurirData = Object.values(DATA_USERS).find(u =>
-        (u.nama || u.username || '') === namaKurir
+      const kurirDataEntry = Object.entries(DATA_USERS).find(([id, u]) =>
+        (u.nama || u.username || '').trim() === namaKurir
       );
+    
+      const idKurir = kurirDataEntry?.[0] || '';
+      const kurirData = kurirDataEntry?.[1] || {};
       const leader = kurirData?.leader || '';
+      const username = (kurirData?.username || '').trim();
     
       if (!tanggal || !namaKurir) return alert('Tanggal dan nama kurir wajib diisi.');
     
       const existing = Object.entries(DATA_ABSENSI).find(([key, a]) =>
-        a.tanggal === tanggal && a.namaKurir === namaKurir
+        a.tanggal === tanggal && (a.idKurir === idKurir || a.namaKurir === namaKurir)
       );
-      const key = editingAbsensiKey || existing?.[0] || `${tanggal}_${namaKurir}`;
+    
+      const key = editingAbsensiKey || existing?.[0] || `${tanggal}_${idKurir || namaKurir}`;
+    
       await set(ref(db, `absensi_sahabatku/${key}`), {
         tanggal,
+        idKurir,
+        username,
         namaKurir,
         leader,
         jamMasuk,
         jamPulang,
         timestamp: new Date().toISOString()
       });
-
     
       editingAbsensiKey = null;
       closeAbsensiPopup();
       toast('Absensi berhasil disimpan');
     
-      // langsung tampilkan hasil terbaru
       renderAll();
       openAbsensiDetail(namaKurir);
     });
