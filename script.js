@@ -2316,60 +2316,82 @@
         window.saveNotaAsJpg = function() {
             const el = document.getElementById('canvas-nota');
             if (!el) return;
-        
+
             if (typeof html2canvas === 'undefined') {
                 alert('Fitur gambar belum siap. Coba reload halaman.');
                 return;
             }
-        
+
             html2canvas(el, {
-                scale: 1,
+                scale: 2,
                 useCORS: true,
                 backgroundColor: '#ffffff'
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `${document.getElementById('p-nota-num').innerText}.jpg`;
-                link.href = canvas.toDataURL('image/jpeg', 0.7);
+                link.href = canvas.toDataURL('image/jpeg', 0.82);
                 link.click();
             });
         }
 
-        window.commitSaveNota = function() {
-            const notaNum = document.getElementById('p-nota-num').innerText || "Nota";
-            const payload = {
-                id: notaNum,
-                tanggal: document.getElementById('p-nota-date').innerText,
-                tanggalRaw: getWibRawDate(),
-                kurirNama: userSession.nama,
-                kurirUsername: userSession.username,
-                status: document.getElementById('p-nota-status').innerText || "Lunas",
-                itemsCount: notaState.items.length,
-                items: notaState.items || [],
-                biayaTambahan: notaState.biaya || [],
-                subtotal: notaState.subtotal,
-                ongkir: notaState.ongkir,
-                total: notaState.total
-            };
+        window.shareWhatsApp = function() {
+            const num = document.getElementById('p-nota-num').innerText;
+            const kurir = document.getElementById('p-nota-kurir').innerText;
+            const element = document.getElementById('canvas-nota');
+            const captionText = `Nota: ${num}\nKurir: ${kurir}`;
+            const fileNameJpg = `${num}_${kurir}.jpg`.replace(/\s+/g, '_');
+            const btnShare = document.querySelector("button[onclick='shareWhatsApp()']");
 
-            push(ref(db, 'nota'), payload).then(() => {
-                alert("Nota kiriman berhasil disimpan!");
-                localStorage.removeItem('sahabatku_nota_draft');
-                notaState = { items: [], biaya: [], subtotal: 0, ongkir: 6000, total: 6000 };
-                document.getElementById('container-items').innerHTML = '';
-                document.getElementById('container-biaya').innerHTML = '';
-                
-                // TAMBAHAN: Reset input Dropdown Tambahan Biaya ke kondisi awal kosong
-                const dropBiaya = document.getElementById('biaya-dropdown');
-                if (dropBiaya) dropBiaya.value = '';
-                if (document.getElementById('biaya-nama-manual')) document.getElementById('biaya-nama-manual').classList.add('hidden');
-                if (document.getElementById('biaya-nominal')) document.getElementById('biaya-nominal').value = '';
-                
-                const inputOngkir = document.getElementById('nota-ongkir');
-                if(inputOngkir) inputOngkir.value = '6.000';
-                
-                navigateTo('screen-dashboard');
-            })
+            if (!element) {
+                alert('Preview nota tidak ditemukan.');
+                return;
+            }
+
+            if (typeof html2canvas === 'undefined') {
+                alert('Fitur gambar belum siap. Coba reload halaman.');
+                return;
+            }
+
+            if (btnShare) btnShare.disabled = true;
+
+            html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                canvas.toBlob(function(blob) {
+                    if (!blob) {
+                        alert("Gagal memproses gambar nota.");
+                        if (btnShare) btnShare.disabled = false;
+                        return;
+                    }
+
+                    const file = new File([blob], fileNameJpg, { type: 'image/jpeg' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        navigator.share({
+                            files: [file],
+                            title: `Nota ${num}`,
+                            text: captionText
+                        }).finally(() => {
+                            if (btnShare) btnShare.disabled = false;
+                        });
+                    } else {
+                        const link = document.createElement('a');
+                        link.download = fileNameJpg;
+                        link.href = canvas.toDataURL('image/jpeg', 0.82);
+                        link.click();
+
+                        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(captionText)}`, '_blank');
+                        if (btnShare) btnShare.disabled = false;
+                    }
+                }, 'image/jpeg', 0.82);
+            }).catch(err => {
+                if (btnShare) btnShare.disabled = false;
+                alert("Terjadi kesalahan gambar: " + err.message);
+            });
         }
+
         window.shareWhatsApp = function() {
             const num = document.getElementById('p-nota-num').innerText;
             const kurir = document.getElementById('p-nota-kurir').innerText;
