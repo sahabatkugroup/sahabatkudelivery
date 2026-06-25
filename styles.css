@@ -1,0 +1,53 @@
+
+        body { -webkit-tap-highlight-color: transparent; }
+        .screen { display: none; min-height: 100vh; }
+        .screen.active { display: flex; flex-direction: column; }
+        .custom-gradient { background: linear-gradient(180deg, #0066FF 0%, #008CFF 100%); }
+        .ripple { position: relative; overflow: hidden; }
+        .ripple:after {
+            content: ""; background: rgba(255, 255, 255, 0.3); display: block; position: absolute;
+            border-radius: 50%; padding-top: 240%; padding-left: 240%; margin-top: -120%; margin-left: -120%;
+            opacity: 0; transition: all 0.8s;
+        }
+        .ripple:active:after { padding: 0; margin: 0; opacity: 1; transition: 0s; }
+        @media (max-width: 640px) {
+          #canvas-nota {
+            max-width: 100% !important;
+            padding: 12px !important;
+            border-radius: 16px !important;
+          }
+        
+          #preview-action-buttons {
+            max-width: 100% !important;
+          }
+        
+          #preview-action-buttons button {
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+            font-size: 10px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          #modal-preview-nota {
+            align-items: center !important;
+          }
+        
+          #modal-preview-nota > div {
+            max-width: 100% !important;
+            width: calc(100% - 16px) !important;
+          }
+        
+          #canvas-nota-admin {
+            padding: 12px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          #modal-kpi-detail {
+            align-items: center !important;
+          }
+        
+          #modal-kpi-detail > div {
+            width: calc(100% - 16px) !important;
+            max-width: 100% !important;
+          }
+        }
