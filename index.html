@@ -329,37 +329,41 @@
                     </button>
                 </div>
             </div>            
-            <div id="screen-admin-kurir" class="screen p-4 space-y-4">
-                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400" id="title-form-kurir">Registrasi / Edit Akun Kurir</h3>
+            <div id="screen-admin-kurir" class="screen px-3 py-3 sm:p-4 space-y-3">
+                <div class="bg-white dark:bg-darkCard p-3 sm:p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                    <h3 class="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-400" id="title-form-kurir">Registrasi / Edit Akun Kurir</h3>
                     <input type="hidden" id="ak-id-edit">
+
                     <div class="grid grid-cols-2 gap-2">
-                        <div>
+                        <div class="col-span-2">
                             <label class="block text-[10px] text-slate-400 mb-1">Nama Lengkap</label>
                             <input type="text" id="ak-nama" placeholder="Contoh: Alfan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                         </div>
-                    
-                        <div>
+
+                        <div class="col-span-2">
                             <label class="block text-[10px] text-slate-400 mb-1">Leader</label>
                             <select id="ak-leader" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                                 <option value="">-- Pilih Leader --</option>
                             </select>
                         </div>
-                    
+
                         <div>
                             <label class="block text-[10px] text-slate-400 mb-1">Username</label>
                             <input type="text" id="ak-username" placeholder="username.kurir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                         </div>
+
                         <div>
                             <label class="block text-[10px] text-slate-400 mb-1">Password</label>
                             <input type="text" id="ak-password" placeholder="Sandi login" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                         </div>
+
                         <div>
                             <label class="block text-[10px] text-slate-400 mb-1">Tanggal Bergabung</label>
                             <input type="date" id="ak-tgl-gabung" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                         </div>
-                        <div class="col-span-2">
-                            <label class="block text-[10px] text-slate-400 mb-1">Status Blokir / Akses</label>
+
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Status</label>
                             <select id="ak-status" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                                 <option value="aktif">AKTIF</option>
                                 <option value="nonaktif">BLOKIR</option>
@@ -367,9 +371,9 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-2">
-                        <button onclick="saveAkunKurir()" class="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-xl uppercase tracking-wider">Simpan Akun</button>
-                        <button onclick="resetFormKurir()" class="px-3 py-2 bg-slate-100 text-slate-500 dark:bg-slate-800 text-xs rounded-xl">Batal</button>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button onclick="saveAkunKurir()" class="w-full py-2.5 bg-primary text-white text-[11px] font-bold rounded-xl uppercase tracking-wider">Simpan</button>
+                        <button onclick="resetFormKurir()" class="w-full py-2.5 bg-slate-100 text-slate-500 dark:bg-slate-800 text-[11px] rounded-xl">Batal</button>
                     </div>
                 </div>
 
