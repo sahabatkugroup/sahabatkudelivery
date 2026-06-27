@@ -1419,31 +1419,35 @@
         function renderAdminKurirList() {
             const container = document.getElementById('container-admin-kurir');
             if (!container) return;
-            container.innerHTML = '';
-            
-            if (Object.keys(cloudKurirList).length === 0) {
+
+            const keys = Object.keys(cloudKurirList || {});
+            if (!keys.length) {
                 container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Belum ada data kurir.</p>';
                 return;
             }
 
-            for (let key in cloudKurirList) {
+            const canEdit = userSession && (userSession.role === 'owner' || userSession.role === 'admin' || userSession.role === 'manajemen');
+
+            const html = keys.map(key => {
                 const item = cloudKurirList[key];
-                if (item.role === 'admin' || item.username === 'admin') continue;
+                if (!item || item.role === 'admin' || item.username === 'admin') return '';
 
                 const dotStatus = item.status === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500';
-                container.innerHTML += `
+
+                return `
                     <div class="bg-white dark:bg-darkCard p-3.5 rounded-xl border dark:border-slate-800 shadow-sm space-y-2 text-xs">
                         <div class="flex justify-between items-center">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full ${dotStatus}"></span>
-                                <span class="font-bold text-sm dark:text-white">${item.nama}</span>
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-2.5 h-2.5 rounded-full ${dotStatus} shrink-0"></span>
+                                <span class="font-bold text-sm dark:text-white truncate">${item.nama || '-'}</span>
                             </div>
-                            <span class="text-[10px] text-slate-400">Gabung: ${item.tglGabung}</span>
+                            <span class="text-[10px] text-slate-400 shrink-0">Gabung: ${item.tglGabung || '-'}</span>
                         </div>
+
                         <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg grid grid-cols-2 gap-2 font-mono text-[11px]">
                             <div class="dark:text-slate-300">Leader: <span class="text-emerald-600 font-bold block truncate">${item.leader || '-'}</span></div>
-                            <div class="dark:text-slate-300">User: <span class="text-primary font-bold block truncate">@${item.username}</span></div>
-                            <div class="dark:text-slate-300">Pass: <span class="text-amber-500 font-bold block truncate">${item.password}</span></div>
+                            <div class="dark:text-slate-300">User: <span class="text-primary font-bold block truncate">@${item.username || '-'}</span></div>
+                            <div class="dark:text-slate-300">Pass: <span class="text-amber-500 font-bold block truncate">${item.password || '-'}</span></div>
                             <div class="dark:text-slate-300">Ongkir Pass: <span class="text-fuchsia-500 font-bold block truncate">${item.ongkirPassword || '-'}</span></div>
                         </div>
 
@@ -1454,9 +1458,9 @@
                                     ${item.ongkirLocked ? 'TERKUNCI' : 'TERBUKA'}
                                 </span>
                             </div>
-                        
+
                             <input type="text" id="ongkir-pass-${key}" value="${item.ongkirPassword || ''}" placeholder="Password khusus ongkir" class="w-full px-2 py-1 border rounded-md text-[11px] dark:bg-darkBg dark:border-slate-700">
-                        
+
                             <div class="grid grid-cols-2 gap-2">
                                 <button onclick="toggleOngkirAkses('${key}')" class="py-1.5 rounded-md text-[10px] font-bold uppercase ${item.ongkirLocked ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}">
                                     ${item.ongkirLocked ? 'Buka Akses Ongkir' : 'Kunci Akses Ongkir'}
@@ -1466,17 +1470,20 @@
                                 </button>
                             </div>
                         </div>
-                
+
+                        ${canEdit ? `
                         <div class="flex justify-end space-x-2 pt-1">
-                            ${userSession && (userSession.role === 'owner' || userSession.role === 'admin' || userSession.role === 'manajemen') ? `
-                                <button onclick="editAkunKurir('${key}')" class="px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-md font-semibold">Edit</button>
-                                <button onclick="hapusAkunKurir('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Hapus</button>
-                            ` : ''}
-                        </div>
+                            <button onclick="editAkunKurir('${key}')" class="px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-md font-semibold">Edit</button>
+                            <button onclick="hapusAkunKurir('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Hapus</button>
+                        </div>` : ''}
+                    </div>
                 `;
-            }
+            }).filter(Boolean).join('');
+
+            container.innerHTML = html || '<p class="text-xs text-slate-400 text-center py-4">Belum ada data kurir.</p>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
+
         window.simpanPasswordOngkir = function(key) {
             const input = document.getElementById(`ongkir-pass-${key}`);
             if (!input) return;
@@ -1737,42 +1744,38 @@
         window.renderAdminLogMitra = function() {
             const container = document.getElementById('container-admin-log-mitra');
             if (!container) return;
-        
+
             const logTgl = document.getElementById('am-log-tgl')?.value || '';
             const logBulan = document.getElementById('am-log-bulan')?.value || '';
-            const logSearch = document.getElementById('am-log-search')?.value.toLowerCase();
-            const elFilterKurir = document.getElementById('am-log-filter-kurir');
-            const logFilterKurir = elFilterKurir ? elFilterKurir.value : 'semua';
-        
-            container.innerHTML = '';
-        
-            let adaData = false;
-        
-            for (let k in cloudLogMitra) {
+            const logSearch = (document.getElementById('am-log-search')?.value || '').toLowerCase().trim();
+            const logFilterKurir = document.getElementById('am-log-filter-kurir')?.value || 'semua';
+
+            const keys = Object.keys(cloudLogMitra || {}).sort((a, b) => b.localeCompare(a));
+            const rows = [];
+
+            for (const k of keys) {
                 const log = cloudLogMitra[k];
                 if (!log) continue;
-        
+
                 if (logFilterKurir !== 'semua' && log.kurirNama !== logFilterKurir) continue;
                 if (logSearch && !(log.mitraNama || '').toLowerCase().includes(logSearch)) continue;
                 if (logTgl && log.tglRaw !== logTgl) continue;
                 if (logBulan && (!log.tglRaw || log.tglRaw.substring(0, 7) !== logBulan)) continue;
-        
-                adaData = true;
-        
-                container.innerHTML += `
+
+                rows.push(`
                     <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded-lg text-[11px]">
                         <div>
-                            <span class="font-bold text-slate-800 dark:text-white">${log.mitraNama}</span> (${log.trxInput} Trx)
-                            <p class="text-[9px] text-slate-400">Input: ${log.kurirNama} - ${log.tglRaw} ${log.waktu}</p>
+                            <span class="font-bold text-slate-800 dark:text-white">${log.mitraNama || '-'}</span> (${log.trxInput || 0} Trx)
+                            <p class="text-[9px] text-slate-400">Input: ${log.kurirNama || '-'} - ${log.tglRaw || '-'} ${log.waktu || ''}</p>
                         </div>
                         <button onclick="hapusLogMitra('${k}')" class="text-danger font-bold px-1">X</button>
                     </div>
-                `;
+                `);
             }
-        
-            if (!adaData) {
-                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Tidak ada data ditemukan.</div>';
-            }
+
+            container.innerHTML = rows.length
+                ? rows.join('')
+                : '<div class="text-center text-xs text-slate-400 py-4">Tidak ada data ditemukan.</div>';
         };
 
         window.populateMitraLogKurirDropdown = function() {
@@ -1799,58 +1802,50 @@
         window.renderAdminDaftarMitra = function() {
             const container = document.getElementById('container-admin-daftar-mitra');
             if (!container) return;
-        
+
             const searchKey = normalizeNama(document.getElementById('am-search-mitra')?.value || '');
             const filterBulanEl = document.getElementById('am-filter-bulan');
             const bulanSekarang = getWibRawDate().substring(0, 7);
-        
-            if (filterBulanEl && !filterBulanEl.value) {
-                filterBulanEl.value = bulanSekarang;
-            }
-        
+
+            if (filterBulanEl && !filterBulanEl.value) filterBulanEl.value = bulanSekarang;
+
             const filterBulan = filterBulanEl?.value || bulanSekarang;
             const isOwner = userSession && userSession.role === 'owner';
-        
-            container.innerHTML = '';
-        
+
+            const logEntries = Object.values(cloudLogMitra || []);
+            const trxMap = {};
+
+            for (const log of logEntries) {
+                if (!log || !log.mitraNama) continue;
+                const key = normalizeNama(log.mitraNama);
+                if (!trxMap[key]) trxMap[key] = { totalAll: 0, totalBulan: 0 };
+                const trx = parseInt(log.trxInput) || 0;
+                trxMap[key].totalAll += trx;
+                if (log.tglRaw && log.tglRaw.substring(0, 7) === filterBulan) {
+                    trxMap[key].totalBulan += trx;
+                }
+            }
+
+            const rows = [];
             let nomorUrut = 1;
-            let adaData = false;
-        
-            for (let key in cloudMitraList) {
-                const m = cloudMitraList[key];
+
+            for (const [key, m] of Object.entries(cloudMitraList || {})) {
                 if (!m || !m.nama) continue;
-        
+
                 const namaMitra = normalizeNama(m.nama);
                 if (searchKey && !namaMitra.includes(searchKey)) continue;
-        
-                let totalTrxMenyeluruh = 0;
-                let totalTrxFilterBulan = 0;
-        
-                for (let logKey in cloudLogMitra) {
-                    const log = cloudLogMitra[logKey];
-                    if (!log || !log.mitraNama) continue;
-        
-                    if (normalizeNama(log.mitraNama) === namaMitra) {
-                        const trx = parseInt(log.trxInput) || 0;
-                        totalTrxMenyeluruh += trx;
-        
-                        if (log.tglRaw && log.tglRaw.substring(0, 7) === filterBulan) {
-                            totalTrxFilterBulan += trx;
-                        }
-                    }
-                }
-        
-                adaData = true;
-        
-                const targetMitra = m.target || 0;
+
+                const trxData = trxMap[namaMitra] || { totalAll: 0, totalBulan: 0 };
+                const totalTrx = filterBulan ? trxData.totalBulan : trxData.totalAll;
+
                 let cleanPhone = (m.hp || '').toString().trim().replace(/[^0-9+]/g, '');
                 if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
                 else if (cleanPhone.startsWith('+')) cleanPhone = cleanPhone.substring(1);
-        
+
                 const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
                 const mapsLink = m.alamat ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.alamat)}` : '#';
-        
-                container.innerHTML += `
+
+                rows.push(`
                     <div class="bg-white dark:bg-darkCard p-3 rounded-xl border text-xs space-y-2.5 shadow-sm">
                         <div class="flex justify-between items-start">
                             <div>
@@ -1861,39 +1856,39 @@
                             </div>
                             <a href="${waLink}" target="_blank" class="px-2.5 py-1 bg-emerald-50 text-success rounded font-bold text-[10px] border border-emerald-100">WhatsApp</a>
                         </div>
-        
+
                         <div class="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg text-[11px] border border-slate-100 dark:border-slate-800">
                             <div>
                                 <span class="text-slate-400 block text-[9px] uppercase">Total Transaksi</span>
-                                <span class="font-extrabold text-slate-700 dark:text-slate-200">
-                                    ${filterBulan ? totalTrxFilterBulan : totalTrxMenyeluruh} Trx
-                                </span>
+                                <span class="font-extrabold text-slate-700 dark:text-slate-200">${totalTrx} Trx</span>
                             </div>
                             <div>
                                 <span class="text-slate-400 block text-[9px] uppercase">Target Bulanan</span>
-                                <span class="font-extrabold text-amber-500">${targetMitra} Trx</span>
+                                <span class="font-extrabold text-amber-500">${m.target || 0} Trx</span>
                             </div>
                         </div>
-        
+
                         <div class="flex gap-1.5 pt-0.5">
                             <button onclick="bukaInputTransaksiMitra('${m.nama}')" class="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] uppercase">Input Trx</button>
                             <button onclick="lihatRiwayatMitraOtomatis('${m.nama}')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-lg text-[10px] uppercase border border-slate-200/50">Lihat</button>
                         </div>
-        
+
                         ${isOwner ? `
                         <div class="flex justify-end gap-2 pt-1">
                             <button onclick="editDataMitra('${key}')" class="px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-md font-semibold">Edit</button>
                             <button onclick="hapusMitra('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Hapus</button>
                         </div>` : ''}
                     </div>
-                `;
+                `);
+
                 nomorUrut++;
             }
-        
-            if (!adaData) {
-                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada data mitra.</div>';
-            }
+
+            container.innerHTML = rows.length
+                ? rows.join('')
+                : '<div class="text-center text-xs text-slate-400 py-4">Belum ada data mitra.</div>';
         };
+
         window.cleanupDailyLiveLocations = async function() {
             try {
                 const snap = await get(ref(db, 'live_locations'));
@@ -1938,43 +1933,31 @@
         
         window.renderAdminTestimonial = function() {
             const container = document.getElementById('container-admin-testimonial');
-            const bulanFilter = document.getElementById('testimonial-filter-bulan')?.value || '';
             if (!container) return;
-        
-            container.innerHTML = '';
-        
+
+            const bulanFilter = document.getElementById('testimonial-filter-bulan')?.value || '';
             const keys = Object.keys(cloudTestimonialList || {});
-            if (keys.length === 0) {
+
+            if (!keys.length) {
                 container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada data testimoni.</div>';
                 return;
             }
-        
-            const filteredKeys = keys.filter(key => {
+
+            const rows = keys.map(key => {
                 const t = cloudTestimonialList[key];
-                if (!t) return false;
-        
+                if (!t) return '';
+
                 const rawBulan = t.timestamp
                     ? new Date(t.timestamp).toISOString().slice(0, 7)
                     : (t.date ? t.date.split('/').reverse().join('-').slice(0, 7) : '');
-        
-                if (bulanFilter && rawBulan !== bulanFilter) return false;
-                return true;
-            });
-        
-            if (filteredKeys.length === 0) {
-                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Tidak ada testimoni pada bulan ini.</div>';
-                return;
-            }
-        
-            filteredKeys.forEach(key => {
-                const t = cloudTestimonialList[key];
-                if (!t) return;
-        
+
+                if (bulanFilter && rawBulan !== bulanFilter) return '';
+
                 const statusText = t.isPublished ? 'TAMPIL' : 'SEMBUNYI';
                 const statusClass = t.isPublished
                     ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'
                     : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300';
-        
+
                 const createdText = t.timestamp
                     ? new Date(t.timestamp).toLocaleString('id-ID', {
                         day: '2-digit',
@@ -1984,23 +1967,20 @@
                         minute: '2-digit'
                     })
                     : `${t.date || '-'} ${t.time || '-'}`;
-        
-                container.innerHTML += `
+
+                return `
                     <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs space-y-2">
                         <div class="flex items-start justify-between gap-2">
-                            <label class="flex items-start gap-2 min-w-0 flex-1">
-                                <input type="checkbox" class="testimonial-checkbox mt-1 hidden testimonial-select-box" value="${key}">
-                                <div class="min-w-0">
-                                    <div class="font-bold text-sm text-slate-800 dark:text-white">${t.fullname || '-'}</div>
-                                    <div class="text-[10px] text-slate-400">Kurir: ${t.nama || '-'}</div>
-                                    <div class="text-[10px] text-slate-400">Tanggal/Jam: ${createdText}</div>
-                                </div>
-                            </label>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-bold text-sm text-slate-800 dark:text-white">${t.fullname || '-'}</div>
+                                <div class="text-[10px] text-slate-400">Kurir: ${t.nama || '-'}</div>
+                                <div class="text-[10px] text-slate-400">Tanggal/Jam: ${createdText}</div>
+                            </div>
                             <span class="px-2 py-1 rounded-full text-[10px] font-bold ${statusClass}">
                                 ${statusText}
                             </span>
                         </div>
-        
+
                         <div class="grid grid-cols-3 gap-2 text-[10px]">
                             <div class="bg-white dark:bg-darkCard p-2 rounded-lg">
                                 <div class="text-slate-400">Rating</div>
@@ -2015,10 +1995,11 @@
                                 <div class="font-bold">${t.speed || '-'}</div>
                             </div>
                         </div>
-        
+
                         <div class="bg-white dark:bg-darkCard p-2 rounded-lg text-[11px] text-slate-600 dark:text-slate-300">
                             ${t.comments || '-'}
                         </div>
+
                         <div class="flex gap-2">
                             <button onclick="toggleTestimonialPublish('${key}')" class="flex-1 py-2 rounded-lg text-[10px] font-bold uppercase ${t.isPublished ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40' : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40'}">
                                 ${t.isPublished ? 'Sembunyikan' : 'Tampilkan'}
@@ -2029,8 +2010,11 @@
                         </div>
                     </div>
                 `;
-            });
+            }).filter(Boolean).join('');
+
+            container.innerHTML = rows || '<div class="text-center text-xs text-slate-400 py-4">Tidak ada testimoni pada bulan ini.</div>';
         };
+
         window.toggleTestimonialSelectMode = function() {
             const boxes = document.querySelectorAll('.testimonial-select-box');
             const btnHapus = document.getElementById('btn-hapus-testimonial-terpilih');
@@ -2450,12 +2434,11 @@
                 return;
             }
 
-            container.innerHTML = '';
+            const keys = Object.keys(cloudNotaList || {}).sort((a, b) => b.localeCompare(a));
+            const rows = [];
             let hasData = false;
 
-            const keys = Object.keys(cloudNotaList || {}).sort((a, b) => b.localeCompare(a));
-
-            for (let k of keys) {
+            for (const k of keys) {
                 const n = cloudNotaList[k];
                 if (!n) continue;
                 if (userSession && userSession.role === 'kurir' && n.kurirUsername !== userSession.username) continue;
@@ -2464,7 +2447,7 @@
                 if (searchKeyword && n.id && !n.id.toLowerCase().includes(searchKeyword)) continue;
 
                 hasData = true;
-                container.innerHTML += `
+                rows.push(`
                     <div class="bg-white dark:bg-darkCard p-3 rounded-xl border text-xs space-y-2 shadow-sm">
                         <div class="flex justify-between font-bold">
                             <span>${n.id}</span>
@@ -2481,12 +2464,12 @@
                             </div>
                         </div>
                     </div>
-                `;
+                `);
             }
 
-            if (!hasData) {
-                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Tidak ada riwayat nota untuk filter ini.</div>';
-            }
+            container.innerHTML = hasData
+                ? rows.join('')
+                : '<div class="text-center text-xs text-slate-400 py-4">Tidak ada riwayat nota untuk filter ini.</div>';
         };
         window.resetRiwayatFilter = function() {
             const today = getWibRawDate();
@@ -3071,107 +3054,79 @@
         }
         window.loadRekapKurir = function() {
             if (!userSession || userSession.role !== 'kurir') return;
-            
+
             const usernameKurir = userSession.username;
             const rekapBulanSelect = document.getElementById('rekap-bulan');
             const rekapTanggalInput = document.getElementById('rekap-tanggal');
-            
-            const now = new Date();
-            const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-            const hariIni = wib.toISOString().split('T')[0]; 
-            const bulanIni = hariIni.substring(0, 7); 
 
-            if (rekapTanggalInput && !rekapTanggalInput.value) {
-                rekapTanggalInput.value = hariIni;
+            const today = getWibRawDate();
+            const bulanIni = today.substring(0, 7);
+
+            if (rekapTanggalInput && !rekapTanggalInput.value) rekapTanggalInput.value = today;
+
+            if (rekapBulanSelect && rekapBulanSelect.options.length === 0) {
+                const bulanSet = new Set([bulanIni]);
+
+                for (const n of Object.values(cloudNotaList || {})) {
+                    if (n?.tanggalRaw) bulanSet.add(n.tanggalRaw.substring(0, 7));
+                }
+                for (const log of Object.values(cloudLogMitra || {})) {
+                    if (log?.tglRaw) bulanSet.add(log.tglRaw.substring(0, 7));
+                }
+
+                rekapBulanSelect.innerHTML = '';
+                Array.from(bulanSet).sort((a, b) => b.localeCompare(a)).forEach(bulan => {
+                    const [y, m] = bulan.split('-');
+                    const label = new Date(y, m - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+                    rekapBulanSelect.add(new Option(label, bulan));
+                });
+
+                rekapBulanSelect.value = bulanIni;
             }
-        
+
+            const selectedBulan = rekapBulanSelect?.value || bulanIni;
+            const selectedTanggal = rekapTanggalInput?.value || '';
+
             let totalPendapatan = 0;
             let totalOngkir = 0;
             let totalTambahan = 0;
             let totalNotaCount = 0;
             let totalTrxMitra = 0;
-            let rekapHarianMap = {};
-            
-            let kumpulanBulanUnik = new Set();
-            kumpulanBulanUnik.add(bulanIni); // Pastikan bulan saat ini wajib masuk daftar
-            for (let key in cloudNotaList) {
-                const nota = cloudNotaList[key];
-                if (nota.kurirUsername !== usernameKurir) continue;
-        
-                const tglNota = nota.tanggalRaw;
-                if (!tglNota) continue;
-                
-                const blnNota = tglNota.substring(0, 7);
-                kumpulanBulanUnik.add(blnNota);
-        
-                const nominalOngkir = parseInt(nota.ongkir) || 0;
-                let nominalTambahan = 0;
-        
-                if (nota.biayaTambahan && Array.isArray(nota.biayaTambahan)) {
-                    nota.biayaTambahan.forEach(item => {
-                        nominalTambahan += (parseInt(item.nominal) || 0);
-                    });
-                }
-                const pendapatanNotaIni = nominalOngkir + nominalTambahan;
-                if (!rekapHarianMap[tglNota]) {
-                    rekapHarianMap[tglNota] = { notaCount: 0, pendapatan: 0, trxMitra: 0 };
-                }
-                if (rekapBulanSelect && rekapBulanSelect.value === blnNota) {
-                    rekapHarianMap[tglNota].notaCount += 1;
-                    rekapHarianMap[tglNota].pendapatan += pendapatanNotaIni; // REVISI: Sekarang menggunakan (Ongkir + Tambahan)
-                }
-                if (rekapBulanSelect && rekapBulanSelect.value) {
-                    if (rekapTanggalInput && rekapTanggalInput.value) {
-                        if (tglNota !== rekapTanggalInput.value) continue;
-                    } else {
-                        if (blnNota !== rekapBulanSelect.value) continue;
-                    }
-                }
-                totalOngkir += nominalOngkir;
-                totalTambahan += nominalTambahan;
-                totalPendapatan += pendapatanNotaIni;
+            const rekapHarianMap = {};
+
+            for (const nota of Object.values(cloudNotaList || {})) {
+                if (!nota || nota.kurirUsername !== usernameKurir || !nota.tanggalRaw) continue;
+                if (nota.tanggalRaw.substring(0, 7) !== selectedBulan) continue;
+                if (selectedTanggal && nota.tanggalRaw !== selectedTanggal) continue;
+
+                const ongkir = parseInt(nota.ongkir) || 0;
+                const biaya = (nota.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
+                const pendapatan = ongkir + biaya;
+
                 totalNotaCount++;
+                totalOngkir += ongkir;
+                totalTambahan += biaya;
+                totalPendapatan += pendapatan;
+
+                if (!rekapHarianMap[nota.tanggalRaw]) {
+                    rekapHarianMap[nota.tanggalRaw] = { notaCount: 0, pendapatan: 0, trxMitra: 0 };
+                }
+                rekapHarianMap[nota.tanggalRaw].notaCount++;
+                rekapHarianMap[nota.tanggalRaw].pendapatan += pendapatan;
             }
-            for (let key in cloudLogMitra) {
-                const log = cloudLogMitra[key];
-                if (log.kurirUsername !== usernameKurir) continue;
-        
-                const tglLog = log.tglRaw || log.tanggalRaw;
-                if (!tglLog) continue;
-                
-                const blnLog = tglLog.substring(0, 7);
-                const jumlahTrxInput = parseInt(log.trxInput) || 0;
-                
-                kumpulanBulanUnik.add(blnLog); // Catat bulan dari transaksi mitra ke sistem dropdown
-        
-                if (!rekapHarianMap[tglLog]) {
-                    rekapHarianMap[tglLog] = { notaCount: 0, pendapatan: 0, trxMitra: 0 };
+
+            for (const log of Object.values(cloudLogMitra || {})) {
+                if (!log || log.kurirUsername !== usernameKurir || !log.tglRaw) continue;
+                if (log.tglRaw.substring(0, 7) !== selectedBulan) continue;
+                if (selectedTanggal && log.tglRaw !== selectedTanggal) continue;
+
+                const trx = parseInt(log.trxInput) || 0;
+                totalTrxMitra += trx;
+
+                if (!rekapHarianMap[log.tglRaw]) {
+                    rekapHarianMap[log.tglRaw] = { notaCount: 0, pendapatan: 0, trxMitra: 0 };
                 }
-                
-                if (rekapBulanSelect && rekapBulanSelect.value === blnLog) {
-                    rekapHarianMap[tglLog].trxMitra += jumlahTrxInput;
-                }
-                if (rekapBulanSelect && rekapBulanSelect.value) {
-                    if (rekapTanggalInput && rekapTanggalInput.value) {
-                        if (tglLog !== rekapTanggalInput.value) continue;
-                    } else {
-                        if (blnLog !== rekapBulanSelect.value) continue;
-                    }
-                }
-                totalTrxMitra += jumlahTrxInput;
-            }
-            if (rekapBulanSelect && rekapBulanSelect.options.length === 0) {
-                const daftarBulanUrut = Array.from(kumpulanBulanUnik).sort((a, b) => b.localeCompare(a));
-                
-                daftarBulanUrut.forEach(bln => {
-                    const [tahun, bulan] = bln.split('-');
-                    const namaBulanIndo = new Date(tahun, parseInt(bulan) - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-                    const opt = new Option(namaBulanIndo, bln);
-                    rekapBulanSelect.add(opt);
-                });
-                rekapBulanSelect.value = bulanIni;
-                loadRekapKurir();
-                return;
+                rekapHarianMap[log.tglRaw].trxMitra += trx;
             }
 
             document.getElementById('rk-pendapatan').innerText = "Rp " + totalPendapatan.toLocaleString('id-ID');
@@ -3181,40 +3136,34 @@
             document.getElementById('rk-total-trx-mitra').innerText = totalTrxMitra + " Trx";
 
             const tabelBody = document.getElementById('rk-tabel-perhari');
-            if (tabelBody && rekapBulanSelect) {
-                tabelBody.innerHTML = '';
-                const bulanTerpilih = rekapBulanSelect.value;
-                const urutanTanggal = Object.keys(rekapHarianMap).sort((a, b) => b.localeCompare(a));
-                let adaData = false;
-        
-                urutanTanggal.forEach(tglKey => {
-                    if (tglKey.substring(0, 7) !== bulanTerpilih) return;
-                    
-                    adaData = true;
-                    const dataHariIni = rekapHarianMap[tglKey];
-                    const opsiFormat = { day: 'numeric', month: 'short' };
-                    const tglCantik = new Date(tglKey).toLocaleDateString('id-ID', opsiFormat);
-        
-                    tabelBody.innerHTML += `
+            if (tabelBody) {
+                const rows = [];
+                const keys = Object.keys(rekapHarianMap).sort((a, b) => b.localeCompare(a));
+
+                for (const tglKey of keys) {
+                    if (tglKey.substring(0, 7) !== selectedBulan) continue;
+                    const d = rekapHarianMap[tglKey];
+                    const avg = d.notaCount > 0 ? Math.round(d.pendapatan / d.notaCount) : 0;
+                    const tglCantik = new Date(tglKey).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
+                    rows.push(`
                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="py-2 font-medium text-slate-700 dark:text-slate-300">${tglCantik}</td>
-                            <td class="py-2 text-center text-slate-500">${dataHariIni.notaCount} Nota</td>
-                            <td class="py-2 text-right font-bold text-primary">Rp ${dataHariIni.pendapatan.toLocaleString('id-ID')}</td>
-                            <td class="py-2 text-right font-semibold text-indigo-600">${dataHariIni.trxMitra} Trx</td>
+                            <td class="py-2 text-center text-slate-500">${d.notaCount} Nota</td>
+                            <td class="py-2 text-right font-bold text-primary">Rp ${d.pendapatan.toLocaleString('id-ID')}</td>
+                            <td class="py-2 text-right font-semibold text-indigo-600">${d.trxMitra} Trx</td>
                         </tr>
-                    `;
-                });
-        
-                if (!adaData) {
-                    tabelBody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-400 py-4 italic">Belum ada aktivitas pengiriman di bulan ini.</td></tr>`;
+                    `);
                 }
+
+                tabelBody.innerHTML = rows.length
+                    ? rows.join('')
+                    : `<tr><td colspan="4" class="text-center text-slate-400 py-4 italic">Belum ada aktivitas pengiriman di bulan ini.</td></tr>`;
             }
-            loadChartJs().then(() => {
-                initChartsEngine(rekapHarianMap);
-            }).catch(err => {
-                console.error(err);
-            });
+
+            loadChartJs().then(() => initChartsEngine(rekapHarianMap)).catch(console.error);
         };
+
         window.updateKurirDashboard = function() {
             if (!userSession || userSession.role !== 'kurir') return;
         
@@ -3395,38 +3344,37 @@
         window.renderAdminNota = function() {
             const container = document.getElementById('container-admin-nota');
             if (!container) return;
-        
+
             const filterKurir = document.getElementById('an-filter-kurir')?.value || 'semua';
             const filterTgl = document.getElementById('an-filter-tgl')?.value || '';
             const filterBulan = document.getElementById('an-filter-bulan')?.value || '';
-        
-            container.innerHTML = '';
-        
-            let adaData = false;
-        
+
             const keys = Object.keys(cloudNotaList || {}).sort((a, b) => {
                 const ta = cloudNotaList[a]?.tanggalRaw || '';
                 const tb = cloudNotaList[b]?.tanggalRaw || '';
                 return tb.localeCompare(ta);
             });
-        
-            keys.forEach(key => {
+
+            const rows = [];
+            let adaData = false;
+
+            for (const key of keys) {
                 const n = cloudNotaList[key];
-                if (!n) return;
-        
-                if (filterKurir !== 'semua' && n.kurirUsername !== filterKurir) return;
-                if (filterTgl && n.tanggalRaw !== filterTgl) return;
-                if (filterBulan && (!n.tanggalRaw || n.tanggalRaw.substring(0, 7) !== filterBulan)) return;
-        
+                if (!n) continue;
+
+                if (filterKurir !== 'semua' && n.kurirUsername !== filterKurir) continue;
+                if (filterTgl && n.tanggalRaw !== filterTgl) continue;
+                if (filterBulan && (!n.tanggalRaw || n.tanggalRaw.substring(0, 7) !== filterBulan)) continue;
+
                 adaData = true;
-        
-                const totalBiaya = (n.biayaTambahan || []).reduce((acc, b) => acc + (b.nominal || 0), 0);
+
+                const totalBiaya = (n.biayaTambahan || []).reduce((acc, b) => acc + (parseInt(b.nominal) || 0), 0);
                 const statusText = (n.status || '-').toUpperCase();
                 const statusColor = statusText === 'ADMIN'
                     ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
                     : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300';
-        
-                container.innerHTML += `
+
+                rows.push(`
                     <div class="bg-white dark:bg-darkCard p-2.5 rounded-lg border shadow-sm text-[11px] space-y-1.5">
                         <div class="flex justify-between items-start gap-2">
                             <div class="min-w-0">
@@ -3434,15 +3382,11 @@
                                 <div class="text-[10px] text-slate-400">${n.tanggal || '-'}</div>
                             </div>
                             <div class="flex flex-col items-end gap-1">
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${statusColor}">
-                                    ${statusText}
-                                </span>
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                    ${n.kurirNama || '-'}
-                                </span>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${statusColor}">${statusText}</span>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">${n.kurirNama || '-'}</span>
                             </div>
                         </div>
-        
+
                         <div class="grid grid-cols-2 gap-1.5 bg-slate-50 dark:bg-slate-800 p-2 rounded-md">
                             <div>
                                 <div class="text-[9px] text-slate-400">Ongkir</div>
@@ -3461,19 +3405,20 @@
                                 <div class="font-bold text-[11px] text-primary">Rp ${(n.total || 0).toLocaleString('id-ID')}</div>
                             </div>
                         </div>
-        
+
                         <div class="flex justify-end gap-2 pt-0.5">
                             <button onclick="viewAdminNota('${key}')" class="px-2.5 py-1 rounded-md bg-blue-50 text-blue-600 font-bold text-[10px]">Preview</button>
                             <button onclick="hapusNotaGlobal('${key}')" class="px-2.5 py-1 rounded-md bg-red-50 text-red-600 font-bold text-[10px]">Hapus</button>
                         </div>
                     </div>
-                `;
-            });
-        
-            if (!adaData) {
-                container.innerHTML = `<div class="text-center text-xs text-slate-400 py-4">Tidak ada nota sesuai filter.</div>`;
+                `);
             }
+
+            container.innerHTML = adaData
+                ? rows.join('')
+                : `<div class="text-center text-xs text-slate-400 py-4">Tidak ada nota sesuai filter.</div>`;
         };
+
         window.populateLaporanFilter = function() {
             const bulanSelect = document.getElementById('laporan-filter-bulan');
             const kurirSelect = document.getElementById('laporan-filter-kurir');
@@ -3509,22 +3454,23 @@
         };
         window.renderLaporanData = function() {
             const container = document.getElementById('container-laporan-harian');
+            if (!container) return;
+
             const bulan = document.getElementById('laporan-filter-bulan')?.value || '';
             const kurir = document.getElementById('laporan-filter-kurir')?.value || 'semua';
-            if (!container) return;
-        
+
             let totalNota = 0;
             let totalPendapatan = 0;
             let totalNotaAdmin = 0;
             let totalNotaOL = 0;
-            let kurirAktifSet = new Set();
-            let mapHarian = {};
-        
-            Object.values(cloudNotaList || {}).forEach(n => {
-                if (!n || !n.tanggalRaw) return;
-                if (bulan && n.tanggalRaw.substring(0, 7) !== bulan) return;
-                if (kurir !== 'semua' && n.kurirUsername !== kurir) return;
-        
+            const kurirAktifSet = new Set();
+            const mapHarian = {};
+
+            for (const n of Object.values(cloudNotaList || {})) {
+                if (!n || !n.tanggalRaw) continue;
+                if (bulan && n.tanggalRaw.substring(0, 7) !== bulan) continue;
+                if (kurir !== 'semua' && n.kurirUsername !== kurir) continue;
+
                 const tgl = n.tanggalRaw;
                 if (!mapHarian[tgl]) {
                     mapHarian[tgl] = {
@@ -3535,16 +3481,16 @@
                         kurirSet: new Set()
                     };
                 }
-        
+
                 const ongkir = parseInt(n.ongkir) || 0;
                 const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
                 const pendapatan = ongkir + biaya;
-        
+
                 mapHarian[tgl].totalNota++;
                 mapHarian[tgl].pendapatan += pendapatan;
                 mapHarian[tgl].kurirSet.add(n.kurirUsername);
                 kurirAktifSet.add(n.kurirUsername);
-        
+
                 const status = (n.status || '').toLowerCase();
                 if (status === 'admin') {
                     mapHarian[tgl].notaAdmin++;
@@ -3554,39 +3500,30 @@
                     mapHarian[tgl].notaOL++;
                     totalNotaOL++;
                 }
-        
+
                 totalNota++;
                 totalPendapatan += pendapatan;
-            });
-        
+            }
+
             const rataRata = totalNota > 0 ? Math.round(totalPendapatan / totalNota) : 0;
-        
+
             document.getElementById('laporan-total-nota').innerText = totalNota;
             const detailNota = document.getElementById('laporan-total-nota-detail');
-            if (detailNota) {
-                detailNota.innerText = `Admin ${totalNotaAdmin} • OL ${totalNotaOL}`;
-            }
-        
+            if (detailNota) detailNota.innerText = `Admin ${totalNotaAdmin} • OL ${totalNotaOL}`;
             document.getElementById('laporan-total-pendapatan').innerText = 'Rp ' + totalPendapatan.toLocaleString('id-ID');
             document.getElementById('laporan-rata-rata').innerText = 'Rp ' + rataRata.toLocaleString('id-ID');
             document.getElementById('laporan-kurir-aktif').innerText = kurirAktifSet.size;
-        
+
             const urutan = Object.keys(mapHarian).sort((a, b) => b.localeCompare(a));
-            let html = '';
-        
-            urutan.forEach(tgl => {
+            const html = urutan.map(tgl => {
                 const d = mapHarian[tgl];
                 const avg = d.totalNota > 0 ? Math.round(d.pendapatan / d.totalNota) : 0;
-        
-                let infoKurir = '-';
-                if (kurir === 'semua') {
-                    infoKurir = `${d.kurirSet.size} kurir aktif`;
-                } else {
-                    const found = Object.values(cloudKurirList || {}).find(u => u.username === kurir);
-                    infoKurir = found?.nama || kurir;
-                }
-        
-                html += `
+
+                const infoKurir = kurir === 'semua'
+                    ? `${d.kurirSet.size} kurir aktif`
+                    : (Object.values(cloudKurirList || {}).find(u => u.username === kurir)?.nama || kurir);
+
+                return `
                     <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs space-y-1.5">
                         <div class="flex justify-between items-center">
                             <div>
@@ -3606,13 +3543,9 @@
                         </div>
                     </div>
                 `;
-            });
-        
-            if (!html) {
-                html = '<div class="text-center text-xs text-slate-400 py-4">Belum ada data laporan.</div>';
-            }
-        
-            container.innerHTML = html;
+            }).join('');
+
+            container.innerHTML = html || '<div class="text-center text-xs text-slate-400 py-4">Belum ada data laporan.</div>';
         };
         window.backupLaporanExcel = function() {
             const bulan = document.getElementById('laporan-filter-bulan')?.value || getWibRawDate().substring(0, 7);
@@ -3922,22 +3855,18 @@
             const container = document.getElementById('container-admin-ongkir');
             if (!container) return;
 
-            const keys = Object.keys(cloudOngkirList || {});
             const q = (document.getElementById('admin-ongkir-search')?.value || '').toLowerCase().trim();
+            const keys = Object.keys(cloudOngkirList || {});
 
             if (!keys.length) {
                 container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada data ongkir.</div>';
                 return;
             }
 
-            if (q) {
-                filterAdminOngkirList();
-                return;
-            }
-
-            container.innerHTML = keys.map(key => {
+            const html = keys.map(key => {
                 const d = cloudOngkirList[key] || {};
-                const tarif = (d.tarif || 0).toLocaleString('id-ID');
+                const wilayah = (d.wilayah || '').toLowerCase();
+                if (q && !wilayah.includes(q)) return '';
 
                 return `
                     <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
@@ -3954,7 +3883,7 @@
                                 </div>
                             </div>
                             <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0">
-                                Rp ${tarif}
+                                Rp ${(d.tarif || 0).toLocaleString('id-ID')}
                             </span>
                         </div>
 
@@ -3968,8 +3897,9 @@
                         </div>
                     </div>
                 `;
-            }).join('');
+            }).filter(Boolean).join('');
 
+            container.innerHTML = html || '<div class="text-center text-xs text-slate-400 py-4">Tidak ada data ongkir sesuai pencarian.</div>';
             if (typeof lucide !== 'undefined') lucide.createIcons();
         };
 
@@ -4310,69 +4240,58 @@
         function calcKpiForKurir(identifier, bulan, stats = {}) {
             const target = (identifier || '').trim().toLowerCase();
             const norm = (v) => (v || '').toString().trim().toLowerCase();
-        
+
+            if (!kpiCache || kpiCache.bulan !== bulan) {
+                buildKpiCache(bulan);
+            }
+
             const kurirObj = Object.entries(cloudKurirList || {}).find(([id, u]) => {
                 if (!u || u.role !== 'kurir') return false;
-                return norm(id) === target || norm(u.username) === target;
+                return norm(id) === target || norm(u.username) === target || norm(u.nama) === target;
             });
-        
+
             const idTarget = norm(kurirObj?.[0] || '');
             const usernameTarget = norm(kurirObj?.[1]?.username || '');
             const namaResmi = kurirObj?.[1]?.nama || '-';
             const leaderResmi = kurirObj?.[1]?.leader || '-';
-        
-            const rekap = getRekapJadwalKurirByName(namaResmi || idTarget || usernameTarget, bulan);
-        
-            let totalNota = 0;
-            let trxMitra = 0;
-            let totalPenghasilan = 0;
-        
-            Object.values(cloudNotaList || {}).forEach(n => {
-                if (!n) return;
-        
-                const notaUsername = norm(n.kurirUsername);
-                const notaId = norm(n.kurirId);
-                if (notaUsername !== usernameTarget && notaId !== idTarget) return;
-                if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
-        
-                totalNota++;
-                const ongkir = parseInt(n.ongkir) || 0;
-                const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
-                totalPenghasilan += (ongkir + biaya);
-            });
-        
-            Object.values(cloudLogMitra || {}).forEach(log => {
-                if (!log) return;
-        
-                const logUsername = norm(log.kurirUsername);
-                const logId = norm(log.kurirId);
-                if (logUsername !== usernameTarget && logId !== idTarget) return;
-                if (!log.tglRaw || log.tglRaw.slice(0, 7) !== bulan) return;
-        
-                trxMitra += parseInt(log.trxInput) || 0;
-            });
-        
+
+            const key = norm(namaResmi || idTarget || usernameTarget);
+
+            const rekap = kpiCache.rekapByKey[key] || {
+                hadirFull: 0, hadirHalf: 0, totalHadirScore: 0,
+                totalOff: 0, totalTidakAmbilOff: 0, totalIzin: 0, totalSakit: 0,
+                totalAbsenMasuk: 0, totalAbsenPulang: 0
+            };
+
+            const notaStat = kpiCache.notaByKey[key] || { totalNota: 0, totalPenghasilan: 0 };
+            const mitraStat = kpiCache.mitraByKey[key] || { trxMitra: 0 };
+
+            const totalNota = notaStat.totalNota || 0;
+            const totalPenghasilan = notaStat.totalPenghasilan || 0;
+            const trxMitra = mitraStat.trxMitra || 0;
+
             const kehadiranScore = Math.min((rekap.totalHadirScore / getDaysInMonth(bulan)) * 20, 20);
-        
-            const maxPenghasilan = stats.maxPenghasilan || 0;
-            const maxNota = stats.maxNota || 0;
-            const maxTrxMitra = stats.maxTrxMitra || 0;
+
+            const maxPenghasilan = stats.maxPenghasilan || kpiCache.maxPenghasilan || 0;
+            const maxNota = stats.maxNota || kpiCache.maxNota || 0;
+            const maxTrxMitra = stats.maxTrxMitra || kpiCache.maxTrxMitra || 0;
+
             const totalPenghasilanScore = maxPenghasilan > 0
-                ? Math.min(20, (totalPenghasilan / maxPenghasilan) * 18)
+                ? Math.min(20, (totalPenghasilan / maxPenghasilan) * 20)
                 : 0;
-            
+
             const totalNotaScore = maxNota > 0
-                ? Math.min(30, (totalNota / maxNota) * 27)
+                ? Math.min(20, (totalNota / maxNota) * 20)
                 : 0;
-            
+
             const trxMitraScore = maxTrxMitra > 0
-                ? Math.min(20, (trxMitra / maxTrxMitra) * 18)
+                ? Math.min(20, (trxMitra / maxTrxMitra) * 20)
                 : 0;
 
             const totalOffGabungan = (rekap.totalOff || 0) + (rekap.totalIzin || 0) + (rekap.totalSakit || 0);
             const offScore = totalOffGabungan <= 3
-                ? 10
-                : Math.max(0, 10 - ((totalOffGabungan - 3) * 0.75));
+                ? 20
+                : Math.max(0, 20 - ((totalOffGabungan - 3) * 2.5));
 
             const rating = Number(Math.min(100, (
                 kehadiranScore +
@@ -4405,6 +4324,7 @@
                 rating
             };
         }
+
         function getRekapJadwalKurirByName(identifier, bulan) {
             const target = (identifier || '').trim().toLowerCase();
             if (!target) {
@@ -4529,6 +4449,128 @@
                 totalAbsenPulang
             };
         }
+
+        function getRekapJadwalKurirByName(identifier, bulan) {
+            const target = (identifier || '').trim().toLowerCase();
+            if (!target) {
+                return {
+                    hadirFull: 0,
+                    hadirHalf: 0,
+                    totalHadirScore: 0,
+                    totalOff: 0,
+                    totalTidakAmbilOff: 0,
+                    totalIzin: 0,
+                    totalSakit: 0,
+                    totalAbsenMasuk: 0,
+                    totalAbsenPulang: 0
+                };
+            }
+
+            const norm = (v) => (v || '').toString().trim().toLowerCase();
+            const tanggalMap = {};
+            let totalOff = 0;
+            let totalTidakAmbilOff = 0;
+            let totalIzin = 0;
+            let totalSakit = 0;
+            let totalAbsenMasuk = 0;
+            let totalAbsenPulang = 0;
+
+            const cocokKurirAbsensi = (a) => {
+                const idKurir = norm(a?.idKurir || a?.kurirId);
+                const username = norm(a?.username || a?.kurirUsername);
+                const nama = norm(a?.nama || a?.namaKurir);
+                return target === idKurir || target === username || target === nama;
+            };
+
+            Object.values(cloudAbsensiList || {}).forEach(a => {
+                if (!a) return;
+
+                const tgl = (a.tanggal || '').trim();
+                if (!tgl || tgl.slice(0, 7) !== bulan) return;
+                if (!cocokKurirAbsensi(a)) return;
+
+                if (!tanggalMap[tgl]) {
+                    tanggalMap[tgl] = { masuk: false, pulang: false, off: false };
+                }
+
+                if (a.jamMasuk) {
+                    tanggalMap[tgl].masuk = true;
+                    totalAbsenMasuk++;
+                }
+                if (a.jamPulang) {
+                    tanggalMap[tgl].pulang = true;
+                    totalAbsenPulang++;
+                }
+
+                const status = norm(a.status);
+                if (status === 'izin') totalIzin++;
+                if (status === 'sakit') totalSakit++;
+            });
+
+            Object.values(cloudJadwalOff || {}).forEach(j => {
+                if (!j) return;
+
+                const namaKurir = norm(j.nama);
+                const jenisOff = norm(j.jenisOff);
+                const statusOff = norm(j.status);
+                const tglMulai = (j.tanggalMulai || '').trim();
+                const tglSelesai = (j.tanggalSelesai || tglMulai || '').trim();
+
+                if (!tglMulai || tglMulai.slice(0, 7) !== bulan) return;
+                if (target !== namaKurir) return;
+
+                const start = new Date(tglMulai);
+                const end = new Date(tglSelesai);
+                const daysCount = Math.max(1, Math.round((end - start) / 86400000) + 1);
+
+                for (let i = 0; i < daysCount; i++) {
+                    const d = new Date(start);
+                    d.setDate(start.getDate() + i);
+
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const tglLoop = `${y}-${m}-${dd}`;
+
+                    if (tglLoop.slice(0, 7) !== bulan) continue;
+
+                    if (jenisOff === 'off reguler') totalOff++;
+                    if (jenisOff === 'izin') totalIzin++;
+                    if (jenisOff === 'tidak ambil off') totalTidakAmbilOff++;
+                    if (jenisOff === 'sakit') totalSakit++;
+
+                    if (!tanggalMap[tglLoop]) {
+                        tanggalMap[tglLoop] = { masuk: false, pulang: false, off: true };
+                    } else {
+                        tanggalMap[tglLoop].off = true;
+                    }
+
+                    if (statusOff !== 'aktif') {
+                        totalTidakAmbilOff++;
+                    }
+                }
+            });
+
+            let hadirFull = 0;
+            let hadirHalf = 0;
+
+            Object.values(tanggalMap).forEach(v => {
+                if (v.masuk && v.pulang) hadirFull += 1;
+                else if (v.masuk || v.pulang) hadirHalf += 1;
+            });
+
+            return {
+                hadirFull,
+                hadirHalf,
+                totalHadirScore: hadirFull + (hadirHalf * 0.5),
+                totalOff,
+                totalTidakAmbilOff,
+                totalIzin,
+                totalSakit,
+                totalAbsenMasuk,
+                totalAbsenPulang
+            };
+        }
         
         function buildKPIData(bulan) {
             const rawData = [];
@@ -4638,38 +4680,17 @@
         
             return data[0] || null;
         }
-        
         window.renderKPISection = function(section = 'penghargaan') {
             const container = document.getElementById('container-kpi-kurir');
             if (!container) return;
-        
+
             currentKPISection = section;
             const bulan = getKpiMonth();
             const data = buildKPIData(bulan);
-        
-            const top1 = data[0];
-            const top2 = data[1];
-            const top3 = data[2];
-        
-            const topKurirTerbaik = [...data].sort((a, b) => b.rating - a.rating)[0];
-            const topTrxMitra = [...data].sort((a, b) => b.trxMitra - a.trxMitra)[0];
-            const topAktif = [...data].sort((a, b) => {
-                const offA = (a.totalOff || 0) + (a.totalIzin || 0) + (a.totalSakit || 0);
-                const offB = (b.totalOff || 0) + (b.totalIzin || 0) + (b.totalSakit || 0);
-            
-                if ((b.hadir || 0) !== (a.hadir || 0)) {
-                    return (b.hadir || 0) - (a.hadir || 0); // kehadiran terbanyak
-                }
-            
-                if (offA !== offB) {
-                    return offA - offB; // off paling sedikit
-                }
-            
-                return (b.rating || 0) - (a.rating || 0); // tie breaker
-            })[0];
+            const top1 = data[0], top2 = data[1], top3 = data[2];
+
             if (section === 'rekapjadwal') {
                 const rekap = window.calcRekapJadwalKurir();
-            
                 container.innerHTML = `
                     <div class="space-y-3">
                         ${rekap.length ? rekap.map((r, i) => `
@@ -4677,9 +4698,7 @@
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-2">
-                                            <div class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-violet-600 dark:text-violet-300 font-black text-xs">
-                                                ${i + 1}
-                                            </div>
+                                            <div class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-violet-600 dark:text-violet-300 font-black text-xs">${i + 1}</div>
                                             <div class="min-w-0">
                                                 <div class="font-bold text-sm truncate">${r.namaKurir}</div>
                                                 <div class="text-[10px] text-slate-400 truncate">Leader: ${r.leader || '-'}</div>
@@ -4691,48 +4710,32 @@
                                         <div class="text-lg font-black text-success">${r.kehadiran}</div>
                                     </div>
                                 </div>
-            
                                 <div class="grid grid-cols-2 gap-2 text-xs">
-                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                        <div class="text-[10px] text-slate-400 uppercase">Total Off</div>
-                                        <div class="font-bold">${r.totalOff}</div>
-                                    </div>
-                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                        <div class="text-[10px] text-slate-400 uppercase">Tidak Ambil Off</div>
-                                        <div class="font-bold text-rose-500">${r.totalTidakAmbilOff}</div>
-                                    </div>
-                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                        <div class="text-[10px] text-slate-400 uppercase">Izin</div>
-                                        <div class="font-bold text-amber-500">${r.totalIzin}</div>
-                                    </div>
-                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                        <div class="text-[10px] text-slate-400 uppercase">Sakit</div>
-                                        <div class="font-bold text-blue-500">${r.totalSakit}</div>
-                                    </div>
-                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                        <div class="text-[10px] text-slate-400 uppercase">Absen Masuk</div>
-                                        <div class="font-bold">${r.totalAbsenMasuk}</div>
-                                    </div>
-                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                        <div class="text-[10px] text-slate-400 uppercase">Absen Pulang</div>
-                                        <div class="font-bold">${r.totalAbsenPulang}</div>
-                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60"><div class="text-[10px] text-slate-400 uppercase">Total Off</div><div class="font-bold">${r.totalOff}</div></div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60"><div class="text-[10px] text-slate-400 uppercase">Tidak Ambil Off</div><div class="font-bold text-rose-500">${r.totalTidakAmbilOff}</div></div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60"><div class="text-[10px] text-slate-400 uppercase">Izin</div><div class="font-bold text-amber-500">${r.totalIzin}</div></div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60"><div class="text-[10px] text-slate-400 uppercase">Sakit</div><div class="font-bold text-blue-500">${r.totalSakit}</div></div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60"><div class="text-[10px] text-slate-400 uppercase">Absen Masuk</div><div class="font-bold">${r.totalAbsenMasuk}</div></div>
+                                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60"><div class="text-[10px] text-slate-400 uppercase">Absen Pulang</div><div class="font-bold">${r.totalAbsenPulang}</div></div>
                                 </div>
                             </div>
-                        `).join('') : `
-                            <div class="text-center text-xs text-slate-400 py-6 bg-white dark:bg-darkCard rounded-2xl border">
-                                Belum ada data rekap jadwal.
-                            </div>
-                        `}
-                    </div>
-                `;
-            
+                        `).join('') : `<div class="text-center text-xs text-slate-400 py-6 bg-white dark:bg-darkCard rounded-2xl border">Belum ada data rekap jadwal.</div>`}
+                    </div>`;
                 return;
             }
-        
+
             if (section === 'penghargaan') {
+                const topKurirTerbaik = data[0];
+                const topTrxMitra = data.slice().sort((a, b) => b.trxMitra - a.trxMitra)[0];
+                const topAktif = data.slice().sort((a, b) => {
+                    const offA = (a.totalOff || 0) + (a.totalIzin || 0) + (a.totalSakit || 0);
+                    const offB = (b.totalOff || 0) + (b.totalIzin || 0) + (b.totalSakit || 0);
+                    if ((b.hadir || 0) !== (a.hadir || 0)) return (b.hadir || 0) - (a.hadir || 0);
+                    if (offA !== offB) return offA - offB;
+                    return (b.rating || 0) - (a.rating || 0);
+                })[0];
                 const testimoniTerbaik = getTestimoniTerbaik(bulan);
-            
+
                 container.innerHTML = `
                     <div class="space-y-4">
                         <div class="rounded-3xl p-5 bg-gradient-to-br from-yellow-100 to-yellow-300 dark:from-yellow-900/40 dark:to-yellow-800/20 border border-yellow-200 dark:border-yellow-900 shadow-xl">
@@ -4742,27 +4745,21 @@
                                     <div class="text-2xl font-black">${topKurirTerbaik?.nama || '-'}</div>
                                     <div class="text-xs font-bold mt-1">${topKurirTerbaik ? `${getRatingBadge(topKurirTerbaik.rating).emoji} ${Number(topKurirTerbaik.rating).toFixed(1)}% ${getRatingBadge(topKurirTerbaik.rating).label}` : '-'}</div>
                                 </div>
-                                <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-yellow-900 shadow-lg">
-                                    ${getKpiAvatarName(topKurirTerbaik?.nama || '')}
-                                </div>
+                                <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-yellow-900 shadow-lg">${getKpiAvatarName(topKurirTerbaik?.nama || '')}</div>
                             </div>
                         </div>
-            
+
                         <div class="rounded-3xl p-5 bg-gradient-to-br from-pink-100 to-rose-300 dark:from-pink-900/40 dark:to-rose-800/20 border border-pink-200 dark:border-pink-900 shadow-xl">
                             <div class="text-[10px] uppercase tracking-wider text-pink-700 dark:text-pink-200 font-black">💬 Kurir Testimoni Terbaik</div>
                             <div class="flex items-center justify-between mt-2">
                                 <div>
                                     <div class="text-2xl font-black">${testimoniTerbaik?.nama || '-'}</div>
-                                    <div class="text-xs font-bold mt-1">
-                                        ${testimoniTerbaik ? `⭐ ${testimoniTerbaik.avgRating.toFixed(1)} / 5 dari ${testimoniTerbaik.jumlah} testimoni` : '-'}
-                                    </div>
+                                    <div class="text-xs font-bold mt-1">${testimoniTerbaik ? `⭐ ${testimoniTerbaik.avgRating.toFixed(1)} / 5 dari ${testimoniTerbaik.jumlah} testimoni` : '-'}</div>
                                 </div>
-                                <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-pink-900 shadow-lg">
-                                    ${getKpiAvatarName(testimoniTerbaik?.nama || '')}
-                                </div>
+                                <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-pink-900 shadow-lg">${getKpiAvatarName(testimoniTerbaik?.nama || '')}</div>
                             </div>
                         </div>
-            
+
                         <div class="rounded-3xl p-5 bg-gradient-to-br from-slate-200 to-slate-400 dark:from-slate-700 dark:to-slate-800 border shadow-xl">
                             <div class="text-[10px] uppercase tracking-wider text-slate-700 dark:text-slate-200 font-black">🥇 Trx Mitra Terbanyak</div>
                             <div class="flex items-center justify-between mt-2">
@@ -4770,12 +4767,10 @@
                                     <div class="text-2xl font-black text-slate-900 dark:text-white">${topTrxMitra?.nama || '-'}</div>
                                     <div class="text-xs font-bold mt-1 text-slate-700 dark:text-slate-200">${topTrxMitra?.trxMitra || 0} trx</div>
                                 </div>
-                                <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-slate-900 shadow-lg">
-                                    ${getKpiAvatarName(topTrxMitra?.nama || '')}
-                                </div>
+                                <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-slate-900 shadow-lg">${getKpiAvatarName(topTrxMitra?.nama || '')}</div>
                             </div>
                         </div>
-            
+
                         <div class="rounded-3xl p-5 bg-gradient-to-br from-orange-100 to-orange-300 dark:from-orange-900/40 dark:to-orange-800/20 border border-orange-200 dark:border-orange-900 shadow-xl">
                             <div class="text-[10px] uppercase tracking-wider text-orange-700 dark:text-orange-200 font-black">🔥 Kurir Paling Aktif</div>
                             <div class="flex items-center justify-between mt-2">
@@ -4783,149 +4778,85 @@
                                     <div class="text-2xl font-black">${topAktif?.nama || '-'}</div>
                                     <div class="text-xs font-bold mt-1 text-orange-700 dark:text-orange-200">Rating ${topAktif?.rating || 0}%</div>
                                 </div>
-                                <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-orange-900 shadow-lg">
-                                    ${getKpiAvatarName(topAktif?.nama || '')}
-                                </div>
+                                <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-orange-900 shadow-lg">${getKpiAvatarName(topAktif?.nama || '')}</div>
                             </div>
                         </div>
-            
+
                         <div class="grid grid-cols-3 gap-2">
                             ${[top1, top2, top3].map((x, idx) => {
                                 if (!x) return `<div class="rounded-2xl bg-slate-100 dark:bg-slate-800 p-3 text-center text-xs">-</div>`;
                                 const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
                                 const bg = idx === 0 ? 'from-yellow-300 to-yellow-500' : idx === 1 ? 'from-slate-300 to-slate-500' : 'from-orange-300 to-orange-500';
-                                return `
-                                    <div class="rounded-2xl bg-gradient-to-br ${bg} p-3 text-center shadow-lg">
-                                        <div class="text-2xl">${medal}</div>
-                                        <div class="font-black text-sm mt-1">${x.nama}</div>
-                                        <div class="text-[10px] font-bold">${Number(x.rating).toFixed(1)}%</div>
-                                    </div>
-                                `;
+                                return `<div class="rounded-2xl bg-gradient-to-br ${bg} p-3 text-center shadow-lg"><div class="text-2xl">${medal}</div><div class="font-black text-sm mt-1">${x.nama}</div><div class="text-[10px] font-bold">${Number(x.rating).toFixed(1)}%</div></div>`;
                             }).join('')}
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 return;
             }
-        
+
             if (section === 'top5') {
                 const today = getWibRawDate();
-            
-                const topNota = [...data].sort((a, b) => b.totalNota - a.totalNota).slice(0, 5);
-                const topPenghasilan = [...data].sort((a, b) => b.totalPenghasilan - a.totalPenghasilan).slice(0, 5);
-                const topKonsisten = [...data].sort((a, b) => b.rating - a.rating).slice(0, 5);
-            
-                // TOP 5 HARI INI
+                const topNota = data.slice().sort((a, b) => b.totalNota - a.totalNota).slice(0, 5);
+                const topPenghasilan = data.slice().sort((a, b) => b.totalPenghasilan - a.totalPenghasilan).slice(0, 5);
+                const topKonsisten = data.slice(0, 5);
+
                 const todayData = [];
                 Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
-                    if (!u || u.role !== 'kurir') return;
-                    if (u.status && u.status !== 'aktif') return;
-            
+                    if (!u || u.role !== 'kurir' || (u.status && u.status !== 'aktif')) return;
+
                     const nama = (u.nama || '').trim();
                     const username = (u.username || '').trim();
-            
-                    let notaHariIni = 0;
-                    let penghasilanHariIni = 0;
-            
+                    let notaHariIni = 0, penghasilanHariIni = 0;
+
                     Object.values(cloudNotaList || {}).forEach(n => {
                         if (!n) return;
                         const kurirUsername = (n.kurirUsername || '').trim().toLowerCase();
                         const kurirNama = (n.kurirNama || '').trim().toLowerCase();
                         if (kurirUsername !== username.toLowerCase() && kurirNama !== nama.toLowerCase()) return;
                         if (n.tanggalRaw !== today) return;
-            
+
                         notaHariIni++;
                         const ongkir = parseInt(n.ongkir) || 0;
                         const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
-                        penghasilanHariIni += (ongkir + biaya);
+                        penghasilanHariIni += ongkir + biaya;
                     });
-            
-                    todayData.push({
-                        id,
-                        nama,
-                        username,
-                        notaHariIni,
-                        penghasilanHariIni
-                    });
+
+                    todayData.push({ id, nama, username, notaHariIni, penghasilanHariIni });
                 });
-            
-                const topNotaHariIni = [...todayData].sort((a, b) => b.notaHariIni - a.notaHariIni).slice(0, 5);
-                const topPenghasilanHariIni = [...todayData].sort((a, b) => b.penghasilanHariIni - a.penghasilanHariIni).slice(0, 5);
-            
+
+                const topNotaHariIni = todayData.slice().sort((a, b) => b.notaHariIni - a.notaHariIni).slice(0, 5);
+                const topPenghasilanHariIni = todayData.slice().sort((a, b) => b.penghasilanHariIni - a.penghasilanHariIni).slice(0, 5);
+
                 container.innerHTML = `
                     <div class="space-y-3">
                         <div class="p-4 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-xl">
                             <h4 class="text-xs font-black uppercase tracking-wider mb-3">Top 5 Total Nota (${bulan})</h4>
-                            ${topNota.map((x, i) => `
-                                <div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0">
-                                    <div>
-                                        <div class="font-bold">${i+1}. ${x.nama}</div>
-                                        <div class="text-[10px] opacity-80">${getRatingBadge(x.rating).emoji} ${Number(x.rating).toFixed(1)}% ${getRatingBadge(x.rating).label}</div>
-                                    </div>
-                                    <div class="font-black">${x.totalNota}</div>
-                                </div>
-                            `).join('')}
+                            ${topNota.map((x, i) => `<div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0"><div><div class="font-bold">${i + 1}. ${x.nama}</div><div class="text-[10px] opacity-80">${getRatingBadge(x.rating).emoji} ${Number(x.rating).toFixed(1)}% ${getRatingBadge(x.rating).label}</div></div><div class="font-black">${x.totalNota}</div></div>`).join('')}
                         </div>
-            
+
                         <div class="p-4 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl">
                             <h4 class="text-xs font-black uppercase tracking-wider mb-3">Top 5 Penghasilan (${bulan})</h4>
-                            ${topPenghasilan.map((x, i) => `
-                                <div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0">
-                                    <div>
-                                        <div class="font-bold">${i+1}. ${x.nama}</div>
-                                        <div class="text-[10px] opacity-80">${getRatingBadge(x.rating).emoji} ${Number(x.rating).toFixed(1)}% ${getRatingBadge(x.rating).label}</div>
-                                    </div>
-                                    <div class="font-black">Rp ${x.totalPenghasilan.toLocaleString('id-ID')}</div>
-                                </div>
-                            `).join('')}
+                            ${topPenghasilan.map((x, i) => `<div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0"><div><div class="font-bold">${i + 1}. ${x.nama}</div><div class="text-[10px] opacity-80">${getRatingBadge(x.rating).emoji} ${Number(x.rating).toFixed(1)}% ${getRatingBadge(x.rating).label}</div></div><div class="font-black">Rp ${x.totalPenghasilan.toLocaleString('id-ID')}</div></div>`).join('')}
                         </div>
-            
+
                         <div class="p-4 rounded-3xl bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-xl">
                             <h4 class="text-xs font-black uppercase tracking-wider mb-3">Top 5 Ranking (${bulan})</h4>
-                            ${topKonsisten.map((x, i) => `
-                                <div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0">
-                                    <div>
-                                        <div class="font-bold">${i+1}. ${x.nama}</div>
-                                        <div class="text-[10px] opacity-80">${getRatingBadge(x.rating).emoji} ${Number(x.rating).toFixed(1)}% ${getRatingBadge(x.rating).label}</div>
-                                    </div>
-                                    <div class="font-black">${x.rating}%</div>
-                                </div>
-                            `).join('')}
+                            ${topKonsisten.map((x, i) => `<div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0"><div><div class="font-bold">${i + 1}. ${x.nama}</div><div class="text-[10px] opacity-80">${getRatingBadge(x.rating).emoji} ${Number(x.rating).toFixed(1)}% ${getRatingBadge(x.rating).label}</div></div><div class="font-black">${x.rating}%</div></div>`).join('')}
                         </div>
-            
+
                         <div class="p-4 rounded-3xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-xl">
                             <h4 class="text-xs font-black uppercase tracking-wider mb-3">Top 5 Nota Hari Ini (${today})</h4>
-                            ${topNotaHariIni.length ? topNotaHariIni.map((x, i) => `
-                                <div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0">
-                                    <div class="min-w-0">
-                                        <div class="font-bold truncate">${i+1}. ${x.nama}</div>
-                                        <div class="text-[10px] opacity-80">Nota hari ini</div>
-                                    </div>
-                                    <div class="font-black">${x.notaHariIni}</div>
-                                </div>
-                            `).join('') : `
-                                <div class="text-xs opacity-80">Belum ada nota hari ini.</div>
-                            `}
+                            ${topNotaHariIni.length ? topNotaHariIni.map((x, i) => `<div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0"><div class="min-w-0"><div class="font-bold truncate">${i + 1}. ${x.nama}</div><div class="text-[10px] opacity-80">Nota hari ini</div></div><div class="font-black">${x.notaHariIni}</div></div>`).join('') : `<div class="text-xs opacity-80">Belum ada nota hari ini.</div>`}
                         </div>
-            
+
                         <div class="p-4 rounded-3xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-xl">
                             <h4 class="text-xs font-black uppercase tracking-wider mb-3">Top 5 Penghasilan Hari Ini (${today})</h4>
-                            ${topPenghasilanHariIni.length ? topPenghasilanHariIni.map((x, i) => `
-                                <div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0">
-                                    <div class="min-w-0">
-                                        <div class="font-bold truncate">${i+1}. ${x.nama}</div>
-                                        <div class="text-[10px] opacity-80">Hari ini</div>
-                                    </div>
-                                    <div class="font-black">Rp ${x.penghasilanHariIni.toLocaleString('id-ID')}</div>
-                                </div>
-                            `).join('') : `
-                                <div class="text-xs opacity-80">Belum ada penghasilan hari ini.</div>
-                            `}
+                            ${topPenghasilanHariIni.length ? topPenghasilanHariIni.map((x, i) => `<div class="flex items-center justify-between py-2 border-b border-white/15 last:border-0"><div class="min-w-0"><div class="font-bold truncate">${i + 1}. ${x.nama}</div><div class="text-[10px] opacity-80">Hari ini</div></div><div class="font-black">Rp ${x.penghasilanHariIni.toLocaleString('id-ID')}</div></div>`).join('') : `<div class="text-xs opacity-80">Belum ada penghasilan hari ini.</div>`}
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 return;
             }
+
             container.innerHTML = `
                 <div class="space-y-3">
                     ${data.map((x, i) => {
@@ -4933,16 +4864,12 @@
                         const podium = getPodiumClass(i + 1);
                         const progress = progressColor(x.rating);
                         const isTop3 = i < 3;
-            
+
                         return `
-                            <div onclick="openKpiDetailModal('${x.id || ''}')" 
-                                 class="relative overflow-hidden rounded-2xl sm:rounded-[28px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-darkCard shadow-lg cursor-pointer active:scale-[0.99] transition-transform">
-                                
+                            <div onclick="openKpiDetailModal('${x.id || ''}')" class="relative overflow-hidden rounded-2xl sm:rounded-[28px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-darkCard shadow-lg cursor-pointer active:scale-[0.99] transition-transform">
                                 <div class="absolute inset-0 opacity-60 bg-gradient-to-br ${isTop3 ? 'from-white via-white to-violet-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800' : 'from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800'}"></div>
-            
                                 <div class="relative p-3 sm:p-4">
                                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        
                                         <div class="flex items-start gap-3 min-w-0">
                                             <div class="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-2xl sm:rounded-[22px] bg-gradient-to-br ${isTop3 ? podium : 'from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800'} p-[2px] shadow-lg">
                                                 <div class="w-full h-full rounded-[18px] sm:rounded-[20px] bg-white dark:bg-darkCard flex items-center justify-center ring-4 ${badge.ring}">
@@ -4952,7 +4879,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-            
+
                                             <div class="min-w-0">
                                                 <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${isTop3 ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}">
                                                     ${isTop3 ? 'TOP RANK' : 'RANK'} ${i + 1}
@@ -4961,70 +4888,46 @@
                                                 <div class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate">Leader: ${x.leader || '-'}</div>
                                             </div>
                                         </div>
-            
+
                                         <div class="flex items-center justify-between sm:flex-col sm:items-end gap-2 shrink-0">
                                             <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r ${badge.bg || 'from-slate-100 to-slate-200'} text-white text-[9px] sm:text-[10px] font-black shadow-md">
-                                                <span>${badge.emoji}</span>
-                                                <span>${badge.label}</span>
+                                                <span>${badge.emoji}</span><span>${badge.label}</span>
                                             </div>
-                                            <div class="text-2xl sm:text-3xl font-black ${badge.color || 'text-slate-900 dark:text-white'}">
-                                                ${Number(x.rating).toFixed(1)}%
-                                            </div>
+                                            <div class="text-2xl sm:text-3xl font-black ${badge.color || 'text-slate-900 dark:text-white'}">${Number(x.rating).toFixed(1)}%</div>
                                         </div>
                                     </div>
-            
+
                                     <div class="mt-4 grid grid-cols-2 gap-2">
-                                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
-                                            <div class="text-[10px] text-slate-400 uppercase font-bold">Trx Mitra</div>
-                                            <div class="text-sm sm:text-base font-black mt-1">${x.trxMitra}</div>
-                                        </div>
-                                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
-                                            <div class="text-[10px] text-slate-400 uppercase font-bold">Total Nota</div>
-                                            <div class="text-sm sm:text-base font-black mt-1">${x.totalNota}</div>
-                                        </div>
-                                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
-                                            <div class="text-[10px] text-slate-400 uppercase font-bold">Penghasilan</div>
-                                            <div class="text-sm sm:text-base font-black mt-1 text-emerald-600 dark:text-emerald-400">
-                                                Rp ${x.totalPenghasilan.toLocaleString('id-ID')}
-                                            </div>
-                                        </div>
-                                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700">
-                                            <div class="text-[10px] text-slate-400 uppercase font-bold">Rating</div>
-                                            <div class="text-sm sm:text-base font-black mt-1">${x.rating}%</div>
-                                        </div>
+                                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700"><div class="text-[10px] text-slate-400 uppercase font-bold">Trx Mitra</div><div class="text-sm sm:text-base font-black mt-1">${x.trxMitra}</div></div>
+                                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700"><div class="text-[10px] text-slate-400 uppercase font-bold">Total Nota</div><div class="text-sm sm:text-base font-black mt-1">${x.totalNota}</div></div>
+                                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700"><div class="text-[10px] text-slate-400 uppercase font-bold">Penghasilan</div><div class="text-sm sm:text-base font-black mt-1 text-emerald-600 dark:text-emerald-400">Rp ${x.totalPenghasilan.toLocaleString('id-ID')}</div></div>
+                                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700"><div class="text-[10px] text-slate-400 uppercase font-bold">Rating</div><div class="text-sm sm:text-base font-black mt-1">${x.rating}%</div></div>
                                     </div>
-            
+
                                     <div class="mt-4 space-y-1.5">
-                                        <div class="flex justify-between text-[10px] font-bold uppercase text-slate-400">
-                                            <span>Progress Ranking</span>
-                                            <span>${x.rating}%</span>
-                                        </div>
-                                        <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                            <div class="h-full ${progress} rounded-full shadow-inner transition-all duration-500" style="width:${x.rating}%"></div>
-                                        </div>
+                                        <div class="flex justify-between text-[10px] font-bold uppercase text-slate-400"><span>Progress Ranking</span><span>${x.rating}%</span></div>
+                                        <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${progress} rounded-full shadow-inner transition-all duration-500" style="width:${x.rating}%"></div></div>
                                     </div>
-            
-                                    <div class="mt-3 text-[10px] text-primary font-bold">
-                                        Tap card untuk lihat detail perhitungan
-                                    </div>
+
+                                    <div class="mt-3 text-[10px] text-primary font-bold">Tap card untuk lihat detail perhitungan</div>
                                 </div>
                             </div>
                         `;
                     }).join('')}
                 </div>
-            
+
                 <div class="mt-4 p-4 rounded-3xl bg-white/90 dark:bg-darkCard border border-slate-100 dark:border-slate-800 shadow-lg">
                     <h4 class="text-xs font-black uppercase tracking-wider text-slate-400 mb-3">Keterangan Perhitungan Ranking</h4>
                     <div class="text-[11px] text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed">
-                        <p><b>1. Kehadiran (20%)</b> = Hadir dari absen masuk + pulang. Masuk atau pulang saja dihitung setengah.</p>
-                        <p><b>2. Total Penghasilan (20%)</b> = Penghasilan bulanan dari ongkir + biaya tambahan.</p>
-                        <p><b>3. Total Nota (30%)</b> = Jumlah nota bulanan yang berhasil diinput.</p>
-                        <p><b>4. Trx Mitra (20%)</b> = Total transaksi mitra bulanan.</p>
-                        <p><b>5. Total OFF / Izin / Sakit (10%)</b> = Normal maksimal 3/bulan, lebih dari itu poin berkurang.</p>
+                        <p><b>Kehadiran (20%)</b> = hadir dari absen masuk + pulang.</p>
+                        <p><b>Total Penghasilan (20%)</b> = ongkir + biaya tambahan bulanan.</p>
+                        <p><b>Total Nota (20%)</b> = jumlah nota bulanan.</p>
+                        <p><b>Trx Mitra (20%)</b> = total transaksi mitra bulanan.</p>
+                        <p><b>Total OFF / Izin / Sakit (20%)</b> = normal maksimal 3/bulan.</p>
                     </div>
                 </div>
             `;
-        };
+        };      
         window.saveDataManajemen = function() {
             const idEdit = document.getElementById('manajemen-id-edit').value;
             const kategori = document.getElementById('manajemen-kategori').value;
@@ -5032,38 +4935,67 @@
             const username = document.getElementById('manajemen-username').value.trim().toLowerCase();
             const password = document.getElementById('manajemen-password').value.trim();
             const status = document.getElementById('manajemen-status').value;
-        
+
             if (!kategori || !nama || !username || !password) {
                 alert('Lengkapi semua data!');
                 return;
             }
-        
+
             const payload = { kategori, nama, username, password, status };
-        
-            if (idEdit) {
-                update(ref(db, `manajemen_sahabatku/${idEdit}`), payload)
-                    .then(() => {
-                        alert('Data berhasil diperbarui!');
-                        resetFormManajemen();
-                        setTimeout(() => {
-                            if (typeof renderAdminManajemen === 'function') renderAdminManajemen();
-                        }, 300);
-                    })
-                    .catch(err => alert('Gagal update: ' + err.message));
-            } else {
-                push(ref(db, 'manajemen_sahabatku'), payload)
-                    .then(() => {
-                        alert('Data berhasil disimpan!');
-                        resetFormManajemen();
-                        setTimeout(() => {
-                            if (typeof renderAdminManajemen === 'function') renderAdminManajemen();
-                        }, 300);
-                    })
-                    .catch(err => alert('Gagal simpan: ' + err.message));
+            const targetRef = idEdit ? ref(db, `manajemen_sahabatku/${idEdit}`) : push(ref(db, 'manajemen_sahabatku'));
+
+            set(targetRef, payload)
+                .then(() => {
+                    alert(idEdit ? 'Data berhasil diperbarui!' : 'Data berhasil disimpan!');
+                    resetFormManajemen();
+                })
+                .catch(err => alert('Gagal simpan data: ' + err.message));
+        };
+
+        window.renderAdminManajemen = function() {
+            const container = document.getElementById('container-admin-manajemen');
+            if (!container) return;
+
+            const keys = Object.keys(cloudManajemenList || {});
+            if (!keys.length) {
+                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada data.</div>';
+                return;
             }
 
+            const html = keys.map(key => {
+                const d = cloudManajemenList[key];
+                if (!d) return '';
+
+                const statusColor = d.status === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500';
+
+                return `
+                    <div class="bg-white dark:bg-darkCard p-3.5 rounded-xl border dark:border-slate-800 shadow-sm space-y-2 text-xs">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full ${statusColor}"></span>
+                                <span class="font-bold text-sm dark:text-white">${d.nama || '-'}</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400">${d.kategori || '-'}</span>
+                        </div>
+
+                        <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg grid grid-cols-1 gap-1 font-mono text-[11px]">
+                            <div class="dark:text-slate-300">User: <span class="text-primary font-bold">${d.username || '-'}</span></div>
+                            <div class="dark:text-slate-300">Pass: <span class="text-amber-500 font-bold">${d.password || '-'}</span></div>
+                            <div class="dark:text-slate-300">Status: <span class="font-bold ${d.status === 'aktif' ? 'text-emerald-500' : 'text-rose-500'}">${d.status || '-'}</span></div>
+                        </div>
+
+                        <div class="flex justify-end space-x-2 pt-1">
+                            <button onclick="editDataManajemen('${key}')" class="px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-md font-semibold">Edit</button>
+                            <button onclick="hapusDataManajemen('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Hapus</button>
+                        </div>
+                    </div>
+                `;
+            }).filter(Boolean).join('');
+
+            container.innerHTML = html || '<div class="text-center text-xs text-slate-400 py-4">Belum ada data.</div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         };
-        
+
         window.editDataManajemen = function(key) {
             const d = cloudManajemenList[key];
             if (!d) return;
@@ -5128,49 +5060,7 @@
                     .catch(err => alert('Gagal hapus: ' + err.message));
             }
         };
-        
-      window.renderAdminManajemen = function() {
-          const container = document.getElementById('container-admin-manajemen');
-          if (!container) return;
-      
-          container.innerHTML = '';
-      
-          const keys = Object.keys(cloudManajemenList || {});
-          if (keys.length === 0) {
-              container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada data.</div>';
-              return;
-          }
-      
-          keys.forEach(key => {
-              const d = cloudManajemenList[key];
-              const statusColor = d.status === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500';
-      
-              container.innerHTML += `
-                  <div class="bg-white dark:bg-darkCard p-3.5 rounded-xl border dark:border-slate-800 shadow-sm space-y-2 text-xs">
-                      <div class="flex justify-between items-center">
-                          <div class="flex items-center gap-2">
-                              <span class="w-2.5 h-2.5 rounded-full ${statusColor}"></span>
-                              <span class="font-bold text-sm dark:text-white">${d.nama || '-'}</span>
-                          </div>
-                          <span class="text-[10px] text-slate-400">${d.kategori || '-'}</span>
-                      </div>
-      
-                      <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg grid grid-cols-1 gap-1 font-mono text-[11px]">
-                          <div class="dark:text-slate-300">User: <span class="text-primary font-bold">${d.username || '-'}</span></div>
-                          <div class="dark:text-slate-300">Pass: <span class="text-amber-500 font-bold">${d.password || '-'}</span></div>
-                          <div class="dark:text-slate-300">Status: <span class="font-bold ${d.status === 'aktif' ? 'text-emerald-500' : 'text-rose-500'}">${d.status || '-'}</span></div>
-                      </div>
-      
-                      <div class="flex justify-end space-x-2 pt-1">
-                          <button onclick="editDataManajemen('${key}')" class="px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-md font-semibold">Edit</button>
-                          <button onclick="hapusDataManajemen('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Hapus</button>
-                      </div>
-                  </div>
-              `;
-          });
-      
-          if (typeof lucide !== 'undefined') lucide.createIcons();
-      };
+
       window.applyManajemenAccess = function(kategori) {
           const kategoriFixed = (kategori || '').trim();
           const badge = document.getElementById('badge-admin-role');
@@ -5410,32 +5300,32 @@
           const container = document.getElementById('container-penilaian-leader');
           const bulan = document.getElementById('leader-penilaian-bulan')?.value || getWibRawDate().substring(0, 7);
           if (!container) return;
-      
+
           const leaderNames = new Set();
-      
+
           Object.values(cloudLeaderList || {}).forEach(item => {
               if (item && item.nama) leaderNames.add(item.nama.trim());
           });
-      
+
           Object.values(cloudKurirList || {}).forEach(u => {
               if (u && u.leader) leaderNames.add(u.leader.trim());
           });
-      
+
           const data = Array.from(leaderNames)
               .filter(Boolean)
               .map(namaLeader => getLeaderScore(namaLeader, bulan))
               .filter(Boolean)
               .sort((a, b) => b.skorAkhir - a.skorAkhir);
-      
+
           if (!data.length) {
               container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada data leader.</div>';
               return;
           }
-      
+
           container.innerHTML = data.map((d, i) => {
               const badge = getRatingBadge(d.skorAkhir);
               const anggotaList = d.anggotaRanking || [];
-      
+
               return `
                   <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
                       <div class="flex items-start justify-between gap-3">
@@ -5450,7 +5340,7 @@
                                   </div>
                               </div>
                           </div>
-      
+
                           <div class="text-right shrink-0">
                               <div class="text-lg font-black text-primary">${d.skorAkhir}%</div>
                               <div class="text-[10px] font-bold ${badge.color || 'text-slate-500'}">
@@ -5458,7 +5348,7 @@
                               </div>
                           </div>
                       </div>
-      
+
                       <div class="grid grid-cols-2 gap-2 text-xs">
                           <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
                               <div class="text-[10px] text-slate-400 uppercase">Skor Dasar Leader</div>
@@ -5473,7 +5363,7 @@
                               <div class="font-black mt-1">${d.anggotaCount}</div>
                           </div>
                       </div>
-      
+
                       <div class="grid grid-cols-4 gap-2 text-xs">
                           <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
                               <div class="text-[10px] text-slate-400 uppercase">Kehadiran</div>
@@ -5481,9 +5371,7 @@
                           </div>
                           <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
                               <div class="text-[10px] text-slate-400 uppercase">Penghasilan</div>
-                              <div class="font-black mt-1 text-emerald-600 dark:text-emerald-400">
-                                  Rp ${d.totalPenghasilanAnggota.toLocaleString('id-ID')}
-                              </div>
+                              <div class="font-black mt-1 text-emerald-600 dark:text-emerald-400">Rp ${d.totalPenghasilanAnggota.toLocaleString('id-ID')}</div>
                           </div>
                           <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
                               <div class="text-[10px] text-slate-400 uppercase">Total Nota</div>
@@ -5494,34 +5382,33 @@
                               <div class="font-black mt-1">${d.totalTrxMitraAnggota}</div>
                           </div>
                       </div>
-      
+
                       <div class="grid grid-cols-1 gap-2 text-xs">
                           <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
                               <div class="text-[10px] text-slate-400 uppercase">Total OFF / Izin / Sakit</div>
                               <div class="font-black mt-1">${d.totalOffAnggota}</div>
                           </div>
                       </div>
+
                       <div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                          Anggota & Badge
-                        </div>
-                        <div class="flex flex-wrap gap-1">
-                          ${anggotaList.length
-                            ? anggotaList.map(a => {
-                                const badgeA = getRatingBadge(a.rating);
-                                return `
-                                  <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border text-[9px] font-semibold whitespace-nowrap leading-none">
-                                    <span>${a.nama}</span>
-                                    <span class="text-slate-400">•</span>
-                                    <span>${a.rating}%</span>
-                                    <span class="text-slate-400">•</span>
-                                    <span>${badgeA.emoji} ${badgeA.label}</span>
-                                  </span>
-                                `;
-                              }).join('')
-                            : '<span class="text-[10px] text-slate-400">Belum ada anggota.</span>'
-                          }
-                        </div>
+                          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Anggota & Badge</div>
+                          <div class="flex flex-wrap gap-1">
+                              ${anggotaList.length
+                                  ? anggotaList.map(a => {
+                                      const badgeA = getRatingBadge(a.rating);
+                                      return `
+                                          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border text-[9px] font-semibold whitespace-nowrap leading-none">
+                                              <span>${a.nama}</span>
+                                              <span class="text-slate-400">•</span>
+                                              <span>${a.rating}%</span>
+                                              <span class="text-slate-400">•</span>
+                                              <span>${badgeA.emoji} ${badgeA.label}</span>
+                                          </span>
+                                      `;
+                                  }).join('')
+                                  : '<span class="text-[10px] text-slate-400">Belum ada anggota.</span>'
+                              }
+                          </div>
                       </div>
 
                       <div class="space-y-2">
@@ -5533,7 +5420,6 @@
                               <div class="h-full bg-primary rounded-full" style="width:${d.skorAkhir}%"></div>
                           </div>
                       </div>
-      
                       <div class="text-[11px] text-slate-600 dark:text-slate-300 space-y-1 leading-relaxed">
                           <p><b>Leader Score</b> diambil dari total rating seluruh anggota + bonus Top 3 anggota.</p>
                           <p>Badge tiap anggota tetap mengikuti KPI kurir masing-masing.</p>
@@ -5543,6 +5429,7 @@
               `;
           }).join('');
       };
+
       window.openLeaderModal = function() {
           resetLeaderForm();
           document.getElementById('modal-leader').classList.remove('hidden');
@@ -5558,28 +5445,30 @@
       window.renderLeaderList = function() {
           const container = document.getElementById('container-leader-list');
           if (!container) return;
-      
+
           const keys = Object.keys(cloudLeaderList || {});
           if (!keys.length) {
               container.innerHTML = '<div class="text-center text-xs text-slate-400 py-3">Belum ada leader tersimpan.</div>';
               return;
           }
-      
+
           const bulan = getWibRawDate().substring(0, 7);
-      
-          container.innerHTML = keys.map(key => {
+
+          const html = keys.map(key => {
               const item = cloudLeaderList[key];
+              if (!item) return '';
+
               const anggota = Array.isArray(item.anggota) ? item.anggota : [];
-      
+
               const hasilAnggota = anggota.map(nama => {
                   const stat = calcKpiForKurir(nama, bulan);
-                  return { nama, rating: stat.rating };
+                  return { nama, rating: stat.rating || 0 };
               }).sort((a, b) => b.rating - a.rating);
-      
+
               const terbaik = hasilAnggota[0] || null;
               const sedang = hasilAnggota.length ? hasilAnggota[Math.floor(hasilAnggota.length / 2)] : null;
               const beban = hasilAnggota[hasilAnggota.length - 1] || null;
-      
+
               return `
                   <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border text-xs space-y-2">
                       <div class="flex justify-between items-start">
@@ -5592,14 +5481,14 @@
                               <button onclick="hapusLeaderData('${key}')" class="px-2 py-1 rounded-md bg-rose-50 text-rose-600 text-[10px] font-bold">Hapus</button>
                           </div>
                       </div>
-      
+
                       <div class="space-y-1 text-[10px]">
                           <div class="font-semibold text-slate-500">Daftar Anggota:</div>
                           <div class="flex flex-wrap gap-1">
                               ${anggota.map(a => `<span class="px-2 py-1 rounded-full bg-white dark:bg-darkBg border">${a}</span>`).join('') || '-'}
                           </div>
                       </div>
-      
+
                       <div class="grid grid-cols-3 gap-2 text-[10px]">
                           <div class="p-2 rounded-lg bg-emerald-50 text-emerald-700">
                               <div class="font-bold">Terbaik</div>
@@ -5619,8 +5508,11 @@
                       </div>
                   </div>
               `;
-          }).join('');
+          }).filter(Boolean).join('');
+
+          container.innerHTML = html || '<div class="text-center text-xs text-slate-400 py-3">Belum ada leader tersimpan.</div>';
       };
+
       window.editLeaderData = function(key) {
           const d = cloudLeaderList[key];
           if (!d) return;
@@ -5891,51 +5783,48 @@
           hideNotifForCurrentUser(notifId);
           renderKurirNotifications();
       };
-
       function renderAdminNotificationHistory() {
           const container = document.getElementById('container-admin-notification-history');
           if (!container) return;
-      
-          const items = Object.entries(cloudNotificationList || {})
-              .sort((a, b) => {
-                  const ta = a[1]?.createdAt || '';
-                  const tb = b[1]?.createdAt || '';
-                  return tb.localeCompare(ta);
-              });
-      
-          container.innerHTML = '';
-      
+
+          const items = Object.entries(cloudNotificationList || {}).sort((a, b) => {
+              const ta = a[1]?.createdAt || '';
+              const tb = b[1]?.createdAt || '';
+              return tb.localeCompare(ta);
+          });
+
           if (!items.length) {
               container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada notifikasi.</div>';
               return;
           }
-      
-          items.forEach(([key, n]) => {
+
+          container.innerHTML = items.map(([key, n]) => {
               const targetText = n.target === 'all'
                   ? 'Semua Kurir'
                   : `Kurir Terpilih (${(n.targetList || []).length})`;
-      
-              container.innerHTML += `
-                    <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border text-xs space-y-2">
-                        <div class="flex justify-between items-start gap-2">
-                            <div class="min-w-0 flex-1">
-                                <div class="font-bold text-[11px] sm:text-sm leading-snug break-words">${n.message || '-'}</div>
-                                <div class="text-[10px] text-slate-400 mt-1">${targetText}</div>
-                                <div class="text-[10px] text-slate-400">${n.createdAt ? new Date(n.createdAt).toLocaleString('id-ID') : '-'}</div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button onclick="resendNotification('${key}')" class="w-full py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-bold uppercase">
-                                Kirim Lagi
-                            </button>
-                            <button onclick="deleteNotification('${key}')" class="w-full py-2 rounded-lg bg-rose-50 text-rose-600 text-[10px] font-bold uppercase">
-                                Hapus
-                            </button>
-                        </div>
-                    </div>
+
+              return `
+                  <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border text-xs space-y-2">
+                      <div class="flex justify-between items-start gap-2">
+                          <div class="min-w-0 flex-1">
+                              <div class="font-bold text-[11px] sm:text-sm leading-snug break-words">${n.message || '-'}</div>
+                              <div class="text-[10px] text-slate-400 mt-1">${targetText}</div>
+                              <div class="text-[10px] text-slate-400">${n.createdAt ? new Date(n.createdAt).toLocaleString('id-ID') : '-'}</div>
+                          </div>
+                      </div>
+                      <div class="grid grid-cols-2 gap-2">
+                          <button onclick="resendNotification('${key}')" class="w-full py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-bold uppercase">
+                              Kirim Lagi
+                          </button>
+                          <button onclick="deleteNotification('${key}')" class="w-full py-2 rounded-lg bg-rose-50 text-rose-600 text-[10px] font-bold uppercase">
+                              Hapus
+                          </button>
+                      </div>
+                  </div>
               `;
-          });
+          }).join('');
       }
+
       window.resendNotification = function(key) {
           const n = cloudNotificationList[key];
           if (!n) return;
