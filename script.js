@@ -229,7 +229,6 @@
                 }
             );
         };
-
         window.renderTrackingKurirList = function() {
             const container = document.getElementById('container-tracking-kurir');
             if (!container) return;
@@ -250,16 +249,22 @@
                 const hasLocation = loc && typeof loc.lat === 'number' && typeof loc.lng === 'number';
         
                 container.innerHTML += `
-                    <button onclick="selectTrackingKurir('${id}')" class="w-full flex items-center justify-between px-3 py-2 rounded-xl border bg-slate-50 dark:bg-slate-800 dark:border-slate-700 hover:border-primary text-left">
+                    <button onclick="selectTrackingKurir('${id}')" class="w-full flex items-center justify-between px-3 py-2 rounded-xl border bg-slate-50 dark:bg-slate-800 dark:border-slate-700 hover:border-primary text-left transition-all active:scale-95">
                         <div>
                             <div class="font-bold text-sm">${user.nama || user.username}</div>
                             <div class="text-[10px] text-slate-400">${hasLocation ? 'Lokasi terdeteksi' : 'Belum ada lokasi'}</div>
                         </div>
-                        <span class="w-3 h-3 rounded-full ${hasLocation ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+                        <span class="w-3 h-3 rounded-full ${hasLocation ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'} shrink-0"></span>
                     </button>
                 `;
             });
         };
+        window.selectTrackingKurir = function(id) {
+            selectedKurirTracking = id;
+            selectedTrackingUser = cloudKurirList[id] || null;
+            renderTrackingMap(id);
+        };
+
         window.selectTrackingKurir = function(id) {
             selectedKurirTracking = id;
             selectedTrackingUser = cloudKurirList[id] || null;
@@ -300,10 +305,10 @@
         window.renderTrackingMap = function(id) {
             const mapEl = document.getElementById('tracking-map');
             if (!mapEl || typeof L === 'undefined') return;
-        
+
             const loc = liveLocations[id];
             const user = selectedTrackingUser || cloudKurirList[id];
-        
+
             if (!trackingMap) {
                 trackingMap = L.map('tracking-map').setView([-6.326, 108.326], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -311,26 +316,61 @@
                     attribution: '&copy; OpenStreetMap'
                 }).addTo(trackingMap);
             }
-        
+
             if (trackingMarker) {
                 trackingMap.removeLayer(trackingMarker);
                 trackingMarker = null;
             }
-        
+
             if (!loc || typeof loc.lat !== 'number' || typeof loc.lng !== 'number') {
                 trackingMap.setView([-6.326, 108.326], 13);
                 return;
             }
-        
-            trackingMarker = L.marker([loc.lat, loc.lng]).addTo(trackingMap)
+
+            // Buat custom icon dengan HTML
+            const customIcon = L.divIcon({
+                html: `
+                    <div style="
+                        width: 45px;
+                        height: 45px;
+                        background: linear-gradient(135deg, #0066FF 0%, #008CFF 100%);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-shadow: 0 4px 12px rgba(0, 102, 255, 0.4);
+                        border: 3px solid white;
+                        font-size: 24px;
+                        color: white;
+                    ">
+                        📍
+                    </div>
+                `,
+                iconSize: [45, 45],
+                iconAnchor: [22, 22],
+                popupAnchor: [0, -22],
+                className: 'tracking-marker'
+            });
+
+            trackingMarker = L.marker([loc.lat, loc.lng], { icon: customIcon })
+                .addTo(trackingMap)
                 .bindPopup(`
-                    <b>${user?.nama || 'Kurir'}</b><br>
-                    ${loc.updatedAt ? new Date(loc.updatedAt).toLocaleString('id-ID') : '-'}
+                    <div style="text-align: center; font-size: 12px;">
+                        <b>${user?.nama || 'Kurir'}</b><br>
+                        <span style="font-size: 10px; color: #666;">
+                            ${loc.alamatLengkap || `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`}
+                        </span><br>
+                        <span style="font-size: 10px; color: #999;">
+                            ${loc.jamTracking || '-'} WIB
+                        </span>
+                    </div>
                 `)
                 .openPopup();
-        
+
             trackingMap.setView([loc.lat, loc.lng], 16);
+            trackingMap.invalidateSize();
         };
+
         async function reverseGeocode(lat, lng) {
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`);
