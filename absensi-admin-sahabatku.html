@@ -268,10 +268,18 @@
             <div id="admin-calendar-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
           </div>
 
-          <div class="glass-card p-4 rounded-2xl space-y-3">
+          <div class="glass-card p-4 rounded-2xl space-y-3 hidden">
             <input id="admin-search-jadwal" type="text" placeholder="Cari jadwal..." class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
             <div id="admin-jadwal-list" class="space-y-3"></div>
           </div>
+        </section>
+        <section id="admin-panel-jadwal-list" class="hidden space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h3 class="font-bold text-sm">📋 Daftar Jadwal Off</h3>
+            <button onclick="openJadwalPopup()" class="px-3 py-2 rounded-xl bg-gradient-to-r from-sahabatku to-blue-600 text-white text-[10px] font-bold shadow-md hover:shadow-lg transition">+ Buat</button>
+          </div>
+          <input id="admin-search-jadwal-list" type="text" placeholder="🔍 Cari jadwal..." class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-2xl p-3 border-0 focus:ring-2 focus:ring-sahabatku transition">
+          <div id="admin-jadwal-list-content" class="space-y-3"></div>
         </section>
 
         <section id="admin-panel-pengajuan" class="hidden space-y-4">
@@ -312,10 +320,12 @@
       </main>
 
       <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md h-16 glass-card border-t border-slate-100 dark:border-slate-800 flex items-center justify-around px-2 z-50">
-        <button onclick="switchAdminTab('jadwal', this)" class="admin-tab-btn flex flex-col items-center gap-0.5 text-sahabatku font-bold"><i class="fa-solid fa-calendar-days text-lg"></i><span class="text-[10px]">Dashboard</span></button>
+        <button onclick="switchAdminTab('jadwal', this)" class="admin-tab-btn flex flex-col items-center gap-0.5 text-sahabatku font-bold"><i class="fa-solid fa-calendar-days text-lg"></i><span class="text-[10px]">Kalender</span></button>
+        <button onclick="switchAdminTab('jadwal-list', this)" class="admin-tab-btn flex flex-col items-center gap-0.5 text-slate-400"><i class="fa-solid fa-list text-lg"></i><span class="text-[10px]">Jadwal</span></button>
         <button onclick="switchAdminTab('pengajuan', this)" class="admin-tab-btn flex flex-col items-center gap-0.5 text-slate-400"><i class="fa-solid fa-envelope-open-text text-lg"></i><span class="text-[10px]">Pengajuan</span></button>
         <button onclick="switchAdminTab('rekap', this)" class="admin-tab-btn flex flex-col items-center gap-0.5 text-slate-400"><i class="fa-solid fa-chart-simple text-lg"></i><span class="text-[10px]">Rekap</span></button>
       </nav>
+
     </div>
 
     <div id="popup-detail" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[999] px-4">
@@ -1530,11 +1540,13 @@
     window.switchAdminTab = (tab, btn) => {
       adminTab = tab;
       document.getElementById('admin-panel-jadwal').classList.toggle('hidden', tab !== 'jadwal');
+      document.getElementById('admin-panel-jadwal-list').classList.toggle('hidden', tab !== 'jadwal-list');
       document.getElementById('admin-panel-pengajuan').classList.toggle('hidden', tab !== 'pengajuan');
       document.getElementById('admin-panel-rekap').classList.toggle('hidden', tab !== 'rekap');
       document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('text-sahabatku','font-bold'));
       if (btn) { btn.classList.add('text-sahabatku','font-bold'); btn.classList.remove('text-slate-400'); }
     };
+
 
     document.getElementById('form-pengajuan-jenis').addEventListener('change', updatePengajuanVisibility);
     document.getElementById('form-pengajuan-nama').addEventListener('change', updatePengajuanVisibility);
@@ -1652,6 +1664,7 @@
     document.getElementById('admin-search-jadwal').addEventListener('input', renderAdminJadwalList);
     document.getElementById('admin-search-pengajuan').addEventListener('input', renderAdminPengajuanList);
     document.getElementById('admin-search-rekap').addEventListener('input', renderAdminRekap);
+    document.getElementById('admin-search-jadwal-list').addEventListener('input', renderAdminJadwalListContent);
 
     document.getElementById('btn-admin-select-mode').addEventListener('click', () => {
       adminSelectMode = !adminSelectMode;
@@ -1680,7 +1693,6 @@
     document.getElementById('btn-kurir-rekap-mode')?.addEventListener('click', () => {
       renderKurirRekap();
     });
-
     document.getElementById('btn-save-jadwal').addEventListener('click', async () => {
       const nama = document.getElementById('jadwal-nama').value;
       const tanggalMulai = document.getElementById('jadwal-mulai').value;
@@ -1688,10 +1700,32 @@
       const jenisOff = document.getElementById('jadwal-jenis').value;
       const keterangan = document.getElementById('jadwal-ket').value.trim();
       if (!nama || !tanggalMulai || !tanggalSelesai || !jenisOff) return alert('Lengkapi data jadwal.');
+      
       const payload = { nama, tanggalMulai, tanggalSelesai, jenisOff, keterangan, status: 'Aktif', timestamp: new Date().toISOString() };
+      
       if (editingJadwalKey) await update(ref(db, `jadwal_off/${editingJadwalKey}`), payload);
       else await set(push(ref(db, 'jadwal_off')), payload);
-      closeJadwalPopup();
+      
+      toast('✅ Jadwal berhasil disimpan!');
+      
+      // Reset form
+      document.getElementById('jadwal-nama').value = '';
+      document.getElementById('jadwal-mulai').value = '';
+      document.getElementById('jadwal-selesai').value = '';
+      document.getElementById('jadwal-ket').value = '';
+      document.getElementById('jadwal-jenis').value = 'Off Reguler';
+      
+      // Auto-close popup setelah 500ms
+      setTimeout(() => {
+        closeJadwalPopup();
+      }, 500);
+      
+      // Jika admin, auto-switch ke tab jadwal-list
+      if (currentMode === 'admin') {
+        setTimeout(() => {
+          switchAdminTab('jadwal-list', document.querySelector('[onclick*="switchAdminTab(\'jadwal-list\'"]'));
+        }, 600);
+      }
     });
     document.getElementById('btn-save-absensi').addEventListener('click', async () => {
       const tanggal = document.getElementById('absensi-tanggal').value;
@@ -1773,6 +1807,123 @@
       document.getElementById('popup-detail').classList.remove('hidden');
       document.getElementById('popup-detail').classList.add('flex');
     };
+    function renderAdminJadwalListContent() {
+      const container = document.getElementById('admin-jadwal-list-content');
+      if (!container) return;
+    
+      const search = (document.getElementById('admin-search-jadwal-list')?.value || '').toLowerCase().trim();
+      const bulan = getBulanAktif();
+    
+      const list = Object.entries(DATA_JADWAL)
+        .map(([key, item]) => ({ key, ...item }))
+        .filter(i => {
+          const tgl = i.tanggalMulai || '';
+          return tgl.startsWith(bulan) && (
+            (i.nama || '').toLowerCase().includes(search) ||
+            (i.jenisOff || '').toLowerCase().includes(search) ||
+            (i.keterangan || '').toLowerCase().includes(search) ||
+            tgl.includes(search)
+          );
+        })
+        .sort((a, b) => (a.tanggalMulai || '').localeCompare(b.tanggalMulai || ''));
+    
+      if (!list.length) {
+        container.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12 text-center">
+            <div class="text-5xl mb-3">📭</div>
+            <p class="text-sm font-semibold text-slate-600 dark:text-slate-300">Belum ada jadwal off bulan ini</p>
+            <p class="text-xs text-slate-400 mt-1">Mulai dengan membuat jadwal baru</p>
+          </div>
+        `;
+        return;
+      }
+    
+      const grouped = {};
+      list.forEach(i => {
+        const k = i.tanggalMulai || '';
+        if (!grouped[k]) grouped[k] = [];
+        grouped[k].push(i);
+      });
+    
+      const today = new Date().toISOString().split('T')[0];
+    
+      container.innerHTML = Object.keys(grouped).sort().map(tanggal => {
+        const items = grouped[tanggal];
+        const isToday = tanggal === today;
+        const isTomorrow = tanggal === new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
+    
+        let dateLabel = fmt(tanggal);
+        if (isToday) dateLabel += ' (HARI INI)';
+        else if (isTomorrow) dateLabel += ' (BESOK)';
+    
+        return `
+          <div id="jadwal-group-${tanggal}" class="rounded-2xl overflow-hidden backdrop-blur-sm ${isToday ? 'bg-gradient-to-br from-red-50 via-pink-50 to-rose-50 dark:from-red-950/50 dark:via-pink-950/50 dark:to-rose-950/50 border-2 border-red-400 dark:border-red-600 shadow-xl ring-2 ring-red-200 dark:ring-red-800' : 'bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition'}">
+            
+            <div class="px-4 py-3 ${isToday ? 'bg-gradient-to-r from-red-600 via-red-500 to-rose-600 text-white shadow-lg' : 'bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/80 dark:to-slate-900/80 border-b border-slate-100 dark:border-slate-700'}">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-xs font-bold opacity-75">${isToday ? '🔴 TANGGAL HARI INI' : '📅 TANGGAL'}</div>
+                  <div class="text-sm font-bold mt-1">${dateLabel}</div>
+                </div>
+                <div class="text-right">
+                  <div class="inline-flex px-3 py-1.5 rounded-full text-white text-[10px] font-bold ${isToday ? 'bg-white/40 backdrop-blur shadow-lg' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'}">
+                    ${items.length} ${items.length === 1 ? 'kurir' : 'kurir'}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="p-4 ${items.length === 1 ? 'space-y-3' : 'grid grid-cols-2 gap-3'}">
+              ${items.map((i, idx) => {
+                const kurirData = Object.values(DATA_USERS).find(u => (u.nama || '') === i.nama);
+                const leader = kurirData?.leader || i.leader || '-';
+                return `
+                <div class="group rounded-xl p-3 ${isToday ? 'bg-gradient-to-br from-red-100/60 to-rose-100/60 dark:from-red-900/30 dark:to-rose-900/30 border-2 border-red-300 dark:border-red-700 shadow-md hover:shadow-lg' : 'bg-white/60 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 hover:border-sahabatku dark:hover:border-blue-500 hover:shadow-md'} transition">
+                  <div class="flex items-start justify-between gap-2 mb-2">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-1.5">
+                        <div class="text-lg">👤</div>
+                        <div class="min-w-0">
+                          <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${i.nama || '-'}</div>
+                          <div class="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">🗣 ${leader}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-white text-[9px] font-bold whitespace-nowrap shadow-sm ${jenisColor(i.jenisOff)}">
+                      ${i.jenisOff || '-'}
+                    </span>
+                  </div>
+                  
+                  ${i.keterangan ? `
+                    <div class="text-[9px] text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 rounded-lg p-1.5 mb-2 border-l-2 border-sahabatku line-clamp-2">
+                      💬 "${i.keterangan}"
+                    </div>
+                  ` : ''}
+                  
+                  <div class="flex gap-1.5 pt-2 border-t ${isToday ? 'border-red-300 dark:border-red-700' : 'border-slate-100 dark:border-slate-700'}">
+                    <button onclick="editJadwal('${i.key}')" class="flex-1 px-2 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-bold transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md">
+                      <i class="fa-solid fa-pen-to-square text-[8px]"></i>Edit
+                    </button>
+                    <button onclick="hapusJadwal('${i.key}')" class="flex-1 px-2 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-[9px] font-bold transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md">
+                      <i class="fa-solid fa-trash text-[8px]"></i>Hapus
+                    </button>
+                  </div>
+                </div>
+              `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Auto-scroll ke hari ini
+      setTimeout(() => {
+        const todayElement = document.getElementById(`jadwal-group-${today}`);
+        if (todayElement) {
+          todayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
     function renderAll() {
       if (!currentViewDate || isNaN(currentViewDate.getTime())) {
         currentViewDate = new Date();
@@ -1788,6 +1939,7 @@
       renderKurirRekap();
       renderAdminCalendar();
       renderAdminJadwalList();
+      renderAdminJadwalListContent();  // <-- TAMBAHKAN INI
       renderAdminPengajuanList();
       renderAdminRiwayat();
       renderAdminRekap();
@@ -1807,7 +1959,7 @@
     currentViewDate = new Date(now.getFullYear(), now.getMonth(), 1);
     syncToCurrentMonth();
     showMode('admin');
-    switchAdminTab('jadwal');
+    switchAdminTab('jadwal-list');
     renderAll();
   </script>
 </body>
