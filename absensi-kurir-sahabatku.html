@@ -112,14 +112,7 @@
             </div>
             <div id="kurir-calendar-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
           </div>
-
-          <div class="glass-card p-4 rounded-2xl space-y-3">
-            <h3 class="font-bold text-sm">Daftar Keterangan Libur / Off</h3>
-            <input id="kurir-search-jadwal" type="text" placeholder="Cari nama / tanggal..." class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
-            <div id="kurir-jadwal-list" class="space-y-3"></div>
-          </div>
         </section>
-
         <section id="kurir-panel-pengajuan" class="hidden space-y-4">
           <div class="glass-card p-4 rounded-2xl space-y-3">
             <h3 class="font-bold text-sm text-sahabatku"><i class="fa-solid fa-paper-plane mr-1"></i> Form Pengajuan</h3>
@@ -145,7 +138,7 @@
             </div>
 
             <div>
-              <label class="block text-xs font-semibold mb-1">Tanggal Pengajuan / Tanggal Off</label>
+              <label class="block text-xs font-semibold mb-1">Tanggal Pengajuan</label>
               <select id="form-pengajuan-tanggal" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
                 <option value="">-- Pilih tanggal --</option>
               </select>
@@ -613,11 +606,11 @@
         Object.values(DATA_JADWAL).filter(j => getTanggalItem(j).startsWith(bulanAktif) && j.jenisOff === 'Off Reguler').length;
     
       setTimeout(() => {
-        const todayBox = [...grid.querySelectorAll('button')].find(b => b.innerText.trim().startsWith(String(new Date().getDate())));
-        if (todayBox) todayBox.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        const panelJadwal = document.getElementById('kurir-panel-jadwal');
+        if (panelJadwal) {
+          panelJadwal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }, 100);
-    
-      renderKurirJadwalList();
     }
     function renderKurirNotifikasiHariIni() {
       const wrap = document.getElementById('kurir-notifikasi-hari-ini');
@@ -1397,7 +1390,7 @@
       if (btn) { btn.classList.add('text-sahabatku','font-bold'); btn.classList.remove('text-slate-400'); }
     };
 
-    document.getElementById('form-pengajuan-jenis').addEventListener('change', updatePengajuanVisibility);
+     document.getElementById('form-pengajuan-jenis').addEventListener('change', updatePengajuanVisibility);
     document.getElementById('form-pengajuan-nama').addEventListener('change', updatePengajuanVisibility);
     document.getElementById('form-pengajuan-kurir-tukar').addEventListener('change', (e) => {
       if (document.getElementById('form-pengajuan-jenis').value === 'Tukar Off') {
@@ -1447,6 +1440,7 @@
         updatePengajuanVisibility();
       });
     });
+
     window.prosesPengajuan = async (key, statusBaru) => {
       const item = DATA_PENGAJUAN[key];
       if (!item) return;
@@ -1517,68 +1511,100 @@
       remove(ref(db, `pengajuan/${key}`));
     };
 
-    document.getElementById('kurir-prev').addEventListener('click', () => { currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() - 1, 1); renderAll(); });
-    document.getElementById('kurir-next').addEventListener('click', () => { currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 1); renderAll(); });
-    document.getElementById('admin-prev').addEventListener('click', () => { currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() - 1, 1); renderAll(); });
-    document.getElementById('admin-next').addEventListener('click', () => { currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 1); renderAll(); });
+    const kurirPrevBtn = document.getElementById('kurir-prev');
+    const kurirNextBtn = document.getElementById('kurir-next');
+    const adminPrevBtn = document.getElementById('admin-prev');
+    const adminNextBtn = document.getElementById('admin-next');
+    const kurirSearchJadwal = document.getElementById('kurir-search-jadwal');
+    const kurirSearchPengajuan = document.getElementById('kurir-search-pengajuan');
+    const adminSearchJadwal = document.getElementById('admin-search-jadwal');
+    const adminSearchPengajuan = document.getElementById('admin-search-pengajuan');
+    const adminSearchRekap = document.getElementById('admin-search-rekap');
+    const btnAdminSelectMode = document.getElementById('btn-admin-select-mode');
+    const btnAdminSelectAll = document.getElementById('btn-admin-select-all');
+    const btnAdminHapusTerpilih = document.getElementById('btn-admin-hapus-terpilih');
+    const btnAdminRekapMode = document.getElementById('btn-admin-rekap-mode');
+    const btnKurirRekapMode = document.getElementById('btn-kurir-rekap-mode');
+    const btnSaveJadwal = document.getElementById('btn-save-jadwal');
+    const btnSaveAbsensi = document.getElementById('btn-save-absensi');
 
-    document.getElementById('kurir-search-jadwal').addEventListener('input', renderKurirJadwalList);
-    document.getElementById('kurir-search-pengajuan').addEventListener('input', renderKurirPengajuanList);
-    document.getElementById('admin-search-jadwal').addEventListener('input', renderAdminJadwalList);
-    document.getElementById('admin-search-pengajuan').addEventListener('input', renderAdminPengajuanList);
-    document.getElementById('admin-search-rekap').addEventListener('input', renderAdminRekap);
+    if (kurirPrevBtn) kurirPrevBtn.addEventListener('click', () => { currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() - 1, 1); renderAll(); });
+    if (kurirNextBtn) kurirNextBtn.addEventListener('click', () => { currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 1); renderAll(); });
+    if (adminPrevBtn) adminPrevBtn.addEventListener('click', () => { currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() - 1, 1); renderAll(); });
+    if (adminNextBtn) adminNextBtn.addEventListener('click', () => { currentViewDate = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 1); renderAll(); });
 
-    document.getElementById('btn-admin-select-mode').addEventListener('click', () => {
-      adminSelectMode = !adminSelectMode;
-      document.getElementById('btn-admin-select-mode').textContent = adminSelectMode ? 'Cancel' : 'Select';
-      renderAdminPengajuanList();
-    });
+    if (kurirSearchJadwal) kurirSearchJadwal.addEventListener('input', renderKurirJadwalList);
+    if (kurirSearchPengajuan) kurirSearchPengajuan.addEventListener('input', renderKurirPengajuanList);
+    if (adminSearchJadwal) adminSearchJadwal.addEventListener('input', renderAdminJadwalList);
+    if (adminSearchPengajuan) adminSearchPengajuan.addEventListener('input', renderAdminPengajuanList);
+    if (adminSearchRekap) adminSearchRekap.addEventListener('input', renderAdminRekap);
 
-    document.getElementById('btn-admin-select-all').addEventListener('click', () => {
-      const checks = [...document.querySelectorAll('.admin-check')];
-      const all = checks.every(c => c.checked);
-      checks.forEach(c => c.checked = !all);
-    });
+    if (btnAdminSelectMode) {
+      btnAdminSelectMode.addEventListener('click', () => {
+        adminSelectMode = !adminSelectMode;
+        btnAdminSelectMode.textContent = adminSelectMode ? 'Cancel' : 'Select';
+        renderAdminPengajuanList();
+      });
+    }
 
-    document.getElementById('btn-admin-hapus-terpilih').addEventListener('click', () => {
-      const selected = [...document.querySelectorAll('.admin-check:checked')].map(c => c.dataset.key);
-      if (!selected.length) return alert('Pilih pengajuan terlebih dahulu.');
-      if (!confirm(`Hapus ${selected.length} pengajuan?`)) return;
-      selected.forEach(k => remove(ref(db, `pengajuan/${k}`)));
-    });
+    if (btnAdminSelectAll) {
+      btnAdminSelectAll.addEventListener('click', () => {
+        const checks = [...document.querySelectorAll('.admin-check')];
+        const all = checks.every(c => c.checked);
+        checks.forEach(c => c.checked = !all);
+      });
+    }
 
-    document.getElementById('btn-admin-rekap-mode').addEventListener('click', () => {
-      rekapMode = rekapMode === 'kurir' ? 'absensi' : 'kurir';
-      document.getElementById('btn-admin-rekap-mode').textContent = rekapMode === 'kurir' ? 'Rekap Kurir' : 'Absensi Bulan Ini';
-      renderAdminRekap();
-    });
-    document.getElementById('btn-kurir-rekap-mode')?.addEventListener('click', () => {
-      renderKurirRekap();
-    });
+    if (btnAdminHapusTerpilih) {
+      btnAdminHapusTerpilih.addEventListener('click', () => {
+        const selected = [...document.querySelectorAll('.admin-check:checked')].map(c => c.dataset.key);
+        if (!selected.length) return alert('Pilih pengajuan terlebih dahulu.');
+        if (!confirm(`Hapus ${selected.length} pengajuan?`)) return;
+        selected.forEach(k => remove(ref(db, `pengajuan/${k}`)));
+      });
+    }
 
-    document.getElementById('btn-save-jadwal').addEventListener('click', async () => {
-      const nama = document.getElementById('jadwal-nama').value;
-      const tanggalMulai = document.getElementById('jadwal-mulai').value;
-      const tanggalSelesai = document.getElementById('jadwal-selesai').value;
-      const jenisOff = document.getElementById('jadwal-jenis').value;
-      const keterangan = document.getElementById('jadwal-ket').value.trim();
-      if (!nama || !tanggalMulai || !tanggalSelesai || !jenisOff) return alert('Lengkapi data jadwal.');
-      const payload = { nama, tanggalMulai, tanggalSelesai, jenisOff, keterangan, status: 'Aktif', timestamp: new Date().toISOString() };
-      if (editingJadwalKey) await update(ref(db, `jadwal_off/${editingJadwalKey}`), payload);
-      else await set(push(ref(db, 'jadwal_off')), payload);
-      closeJadwalPopup();
-    });
+    if (btnAdminRekapMode) {
+      btnAdminRekapMode.addEventListener('click', () => {
+        rekapMode = rekapMode === 'kurir' ? 'absensi' : 'kurir';
+        btnAdminRekapMode.textContent = rekapMode === 'kurir' ? 'Rekap Kurir' : 'Absensi Bulan Ini';
+        renderAdminRekap();
+      });
+    }
 
-    document.getElementById('btn-save-absensi').addEventListener('click', async () => {
-      const tanggal = document.getElementById('absensi-tanggal').value;
-      const namaKurir = document.getElementById('absensi-nama').value;
-      const jamMasuk = document.getElementById('absensi-masuk').value;
-      const jamPulang = document.getElementById('absensi-pulang').value;
-      if (!tanggal || !namaKurir) return alert('Tanggal dan nama kurir wajib diisi.');
-      const key = editingAbsensiKey || `${tanggal}_${namaKurir}`;
-      await set(ref(db, `absensi_sahabatku/${key}`), { tanggal, namaKurir, jamMasuk, jamPulang, timestamp: new Date().toISOString() });
-      closeAbsensiPopup();
-    });
+    if (btnKurirRekapMode) {
+      btnKurirRekapMode.addEventListener('click', () => {
+        renderKurirRekap();
+      });
+    }
+
+    if (btnSaveJadwal) {
+      btnSaveJadwal.addEventListener('click', async () => {
+        const nama = document.getElementById('jadwal-nama').value;
+        const tanggalMulai = document.getElementById('jadwal-mulai').value;
+        const tanggalSelesai = document.getElementById('jadwal-selesai').value;
+        const jenisOff = document.getElementById('jadwal-jenis').value;
+        const keterangan = document.getElementById('jadwal-ket').value.trim();
+        if (!nama || !tanggalMulai || !tanggalSelesai || !jenisOff) return alert('Lengkapi data jadwal.');
+        const payload = { nama, tanggalMulai, tanggalSelesai, jenisOff, keterangan, status: 'Aktif', timestamp: new Date().toISOString() };
+        if (editingJadwalKey) await update(ref(db, `jadwal_off/${editingJadwalKey}`), payload);
+        else await set(push(ref(db, 'jadwal_off')), payload);
+        closeJadwalPopup();
+      });
+    }
+
+    if (btnSaveAbsensi) {
+      btnSaveAbsensi.addEventListener('click', async () => {
+        const tanggal = document.getElementById('absensi-tanggal').value;
+        const namaKurir = document.getElementById('absensi-nama').value;
+        const jamMasuk = document.getElementById('absensi-masuk').value;
+        const jamPulang = document.getElementById('absensi-pulang').value;
+        if (!tanggal || !namaKurir) return alert('Tanggal dan nama kurir wajib diisi.');
+        const key = editingAbsensiKey || `${tanggal}_${namaKurir}`;
+        await set(ref(db, `absensi_sahabatku/${key}`), { tanggal, namaKurir, jamMasuk, jamPulang, timestamp: new Date().toISOString() });
+        closeAbsensiPopup();
+      });
+    }
 
     window.openAdminPopupKurir = () => {
       const list = getKurirAktif().map(u => `<div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs"><div class="font-bold">${u.nama}</div><div class="text-[10px] text-slate-400">${u.leader}</div></div>`).join('');
@@ -1617,6 +1643,7 @@
       document.getElementById('popup-detail').classList.remove('hidden');
       document.getElementById('popup-detail').classList.add('flex');
     };
+
     function renderAll() {
       if (!currentViewDate || isNaN(currentViewDate.getTime())) {
         currentViewDate = new Date();
@@ -1630,9 +1657,9 @@
       renderKurirJadwalList();
       renderKurirPengajuanList();
       renderKurirRekap();
-      // admin disabled
       updatePengajuanVisibility();
     }
+
     function syncToCurrentMonth() {
       const now = new Date();
       currentViewDate = new Date(now.getFullYear(), now.getMonth(), 1);
