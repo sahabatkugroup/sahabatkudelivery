@@ -4308,13 +4308,17 @@
                 box.innerHTML = '';
             }
         };
-        
         window.hitungOngkirJarak = function() {
             const asal = document.getElementById('admin-jarak-asal').value.trim();
             const jarak = parseFloat(document.getElementById('admin-jarak-km').value) || 0;
-        
+
             if (!asal || jarak <= 0) return alert('Isi wilayah dan jarak.');
-        
+
+            if (jarak <= 12) {
+                alert('⚠️ Jarak ≤ 12km. Gunakan fitur "Cek Ongkir" normal untuk hasil akurat.');
+                return;
+            }
+
             const cariTarif = (nama) => {
                 for (let k in cloudOngkirList) {
                     const item = cloudOngkirList[k];
@@ -4324,10 +4328,11 @@
             };
             const tarifAsal = cariTarif(asal);
             const hasil = (jarak * 2 * 1000) + 2000 + tarifAsal;
-        
+
             document.getElementById('admin-ongkir-display-jarak').innerText = 'Rp ' + hasil.toLocaleString('id-ID');
             document.getElementById('admin-ongkir-result-jarak').classList.remove('hidden');
         };
+
         window.toggleAdminOngkirHidden = function() {
             const box = document.getElementById('admin-ongkir-hidden-box');
             if (box) box.classList.toggle('hidden');
