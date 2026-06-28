@@ -477,14 +477,16 @@
                         </select>
                     </div>
             
-                    <div>
-                        <label class="block text-[10px] text-slate-400 mb-1">Pilih Tanggal</label>
-                        <input type="date" id="an-filter-tgl" onchange="renderAdminNota()" class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
-                    </div>
-            
-                    <div>
-                        <label class="block text-[10px] text-slate-400 mb-1">Pilih Bulan</label>
-                        <input type="month" id="an-filter-bulan" onchange="renderAdminNota()" class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Pilih Tanggal</label>
+                            <input type="date" id="an-filter-tgl" onchange="renderAdminNota()" class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">Pilih Bulan</label>
+                            <input type="month" id="an-filter-bulan" onchange="renderAdminNota()" class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+                        </div>
                     </div>
                 </div>
                 <div class="flex gap-2">
@@ -493,10 +495,7 @@
                     </button>
                     <button onclick="toggleAdminNotaList(false)" class="flex-1 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-xs font-bold uppercase">
                         Tutup
-                    </button>
-                </div>
-                
-                <div class="flex justify-end">
+                    </button>                
                     <button onclick="hapusSemuaNotaTersaring()" class="px-3 py-1.5 rounded-lg text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 opacity-70 hover:opacity-100 transition">
                         Hapus Nota Tersaring
                     </button>
@@ -855,25 +854,26 @@
                     </div>
 
                     <!-- TOMBOL SAAT LIST TERBUKA: Tutup/Batal | Pilih | Hapus Semua -->
-                    <div id="btn-group-open" class="hidden flex flex-col sm:flex-row gap-1.5 sm:gap-2">
-                        <button onclick="toggleTestimonialOpen()" class="flex-1 py-2 sm:py-2 rounded-lg sm:rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white text-[9px] sm:text-xs font-bold uppercase leading-none">
+                    <div id="btn-group-open" class="hidden flex gap-1.5">
+                        <button onclick="toggleTestimonialOpen()" class="flex-1 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white text-[9px] font-bold uppercase leading-none">
                             Tutup
                         </button>
-                        <button onclick="toggleTestimonialSelectMode()" id="btn-pilih-mode" class="flex-1 py-2 sm:py-2 rounded-lg sm:rounded-xl bg-slate-800 text-white text-[9px] sm:text-xs font-bold uppercase leading-none">
+                        <button onclick="toggleTestimonialSelectMode()" id="btn-pilih-mode" class="flex-1 py-2 rounded-lg bg-slate-800 text-white text-[9px] font-bold uppercase leading-none">
                             Pilih
                         </button>
-                        <button onclick="hapusSemuaTestimonialBulan()" id="btn-hapus-semua-bulan" class="flex-1 py-2 sm:py-2 rounded-lg sm:rounded-xl bg-rose-600 text-white text-[9px] sm:text-xs font-bold uppercase leading-none">
+                        <button onclick="hapusSemuaTestimonialBulan()" id="btn-hapus-semua-bulan" class="flex-1 py-2 rounded-lg bg-rose-600 text-white text-[9px] font-bold uppercase leading-none">
                             Hapus Semua
                         </button>
                     </div>
-                    <div id="btn-group-select" class="hidden flex flex-col sm:flex-row gap-1.5 sm:gap-2">
-                        <button onclick="toggleTestimonialOpen()" class="flex-1 py-2 sm:py-2 rounded-lg sm:rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white text-[9px] sm:text-xs font-bold uppercase leading-none">
+
+                    <div id="btn-group-select" class="hidden flex gap-1.5">
+                        <button onclick="toggleTestimonialOpen()" class="flex-1 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white text-[9px] font-bold uppercase leading-none">
                             Tutup
                         </button>
-                        <button onclick="hapusTestimonialPilihan()" class="flex-1 py-2 sm:py-2 rounded-lg sm:rounded-xl bg-orange-600 text-white text-[9px] sm:text-xs font-bold uppercase leading-none">
+                        <button onclick="hapusTestimonialPilihan()" class="flex-1 py-2 rounded-lg bg-orange-600 text-white text-[9px] font-bold uppercase leading-none">
                             Hapus Pilihan
                         </button>
-                        <button onclick="hapusSemuaTestimonialBulan()" class="flex-1 py-2 sm:py-2 rounded-lg sm:rounded-xl bg-rose-600 text-white text-[9px] sm:text-xs font-bold uppercase leading-none">
+                        <button onclick="hapusSemuaTestimonialBulan()" class="flex-1 py-2 rounded-lg bg-rose-600 text-white text-[9px] font-bold uppercase leading-none">
                             Hapus Semua Bulan
                         </button>
                     </div>
@@ -896,9 +896,25 @@
                     </div>
             
                     <div id="notif-selected-box" class="hidden">
-                        <label class="block text-[10px] text-slate-400 mb-1">Pilih Kurir</label>
-                        <select id="notif-target-list" multiple class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700 min-h-32"></select>
-                        <p class="text-[10px] text-slate-400 mt-1">Bisa pilih lebih dari 1 kurir.</p>
+                    <label class="block text-[10px] text-slate-400 mb-2">Pilih Kurir</label>
+                    
+                    <!-- Tabel Grid 3 Kolom -->
+                    <div class="overflow-x-auto border rounded-xl dark:border-slate-700">
+                        <table class="w-full text-[10px]">
+                        <thead>
+                            <tr class="border-b bg-slate-50 dark:bg-slate-800/60">
+                            <th class="p-2.5 font-bold text-slate-400 uppercase text-left">No</th>
+                            <th class="p-2.5 font-bold text-slate-400 uppercase text-left">Nama Kurir</th>
+                            <th class="p-2.5 font-bold text-slate-400 uppercase text-left">Leader</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notif-kurir-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                            <!-- Isi dinamis dari JavaScript -->
+                        </tbody>
+                        </table>
+                    </div>
+                    
+                    <p class="text-[10px] text-slate-400 mt-2">Klik nama kurir untuk pilih/tidak pilih</p>
                     </div>
             
                     <div>
