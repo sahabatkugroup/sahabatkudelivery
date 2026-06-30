@@ -25,7 +25,7 @@
         let adminOngkirMode = 'normal';
         let cloudTestimonialList = {};
         let cloudManajemenList = {}
-        let cloudLeaderList = {};
+        let cloudLeaderList = {};;
         let liveLocations = {};
         let liveMap = null;
         let liveMarkers = {};
@@ -112,21 +112,7 @@
         function getWibDate() {
             return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
         }
-        const API_URL = 'https://script.google.com/macros/s/AKfycbxfMHYjmhM5IB683WgeQBh5FeuRunezfqxVNFWhxIIwW5F1_x4VFIaYLkne1FfcBhYNZQ/exec';
-        function getWibTodayRawDate() {
-            const now = new Date();
-            return new Intl.DateTimeFormat('en-CA', {
-                timeZone: 'Asia/Jakarta',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-            }).format(now);
-        }
-
-        function getWibTodayMonth() {
-            return getWibTodayRawDate().slice(0, 7);
-        }
-
+        
         function getWibRawDate() {
             const wib = getWibDate();
             const tahun = wib.getFullYear();
@@ -134,14 +120,19 @@
             const tanggal = String(wib.getDate()).padStart(2, '0');
             return `${tahun}-${bulan}-${tanggal}`;
         }
-        function getHariIndo(dateStr) {
-            const d = dateStr
-                ? new Date(dateStr + 'T00:00:00')
-                : getWibDate();
-
-            return d.toLocaleDateString('id-ID', { weekday: 'long' });
+        function getDistanceMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const toRad = (v) => v * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+        
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        
+            return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
-
         window.startLiveLocationTracking = function() {
             if (!userSession || userSession.role !== 'kurir') return;
         
@@ -268,6 +259,12 @@
                 `;
             });
         };
+        window.selectTrackingKurir = function(id) {
+            selectedKurirTracking = id;
+            selectedTrackingUser = cloudKurirList[id] || null;
+            renderTrackingMap(id);
+        };
+
         window.selectTrackingKurir = function(id) {
             selectedKurirTracking = id;
             selectedTrackingUser = cloudKurirList[id] || null;
@@ -453,7 +450,6 @@
             onValue(ref(db, 'users'), (snapshot) => {
                 cloudKurirList = snapshot.val() || {};
                 populateKurirDropdownFilter();  // Tambahkan baris ini
-                populateDepositKurirFilter();
                 queueUiRefresh();
                 if (pendingAutoLoginCheck && userSession && userSession.role === 'kurir') {
                     const currentKurir = cloudKurirList[userSession.id];
@@ -500,15 +496,6 @@
             });
             onValue(ref(db, 'jadwal_off'), (snapshot) => {
                 cloudJadwalOff = snapshot.val() || {};
-            });
-            let cloudDepositList = {};
-
-            onValue(ref(db, 'deposit_kurir'), (snapshot) => {
-                cloudDepositList = snapshot.val() || {};
-                window.cloudDepositList = cloudDepositList;
-                if (currentScreen === 'screen-admin-order-deposit') {
-                    renderDepositFirebaseList();
-                }
             });
             
             window.calcRekapJadwalKurir = function() {
@@ -892,7 +879,6 @@
                 alert("Gagal mengubah login: " + err.message);
             }
         };
-
         window.changeKurirLogin = function() {
             const newUsername = document.getElementById('new-username').value.trim().toLowerCase();
             const newPassword = document.getElementById('new-password').value.trim();
@@ -1095,11 +1081,6 @@
                         bulanEl.value = getWibRawDate().slice(0, 7);
                     }
                     renderAdminTestimonial();
-                }, 100);
-            }
-            if (screenId === 'screen-admin-order-deposit') {
-                setTimeout(() => {
-                    initOrderDepositModule();
                 }, 100);
             }
 
@@ -1888,6 +1869,27 @@
                 }
             } catch (err) {
                 console.log('cleanupDailyLiveLocations error:', err.message);
+            }
+        };
+        
+        window.toggleTestimonialPublish = function(key) {
+            const item = cloudTestimonialList[key];
+            if (!item) return;
+        
+            update(ref(db, `testimonials/${key}`), {
+                isPublished: !item.isPublished
+            }).then(() => {
+                alert(item.isPublished ? 'Testimoni disembunyikan.' : 'Testimoni ditampilkan.');
+            }).catch(err => {
+                alert('Gagal update testimoni: ' + err.message);
+            });
+        };
+        
+        window.hapusTestimonial = function(key) {
+            if (confirm('Hapus testimoni ini secara permanen?')) {
+                remove(ref(db, `testimonials/${key}`))
+                    .then(() => alert('Testimoni berhasil dihapus.'))
+                    .catch(err => alert('Gagal menghapus testimoni: ' + err.message));
             }
         };
         window.toggleTestimonialSelectMode = function() {
@@ -5360,8 +5362,6 @@
             const manajemenScreen = document.getElementById('screen-admin-manajemen');
             const manajemenCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-manajemen"]');
             const ongkirCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-ongkir"]');
-            const orderDepositCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-order-deposit"]');
-
             const mitraForm = document.querySelector('#screen-admin-mitra > .bg-white');
             
             if (badge) {
@@ -5376,7 +5376,7 @@
                     'screen-admin-kurir', 'screen-admin-manajemen', 'screen-admin-nota',
                     'screen-admin-mitra', 'screen-admin-laporan', 'screen-admin-tracking',
                     'screen-admin-kpi', 'screen-admin-testimonial', 'screen-admin-notifikasi',
-                    'screen-admin-absensi', 'screen-admin-ongkir', 'screen-admin-order-deposit', 'screen-pengaturan'
+                    'screen-admin-absensi', 'screen-admin-ongkir', 'screen-pengaturan'
                 ];
 
                 allScreenIds.forEach(id => {
@@ -5392,7 +5392,6 @@
                 if (mitraForm) mitraForm.classList.remove('hidden');
                 if (manajemenCardBtn) manajemenCardBtn.classList.remove('hidden');
                 if (ongkirCardBtn) ongkirCardBtn.classList.remove('hidden');
-                if (orderDepositCardBtn) orderDepositCardBtn.classList.remove('hidden');
 
                 if (kategoriFixed === 'Head Operasional') {
                     if (manajemenScreen) {
@@ -5403,17 +5402,6 @@
                     }
                     if (manajemenCardBtn) manajemenCardBtn.classList.add('hidden');
                     if (ongkirCardBtn) ongkirCardBtn.classList.add('hidden');
-
-                    const orderDepositCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-order-deposit"]');
-                    if (orderDepositCardBtn) orderDepositCardBtn.classList.add('hidden');
-
-                    const orderDepositScreen = document.getElementById('screen-admin-order-deposit');
-                    if (orderDepositScreen) {
-                        orderDepositScreen.classList.add('hidden');
-                        orderDepositScreen.querySelectorAll('button').forEach(btn => {
-                            btn.classList.add('hidden', 'opacity-0', 'pointer-events-none');
-                        });
-                    }
 
                     const kurirScreen = document.getElementById('screen-admin-kurir');
                     if (kurirScreen) {
@@ -5443,11 +5431,8 @@
 
             if (kategoriFixed === 'HRD') {
                 const hrdScreens = [
-                    'screen-admin-kurir',
-                    'screen-admin-tracking',
-                    'screen-admin-kpi',
-                    'screen-admin-testimonial',
-                    'screen-admin-absensi'
+                    'screen-admin-kurir', 'screen-admin-tracking', 'screen-admin-kpi',
+                    'screen-admin-testimonial', 'screen-admin-absensi'
                 ];
 
                 hrdScreens.forEach(id => {
@@ -5460,15 +5445,9 @@
                 });
 
                 const hiddenForHRD = [
-                    'screen-admin-manajemen',
-                    'screen-admin-nota',
-                    'screen-admin-mitra',
-                    'screen-admin-laporan',
-                    'screen-admin-notifikasi',
-                    'screen-admin-ongkir',
-                    'screen-admin-order-deposit'
+                    'screen-admin-manajemen', 'screen-admin-nota', 'screen-admin-mitra',
+                    'screen-admin-laporan', 'screen-admin-notifikasi', 'screen-admin-ongkir'
                 ];
-
                 hiddenForHRD.forEach(id => {
                     const screen = document.getElementById(id);
                     if (!screen) return;
@@ -5478,14 +5457,9 @@
                     });
                 });
 
-                const manajemenCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-manajemen"]');
-                const ongkirCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-ongkir"]');
-                const orderDepositCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-order-deposit"]');
-
+                if (kurirForm) kurirForm.classList.add('hidden');
                 if (manajemenCardBtn) manajemenCardBtn.classList.add('hidden');
                 if (ongkirCardBtn) ongkirCardBtn.classList.add('hidden');
-                if (orderDepositCardBtn) orderDepositCardBtn.classList.add('hidden');
-
                 return;
             }
 
@@ -5737,6 +5711,11 @@
                     </div>
                 `;
             }).join('');
+        };
+        window.openLeaderModal = function() {
+            resetLeaderForm();
+            document.getElementById('modal-leader').classList.remove('hidden');
+            renderLeaderList();
         };
         window.resetLeaderForm = function() {
             document.getElementById('leader-id-edit').value = '';
@@ -6152,288 +6131,4 @@
             } else {
                 container.innerHTML = '';
             }
-        };
-        window.depositKurirSelected = [];
-        window.depositKurirAmounts = {};
-        window.depositKurirOrder = {};
-        window.depositKurirSequence = 0;
-
-        window.updateDepositDay = function() {
-            const date = document.getElementById('deposit-date')?.value || getWibRawDate();
-            const day = getHariIndo(date);
-            const depositDay = document.getElementById('deposit-day');
-            if (depositDay) depositDay.value = day;
-        };
-
-        window.updateDepositKurirSuggestions = function() {
-            const input = document.getElementById('deposit-kurir');
-            const box = document.getElementById('suggest-deposit-kurir');
-            if (!input || !box) return;
-
-            const q = normalizeNama(input.value);
-            if (!q) {
-                box.classList.add('hidden');
-                box.innerHTML = '';
-                return;
-            }
-
-            const matches = [];
-            for (let k in cloudKurirList) {
-                const item = cloudKurirList[k];
-                if (item && item.role === 'kurir') {
-                    const nama = item.nama || item.username || '';
-                    if (normalizeNama(nama).includes(q) && !window.depositKurirSelected.includes(nama)) {
-                        matches.push(nama);
-                    }
-                }
-            }
-
-            if (!matches.length) {
-                box.classList.add('hidden');
-                box.innerHTML = '';
-                return;
-            }
-
-            box.innerHTML = matches.slice(0, 6).map(nama => `
-                <div onclick="pilihDepositKurir('${nama.replace(/'/g, "\\'")}')" class="px-3 py-2 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
-                    ${nama}
-                </div>
-            `).join('');
-
-            box.classList.remove('hidden');
-        };
-
-        window.pilihDepositKurir = function(nama) {
-            const input = document.getElementById('deposit-kurir');
-            const box = document.getElementById('suggest-deposit-kurir');
-
-            if (!window.depositKurirSelected.includes(nama)) {
-                window.depositKurirSelected.push(nama);
-                window.depositKurirSequence += 1;
-                window.depositKurirOrder[nama] = window.depositKurirSequence;
-            }
-
-            if (input) input.value = '';
-            if (box) {
-                box.classList.add('hidden');
-                box.innerHTML = '';
-            }
-
-            renderDepositKurirSelected();
-        };
-
-        window.hapusDepositKurirSelected = function(nama) {
-            window.depositKurirSelected = window.depositKurirSelected.filter(n => n !== nama);
-            delete window.depositKurirAmounts[nama];
-            delete window.depositKurirOrder[nama];
-            renderDepositKurirSelected();
-        };
-
-        function renderDepositKurirSelected() {
-            const selected = document.getElementById('deposit-kurir-selected');
-            if (!selected) return;
-
-            const values = {};
-            document.querySelectorAll('[id^="deposit-amount-"]').forEach(el => {
-                const nama = el.dataset.nama;
-                if (nama) values[nama] = el.value;
-            });
-
-            const sortedNames = [...window.depositKurirSelected].sort((a, b) => {
-                return (window.depositKurirOrder[b] || 0) - (window.depositKurirOrder[a] || 0);
-            });
-
-            if (!sortedNames.length) {
-                selected.innerHTML = '';
-                return;
-            }
-
-            selected.innerHTML = sortedNames.map(nama => `
-                <div class="w-full p-3 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 space-y-2">
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="font-bold text-xs">${nama}</div>
-                        <button onclick="hapusDepositKurirSelected('${nama.replace(/'/g, "\\'")}')" class="text-rose-500 font-bold text-sm">×</button>
-                    </div>
-                    <input type="text"
-                        id="deposit-amount-${nama.replace(/[^a-zA-Z0-9]/g, '_')}"
-                        data-nama="${nama}"
-                        oninput="formatDepositPerKurir(this, '${nama.replace(/'/g, "\\'")}')"
-                        placeholder="Rp 0"
-                        class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-                </div>
-            `).join('');
-
-            Object.entries(values).forEach(([nama, val]) => {
-                const input = document.querySelector(`[data-nama="${nama}"]`);
-                if (input) input.value = val;
-            });
-        }
-
-        window.formatDepositPerKurir = function(el, nama) {
-            let angka = (el.value || '').replace(/[^0-9]/g, '');
-            if (!angka) {
-                el.value = '';
-                window.depositKurirAmounts[nama] = 0;
-                return;
-            }
-            el.value = 'Rp ' + parseInt(angka).toLocaleString('id-ID');
-            window.depositKurirAmounts[nama] = parseInt(angka) || 0;
-        };
-        window.initOrderDepositModule = function() {
-            const orderDate = document.getElementById('order-date');
-            const orderAmount = document.getElementById('order-amount');
-            const depositDate = document.getElementById('deposit-date');
-            const depositDay = document.getElementById('deposit-day');
-            const depositKurir = document.getElementById('deposit-kurir');
-            const selectedBox = document.getElementById('deposit-kurir-selected');
-            const filterBulan = document.getElementById('deposit-filter-bulan');
-            const filterTgl = document.getElementById('deposit-filter-tgl');
-
-            const today = getWibTodayRawDate();
-
-            if (orderDate && !orderDate.value) orderDate.value = today;
-            if (depositDate && !depositDate.value) depositDate.value = today;
-            if (depositDay) depositDay.value = getHariIndo(today);
-
-            if (filterBulan && !filterBulan.value) filterBulan.value = getWibTodayMonth();
-            if (filterTgl && !filterTgl.value) filterTgl.value = today;
-
-            if (orderAmount && !orderAmount.value) orderAmount.value = '';
-            if (depositKurir) depositKurir.value = '';
-            if (selectedBox && !selectedBox.innerHTML) selectedBox.innerHTML = '';
-
-            window.depositKurirSelected = window.depositKurirSelected || [];
-            window.depositKurirAmounts = window.depositKurirAmounts || {};
-            window.depositKurirOrder = window.depositKurirOrder || {};
-            window.depositKurirSequence = window.depositKurirSequence || 0;
-
-            renderDepositKurirSelected();
-            populateDepositKurirFilter();
-        };
-
-        window.resetDepositForm = function() {
-            window.depositKurirSelected = [];
-            window.depositKurirAmounts = {};
-            window.depositKurirOrder = {};
-            window.depositKurirSequence = 0;
-
-            const depositDate = document.getElementById('deposit-date');
-            const depositDay = document.getElementById('deposit-day');
-            const depositKurir = document.getElementById('deposit-kurir');
-            const selectedBox = document.getElementById('deposit-kurir-selected');
-
-            if (depositDate) depositDate.value = getWibRawDate();
-            if (depositDay) depositDay.value = getHariIndo(getWibRawDate());
-            if (depositKurir) depositKurir.value = '';
-            if (selectedBox) selectedBox.innerHTML = '';
-
-            renderDepositKurirSelected();
-        };
-        window.sendDepositToSheet = async function() {
-            const date = document.getElementById('deposit-date')?.value || getWibTodayRawDate();
-            const day = getHariIndo(date);
-
-            const items = (window.depositKurirSelected || []).map(nama => ({
-                nama,
-                amount: parseInt(window.depositKurirAmounts?.[nama]) || 0
-            })).filter(x => x.amount > 0);
-
-            if (!date || !items.length) {
-                alert('Lengkapi data deposit.');
-                return;
-            }
-
-            try {
-                setOrderDepositLoading('deposit', true);
-                const result = await sendToSpreadsheet('saveDeposit', {
-                    date,
-                    day,
-                    items,
-                    timezone: 'Asia/Jakarta'
-                });
-
-                if (result.success) {
-                    alert(result.message || 'Deposit berhasil dikirim.');
-                    resetDepositForm();
-                    initOrderDepositModule();
-                } else {
-                    alert(result.message || 'Gagal kirim deposit.');
-                }
-            } catch (err) {
-                alert('Gagal kirim deposit: ' + err.message);
-            } finally {
-                setOrderDepositLoading('deposit', false);
-            }
-        };
-        async function sendToSpreadsheet(action, payload) {
-            try {
-                const res = await fetch(`${API_URL}?action=${encodeURIComponent(action)}`, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                return { success: true, message: 'DATA TERKIRIM BERHASIL!.' };
-            } catch (err) {
-                return { success: false, message: 'GAGAL KIRIM DATA: ' + err.message };
-            }
-        }
-        function setOrderDepositLoading(type, isLoading) {
-            const orderBtn = document.querySelector('#screen-admin-order-deposit button[onclick="sendOrderToSheet()"]');
-            const depositBtn = document.querySelector('#screen-admin-order-deposit button[onclick="sendDepositToSheet()"]');
-
-            if (type === 'order' && orderBtn) {
-                orderBtn.disabled = isLoading;
-                orderBtn.innerText = isLoading ? 'MENGIRIM...' : 'Kirim';
-            }
-
-            if (type === 'deposit' && depositBtn) {
-                depositBtn.disabled = isLoading;
-                depositBtn.innerText = isLoading ? 'MENGIRIM...' : 'Kirim';
-            }
-        }
-
-        window.sendOrderToSheet = async function() {
-            const date = document.getElementById('order-date')?.value || getWibTodayRawDate();
-            const amount = parseInt(document.getElementById('order-amount')?.value) || 0;
-
-            if (!date || amount <= 0) {
-                alert('Lengkapi data orderan.');
-                return;
-            }
-
-            try {
-                setOrderDepositLoading('order', true);
-                const result = await sendToSpreadsheet('saveOrder', { date, amount });
-
-                if (result.success) {
-                    alert(result.message || 'Orderan berhasil dikirim.');
-                    if (document.getElementById('order-date')) document.getElementById('order-date').value = getWibTodayRawDate();
-                    if (document.getElementById('order-amount')) document.getElementById('order-amount').value = '';
-                } else {
-                    alert(result.message || 'Gagal kirim orderan.');
-                }
-            } catch (err) {
-                alert('Gagal kirim orderan: ' + err.message);
-            } finally {
-                setOrderDepositLoading('order', false);
-            }
-        };
-        window.populateDepositKurirFilter = function() {
-            const dropdown = document.getElementById('deposit-filter-kurir');
-            if (!dropdown) return;
-
-            const current = dropdown.value || 'semua';
-            dropdown.innerHTML = '<option value="semua">Semua Kurir</option>';
-
-            Object.values(cloudKurirList || {}).forEach(u => {
-                if (u && u.role === 'kurir' && u.nama) {
-                    dropdown.innerHTML += `<option value="${u.nama}">${u.nama}</option>`;
-                }
-            });
-
-            dropdown.value = current;
         };
