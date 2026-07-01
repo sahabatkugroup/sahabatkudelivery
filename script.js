@@ -1243,32 +1243,40 @@
             }
         };
         let selectedKpiDetail = null;
-        
         window.openKpiDetailModal = function(idKurir) {
             const bulan = getKpiMonth();
             const data = buildKPIData(bulan);
             const item = data.find(x => x.id === idKurir);
             if (!item) return;
-        
+
             selectedKpiDetail = item;
-        
+
             const badge = getRatingBadge(item.rating);
             const container = document.getElementById('container-kpi-detail');
             if (!container) return;
-        
+
+            const totalOffGabungan = (item.totalOff || 0) + (item.totalIzin || 0) + (item.totalSakit || 0);
+            const rank = data.findIndex(x => x.id === idKurir) + 1;
+
             container.innerHTML = `
                 <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 space-y-2">
-                    <div class="text-lg font-black">${item.nama}</div>
-                    <div class="text-xs text-slate-500">Leader: ${item.leader || '-'}</div>
-                    <div class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r ${badge.bg} text-white text-[10px] font-black">
-                        ${badge.emoji} ${badge.label}
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="text-lg font-black truncate">${item.nama}</div>
+                            <div class="text-xs text-slate-500">Leader: ${item.leader || '-'}</div>
+                            <div class="text-[10px] text-slate-400 mt-1">Peringkat: #${rank || '-'}</div>
+                        </div>
+                        <div class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r ${badge.bg} text-white text-[10px] font-black shrink-0">
+                            ${badge.emoji} ${badge.label}
+                        </div>
                     </div>
                 </div>
-        
+
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <div class="p-3 rounded-2xl bg-white dark:bg-slate-800 border">
                         <div class="text-[10px] text-slate-400 uppercase">Kehadiran</div>
-                        <div class="font-black mt-1">${item.hadir} (${item.kehadiranScore.toFixed(1)} poin)</div>
+                        <div class="font-black mt-1">${item.hadir}</div>
+                        <div class="text-[10px] text-slate-400 mt-1">${item.kehadiranScore.toFixed(1)} poin</div>
                     </div>
                     <div class="p-3 rounded-2xl bg-white dark:bg-slate-800 border">
                         <div class="text-[10px] text-slate-400 uppercase">Penghasilan</div>
@@ -1287,21 +1295,30 @@
                     </div>
                     <div class="p-3 rounded-2xl bg-white dark:bg-slate-800 border col-span-2">
                         <div class="text-[10px] text-slate-400 uppercase">Total OFF / Izin / Sakit</div>
-                        <div class="font-black mt-1">${(item.totalOff || 0) + (item.totalIzin || 0) + (item.totalSakit || 0)} off</div>
+                        <div class="font-black mt-1">${totalOffGabungan}</div>
                         <div class="text-[10px] text-slate-400 mt-1">${item.offScore.toFixed(1)} poin</div>
                         <div class="text-[10px] text-slate-500 mt-1">Normal maksimal 3/bulan</div>
                     </div>
                 </div>
-        
+
                 <div class="p-4 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white">
                     <div class="text-[10px] uppercase tracking-wider opacity-80">Total Rating</div>
                     <div class="text-3xl font-black mt-1">${item.rating.toFixed(1)}%</div>
                 </div>
+
+                <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border text-xs space-y-2">
+                    <div class="font-bold text-slate-700 dark:text-slate-200">Ringkasan Ranking</div>
+                    <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                        <div>Ranking: <b>#${rank || '-'}</b></div>
+                        <div>Status: <b>${badge.label}</b></div>
+                        <div>Nota: <b>${item.totalNota}</b></div>
+                        <div>Penghasilan: <b>Rp ${item.totalPenghasilan.toLocaleString('id-ID')}</b></div>
+                    </div>
+                </div>
             `;
-        
+
             document.getElementById('modal-kpi-detail').classList.remove('hidden');
         };
-        
         window.closeKpiDetailModal = function() {
             document.getElementById('modal-kpi-detail').classList.add('hidden');
         };
@@ -4535,27 +4552,15 @@
             });
 
             const hariDalamBulan = getDaysInMonth(bulan);
+            const kehadiranScore = Math.min(20, ((rekap.totalHadirScore || 0) / hariDalamBulan) * 20);
 
-            const kehadiranScore = Math.min(
-                20,
-                ((rekap.totalHadirScore || 0) / hariDalamBulan) * 20
-            );
+            const maxPenghasilan = Math.max(stats.maxPenghasilan || 0, 1);
+            const maxNota = Math.max(stats.maxNota || 0, 1);
+            const maxTrxMitra = Math.max(stats.maxTrxMitra || 0, 1);
 
-            const maxPenghasilan = stats.maxPenghasilan || 0;
-            const maxNota = stats.maxNota || 0;
-            const maxTrxMitra = stats.maxTrxMitra || 0;
-
-            const totalPenghasilanScore = maxPenghasilan > 0
-                ? Math.min(20, (totalPenghasilan / maxPenghasilan) * 20)
-                : 0;
-
-            const totalNotaScore = maxNota > 0
-                ? Math.min(20, (totalNota / maxNota) * 20)
-                : 0;
-
-            const trxMitraScore = maxTrxMitra > 0
-                ? Math.min(20, (trxMitra / maxTrxMitra) * 20)
-                : 0;
+            const totalPenghasilanScore = Math.min(20, (totalPenghasilan / maxPenghasilan) * 20);
+            const totalNotaScore = Math.min(20, (totalNota / maxNota) * 20);
+            const trxMitraScore = Math.min(20, (trxMitra / maxTrxMitra) * 20);
 
             const totalOffGabungan = (rekap.totalOff || 0) + (rekap.totalIzin || 0) + (rekap.totalSakit || 0);
             const offScore = totalOffGabungan <= 3
@@ -4722,47 +4727,48 @@
         function buildKPIData(bulan) {
             const rawData = [];
             const norm = (v) => (v || '').toString().trim().toLowerCase();
-        
+
             Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
                 if (!u || u.role !== 'kurir') return;
                 if (u.status && u.status !== 'aktif') return;
-        
+
                 const nama = (u.nama || '').trim();
                 const username = norm(u.username || '');
                 const idKurir = norm(id || '');
-        
+
                 const rekap = getRekapJadwalKurirByName(nama || idKurir || username, bulan);
-                const notaStats = { totalNota: 0, totalPenghasilan: 0 };
-                const trxMitra = 0;
-        
+
+                let totalNota = 0;
+                let totalPenghasilan = 0;
+                let trxMitra = 0;
+
                 Object.values(cloudNotaList || {}).forEach(n => {
                     if (!isValidNotaItem(n)) return;
                     if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
-        
+
                     const notaUsername = norm(n.kurirUsername);
                     const notaNama = norm(n.kurirNama);
                     const notaId = norm(n.kurirId);
                     if (notaUsername !== username && notaNama !== norm(nama) && notaId !== idKurir) return;
-        
-                    notaStats.totalNota++;
+
+                    totalNota++;
                     const ongkir = parseInt(n.ongkir) || 0;
                     const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
-                    notaStats.totalPenghasilan += (ongkir + biaya);
+                    totalPenghasilan += (ongkir + biaya);
                 });
-        
-                let trxMitraFinal = 0;
+
                 Object.values(cloudLogMitra || {}).forEach(log => {
                     if (!log || !log.tglRaw) return;
                     if (log.tglRaw.slice(0, 7) !== bulan) return;
-        
+
                     const logUsername = norm(log.kurirUsername);
                     const logNama = norm(log.kurirNama);
                     const logId = norm(log.kurirId);
                     if (logUsername !== username && logNama !== norm(nama) && logId !== idKurir) return;
-        
-                    trxMitraFinal += parseInt(log.trxInput) || 0;
+
+                    trxMitra += parseInt(log.trxInput) || 0;
                 });
-        
+
                 rawData.push({
                     id,
                     nama: nama || '-',
@@ -4773,28 +4779,37 @@
                     hadirHalf: rekap.hadirHalf,
                     masukTepat: rekap.totalAbsenMasuk,
                     off: rekap.totalOff,
-                    trxMitra: trxMitraFinal,
-                    totalNota: notaStats.totalNota,
-                    totalPenghasilan: notaStats.totalPenghasilan
+                    totalIzin: rekap.totalIzin,
+                    totalSakit: rekap.totalSakit,
+                    trxMitra,
+                    totalNota,
+                    totalPenghasilan
                 });
             });
-        
+
             const stats = {
                 maxPenghasilan: Math.max(...rawData.map(x => x.totalPenghasilan), 0),
                 maxNota: Math.max(...rawData.map(x => x.totalNota), 0),
                 maxTrxMitra: Math.max(...rawData.map(x => x.trxMitra), 0)
             };
-        
-            const finalData = rawData.map(item => {
-                const finalRow = calcKpiForKurir(item.nama || item.id || item.username, bulan, stats);
-                return {
-                    ...item,
-                    ...finalRow,
-                    id: item.id
-                };
-            });
-        
-            return finalData.sort((a, b) => b.rating - a.rating);
+
+            const finalData = rawData
+                .map(item => {
+                    const finalRow = calcKpiForKurir(item.nama || item.id || item.username, bulan, stats);
+                    return {
+                        ...item,
+                        ...finalRow,
+                        id: item.id
+                    };
+                })
+                .sort((a, b) => {
+                    if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
+                    if ((b.trxMitra || 0) !== (a.trxMitra || 0)) return (b.trxMitra || 0) - (a.trxMitra || 0);
+                    if ((b.totalNota || 0) !== (a.totalNota || 0)) return (b.totalNota || 0) - (a.totalNota || 0);
+                    return (a.nama || '').localeCompare(b.nama || '');
+                });
+
+            return finalData;
         }
         function getTestimoniTerbaik(bulan) {
             const rank = {};
