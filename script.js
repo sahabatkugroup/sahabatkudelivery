@@ -3536,7 +3536,7 @@
 
                 keys.forEach(key => {
                     const n = cloudNotaList[key];
-                    if (!n) return;
+                    if (!isValidNotaItem(n)) return;
             
                     if (filterKurir !== 'semua' && n.kurirUsername !== filterKurir) return;
                     if (filterTgl && n.tanggalRaw !== filterTgl) return;
@@ -3545,8 +3545,8 @@
                     adaData = true;
             
                     const totalBiaya = (n.biayaTambahan || []).reduce((acc, b) => acc + (b.nominal || 0), 0);
-                    const statusText = (n.status || '-').toUpperCase();
-                    const statusColor = statusText === 'ADMIN'
+                    const statusText = normalizeStatusNota(n.status) || '-';
+                    const statusColor = statusText === 'admin'
                         ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
                         : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300';
             
@@ -3559,7 +3559,7 @@
                                 </div>
                                 <div class="flex flex-col items-end gap-1">
                                     <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${statusColor}">
-                                        ${statusText}
+                                        ${statusText.toUpperCase()}
                                     </span>
                                     <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                                         ${n.kurirNama || '-'}
@@ -3649,7 +3649,7 @@
             let mapHarian = {};
 
             Object.values(cloudNotaList || {}).forEach(n => {
-                if (!n || !n.tanggalRaw) return;
+                if (!isValidNotaItem(n)) return;
                 if (bulan && n.tanggalRaw.substring(0, 7) !== bulan) return;
                 if (kurir !== 'semua' && n.kurirUsername !== kurir) return;
 
@@ -3674,7 +3674,7 @@
                 mapHarian[tgl].kurirSet.add(n.kurirUsername);
                 kurirAktifSet.add(n.kurirUsername);
 
-                const status = (n.status || '').toLowerCase();
+                const status = normalizeStatusNota(n.status);
                 if (status === 'admin') {
                     mapHarian[tgl].notaAdmin++;
                     totalNotaAdmin++;
@@ -3714,9 +3714,7 @@
 
             document.getElementById('laporan-total-nota').innerText = totalNota;
             const detailNota = document.getElementById('laporan-total-nota-detail');
-            if (detailNota) {
-                detailNota.innerText = `Admin ${totalNotaAdmin} • OL ${totalNotaOL}`;
-            }
+            if (detailNota) detailNota.innerText = `Admin ${totalNotaAdmin} • OL ${totalNotaOL}`;
 
             document.getElementById('laporan-total-pendapatan').innerText = 'Rp ' + totalPendapatan.toLocaleString('id-ID');
             document.getElementById('laporan-rata-rata').innerText = 'Rp ' + rataRata.toLocaleString('id-ID');
@@ -4475,73 +4473,94 @@
             if (rating >= 70) return 'bg-orange-500';
             return 'bg-rose-500';
         }
-        
+        function normalizeStatusNota(value) {
+            const v = (value || '').toString().trim().toLowerCase();
+            if (v === 'admin') return 'admin';
+            if (v === 'ol') return 'ol';
+            return '';
+        }
+
+        function isValidNotaItem(n) {
+            if (!n) return false;
+            if (!n.tanggalRaw || !String(n.tanggalRaw).trim()) return false;
+            if (!n.kurirUsername || !String(n.kurirUsername).trim()) return false;
+            if (!n.id || !String(n.id).trim()) return false;
+            return true;
+        }        
         function calcKpiForKurir(identifier, bulan, stats = {}) {
             const target = (identifier || '').trim().toLowerCase();
             const norm = (v) => (v || '').toString().trim().toLowerCase();
-        
+
             const kurirObj = Object.entries(cloudKurirList || {}).find(([id, u]) => {
                 if (!u || u.role !== 'kurir') return false;
-                return norm(id) === target || norm(u.username) === target;
+                return norm(id) === target || norm(u.username) === target || norm(u.nama) === target;
             });
-        
+
             const idTarget = norm(kurirObj?.[0] || '');
             const usernameTarget = norm(kurirObj?.[1]?.username || '');
             const namaResmi = kurirObj?.[1]?.nama || '-';
             const leaderResmi = kurirObj?.[1]?.leader || '-';
-        
+
             const rekap = getRekapJadwalKurirByName(namaResmi || idTarget || usernameTarget, bulan);
-        
+
             let totalNota = 0;
             let trxMitra = 0;
             let totalPenghasilan = 0;
-        
+
             Object.values(cloudNotaList || {}).forEach(n => {
-                if (!n) return;
-        
+                if (!isValidNotaItem(n)) return;
+                if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
+
                 const notaUsername = norm(n.kurirUsername);
                 const notaId = norm(n.kurirId);
-                if (notaUsername !== usernameTarget && notaId !== idTarget) return;
-                if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
-        
+                const notaNama = norm(n.kurirNama);
+                if (notaUsername !== usernameTarget && notaId !== idTarget && notaNama !== norm(namaResmi)) return;
+
                 totalNota++;
                 const ongkir = parseInt(n.ongkir) || 0;
                 const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
                 totalPenghasilan += (ongkir + biaya);
             });
-        
+
             Object.values(cloudLogMitra || {}).forEach(log => {
-                if (!log) return;
-        
+                if (!log || !log.tglRaw) return;
+                if (log.tglRaw.slice(0, 7) !== bulan) return;
+
                 const logUsername = norm(log.kurirUsername);
                 const logId = norm(log.kurirId);
-                if (logUsername !== usernameTarget && logId !== idTarget) return;
-                if (!log.tglRaw || log.tglRaw.slice(0, 7) !== bulan) return;
-        
+                const logNama = norm(log.kurirNama);
+                if (logUsername !== usernameTarget && logId !== idTarget && logNama !== norm(namaResmi)) return;
+
                 trxMitra += parseInt(log.trxInput) || 0;
             });
-        
-            const kehadiranScore = Math.min((rekap.totalHadirScore / getDaysInMonth(bulan)) * 20, 20);
-        
+
+            const hariDalamBulan = getDaysInMonth(bulan);
+
+            const kehadiranScore = Math.min(
+                20,
+                ((rekap.totalHadirScore || 0) / hariDalamBulan) * 20
+            );
+
             const maxPenghasilan = stats.maxPenghasilan || 0;
             const maxNota = stats.maxNota || 0;
             const maxTrxMitra = stats.maxTrxMitra || 0;
+
             const totalPenghasilanScore = maxPenghasilan > 0
-                ? Math.min(20, (totalPenghasilan / maxPenghasilan) * 18)
+                ? Math.min(20, (totalPenghasilan / maxPenghasilan) * 20)
                 : 0;
-            
+
             const totalNotaScore = maxNota > 0
-                ? Math.min(30, (totalNota / maxNota) * 27)
+                ? Math.min(20, (totalNota / maxNota) * 20)
                 : 0;
-            
+
             const trxMitraScore = maxTrxMitra > 0
-                ? Math.min(20, (trxMitra / maxTrxMitra) * 18)
+                ? Math.min(20, (trxMitra / maxTrxMitra) * 20)
                 : 0;
 
             const totalOffGabungan = (rekap.totalOff || 0) + (rekap.totalIzin || 0) + (rekap.totalSakit || 0);
             const offScore = totalOffGabungan <= 3
-                ? 10
-                : Math.max(0, 10 - ((totalOffGabungan - 3) * 0.75));
+                ? 20
+                : Math.max(0, 20 - ((totalOffGabungan - 3) * 2));
 
             const rating = Number(Math.min(100, (
                 kehadiranScore +
@@ -4589,7 +4608,7 @@
                     totalAbsenPulang: 0
                 };
             }
-        
+
             const norm = (v) => (v || '').toString().trim().toLowerCase();
             const tanggalMap = {};
             let totalOff = 0;
@@ -4598,26 +4617,26 @@
             let totalSakit = 0;
             let totalAbsenMasuk = 0;
             let totalAbsenPulang = 0;
-        
-            const cocokKurirAbsensi = (a) => {
-                const idKurir = norm(a?.idKurir || a?.kurirId);
-                const username = norm(a?.username || a?.kurirUsername);
-                const nama = norm(a?.nama || a?.namaKurir);
+
+            const cocokKurir = (obj) => {
+                const idKurir = norm(obj?.idKurir || obj?.kurirId || obj?.id);
+                const username = norm(obj?.username || obj?.kurirUsername);
+                const nama = norm(obj?.nama || obj?.namaKurir);
                 return target === idKurir || target === username || target === nama;
             };
-        
+
             // ABSENSI
             Object.values(cloudAbsensiList || {}).forEach(a => {
                 if (!a) return;
-        
+
                 const tgl = (a.tanggal || '').trim();
                 if (!tgl || tgl.slice(0, 7) !== bulan) return;
-                if (!cocokKurirAbsensi(a)) return;
-        
+                if (!cocokKurir(a)) return;
+
                 if (!tanggalMap[tgl]) {
                     tanggalMap[tgl] = { masuk: false, pulang: false, off: false };
                 }
-        
+
                 if (a.jamMasuk) {
                     tanggalMap[tgl].masuk = true;
                     totalAbsenMasuk++;
@@ -4626,66 +4645,68 @@
                     tanggalMap[tgl].pulang = true;
                     totalAbsenPulang++;
                 }
-        
+
                 const status = norm(a.status);
                 if (status === 'izin') totalIzin++;
                 if (status === 'sakit') totalSakit++;
             });
-        
+
             // JADWAL OFF
             Object.values(cloudJadwalOff || {}).forEach(j => {
                 if (!j) return;
-        
-                const namaKurir = norm(j.nama);
-                const jenisOff = norm(j.jenisOff);
-                const statusOff = norm(j.status);
+
                 const tglMulai = (j.tanggalMulai || '').trim();
                 const tglSelesai = (j.tanggalSelesai || tglMulai || '').trim();
-        
                 if (!tglMulai || tglMulai.slice(0, 7) !== bulan) return;
-                if (target !== namaKurir) return;
-        
-                // Kalau tanggalMulai = tanggalSelesai, dihitung 1 kali saja
+
+                const namaKurir = norm(j.nama || j.namaKurir || j.kurirNama);
+                const usernameKurir = norm(j.username || j.kurirUsername);
+                const idKurir = norm(j.idKurir || j.kurirId || j.id);
+                if (target !== namaKurir && target !== usernameKurir && target !== idKurir) return;
+
+                const jenisOff = norm(j.jenisOff);
+                const statusOff = norm(j.status);
+
                 const start = new Date(tglMulai);
                 const end = new Date(tglSelesai);
                 const daysCount = Math.max(1, Math.round((end - start) / 86400000) + 1);
-        
+
                 for (let i = 0; i < daysCount; i++) {
                     const d = new Date(start);
                     d.setDate(start.getDate() + i);
-        
+
                     const y = d.getFullYear();
                     const m = String(d.getMonth() + 1).padStart(2, '0');
                     const dd = String(d.getDate()).padStart(2, '0');
                     const tglLoop = `${y}-${m}-${dd}`;
-        
+
                     if (tglLoop.slice(0, 7) !== bulan) continue;
-        
+
                     if (jenisOff === 'off reguler') totalOff++;
                     if (jenisOff === 'izin') totalIzin++;
                     if (jenisOff === 'tidak ambil off') totalTidakAmbilOff++;
                     if (jenisOff === 'sakit') totalSakit++;
-        
+
                     if (!tanggalMap[tglLoop]) {
                         tanggalMap[tglLoop] = { masuk: false, pulang: false, off: true };
                     } else {
                         tanggalMap[tglLoop].off = true;
                     }
-        
+
                     if (statusOff !== 'aktif') {
                         totalTidakAmbilOff++;
                     }
                 }
             });
-        
+
             let hadirFull = 0;
             let hadirHalf = 0;
-        
+
             Object.values(tanggalMap).forEach(v => {
                 if (v.masuk && v.pulang) hadirFull += 1;
                 else if (v.masuk || v.pulang) hadirHalf += 1;
             });
-        
+
             return {
                 hadirFull,
                 hadirHalf,
@@ -4698,7 +4719,6 @@
                 totalAbsenPulang
             };
         }
-        
         function buildKPIData(bulan) {
             const rawData = [];
             const norm = (v) => (v || '').toString().trim().toLowerCase();
@@ -4712,34 +4732,35 @@
                 const idKurir = norm(id || '');
         
                 const rekap = getRekapJadwalKurirByName(nama || idKurir || username, bulan);
-        
-                let totalNota = 0;
-                let trxMitra = 0;
-                let totalPenghasilan = 0;
+                const notaStats = { totalNota: 0, totalPenghasilan: 0 };
+                const trxMitra = 0;
         
                 Object.values(cloudNotaList || {}).forEach(n => {
-                    if (!n) return;
+                    if (!isValidNotaItem(n)) return;
+                    if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
         
                     const notaUsername = norm(n.kurirUsername);
                     const notaNama = norm(n.kurirNama);
-                    if (notaUsername !== username && notaNama !== norm(nama)) return;
-                    if (!n.tanggalRaw || n.tanggalRaw.slice(0, 7) !== bulan) return;
+                    const notaId = norm(n.kurirId);
+                    if (notaUsername !== username && notaNama !== norm(nama) && notaId !== idKurir) return;
         
-                    totalNota++;
+                    notaStats.totalNota++;
                     const ongkir = parseInt(n.ongkir) || 0;
                     const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
-                    totalPenghasilan += (ongkir + biaya);
+                    notaStats.totalPenghasilan += (ongkir + biaya);
                 });
         
+                let trxMitraFinal = 0;
                 Object.values(cloudLogMitra || {}).forEach(log => {
-                    if (!log) return;
+                    if (!log || !log.tglRaw) return;
+                    if (log.tglRaw.slice(0, 7) !== bulan) return;
         
                     const logUsername = norm(log.kurirUsername);
                     const logNama = norm(log.kurirNama);
-                    if (logUsername !== username && logNama !== norm(nama)) return;
-                    if (!log.tglRaw || log.tglRaw.slice(0, 7) !== bulan) return;
+                    const logId = norm(log.kurirId);
+                    if (logUsername !== username && logNama !== norm(nama) && logId !== idKurir) return;
         
-                    trxMitra += parseInt(log.trxInput) || 0;
+                    trxMitraFinal += parseInt(log.trxInput) || 0;
                 });
         
                 rawData.push({
@@ -4752,9 +4773,9 @@
                     hadirHalf: rekap.hadirHalf,
                     masukTepat: rekap.totalAbsenMasuk,
                     off: rekap.totalOff,
-                    trxMitra,
-                    totalNota,
-                    totalPenghasilan
+                    trxMitra: trxMitraFinal,
+                    totalNota: notaStats.totalNota,
+                    totalPenghasilan: notaStats.totalPenghasilan
                 });
             });
         
@@ -5163,9 +5184,9 @@
                         <div class="text-[11px] text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed">
                             <p><b>1. Kehadiran (20%)</b> = Hadir dari absen masuk + pulang. Masuk atau pulang saja dihitung setengah.</p>
                             <p><b>2. Total Penghasilan (20%)</b> = Penghasilan bulanan dari ongkir + biaya tambahan.</p>
-                            <p><b>3. Total Nota (30%)</b> = Jumlah nota bulanan yang berhasil diinput.</p>
+                            <p><b>3. Total Nota (20%)</b> = Jumlah nota bulanan yang berhasil diinput.</p>
                             <p><b>4. Trx Mitra (20%)</b> = Total transaksi mitra bulanan.</p>
-                            <p><b>5. Total OFF / Izin / Sakit (10%)</b> = Normal maksimal 3/bulan, lebih dari itu poin berkurang.</p>
+                            <p><b>5. Total OFF / Izin / Sakit (20%)</b> = Normal maksimal 3/bulan, lebih dari itu poin berkurang.</p>
                         </div>
                     </div>
                 `;
