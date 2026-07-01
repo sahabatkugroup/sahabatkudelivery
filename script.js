@@ -2897,34 +2897,37 @@
             if (!container) return;
 
             const isOpen = ensureSectionToggleState('container-admin-kurir', false);
-            const keys = Object.keys(cloudKurirList || {}).filter(k => {
-                const item = cloudKurirList[k];
-                return item && item.role !== 'admin' && item.username !== 'admin';
-            });
+            const searchValue = (document.getElementById('admin-kurir-search')?.value || '').toLowerCase().trim();
+
+            const filtered = Object.entries(cloudKurirList || {})
+                .filter(([_, item]) => {
+                    if (!item || item.role === 'admin' || item.username === 'admin') return false;
+                    return !searchValue || (item.nama || '').toLowerCase().includes(searchValue);
+                })
+                .sort((a, b) => (a[1]?.nama || '').localeCompare(b[1]?.nama || ''));
 
             container.innerHTML = `
-                <div class="flex items-center gap-2 mb-2">
-                </div>
+                <input type="text" id="admin-kurir-search" value="${searchValue}" oninput="renderAdminKurirList()" placeholder="Cari nama kurir..." class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700 mb-2">
                 <div id="container-admin-kurir-inner" class="${isOpen ? '' : 'hidden'} space-y-2"></div>
             `;
 
             const inner = document.getElementById('container-admin-kurir-inner');
             if (!inner || !isOpen) return;
 
-            if (!keys.length) {
+            if (!filtered.length) {
                 inner.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Belum ada data kurir.</p>';
                 return;
             }
 
             const isHeadOperasional = userSession && userSession.role === 'manajemen' && (userSession.kategori || '').trim() === 'Head Operasional';
 
-            inner.innerHTML = keys.map(key => {
-                const item = cloudKurirList[key];
+            inner.innerHTML = filtered.map(([key, item], index) => {
                 const dotStatus = item.status === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500';
                 return `
                     <div class="bg-white dark:bg-darkCard p-3.5 rounded-xl border dark:border-slate-800 shadow-sm space-y-2 text-xs">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white flex items-center justify-center font-bold text-[10px] shrink-0">${index + 1}</span>
                                 <span class="w-2.5 h-2.5 rounded-full ${dotStatus} shrink-0"></span>
                                 <span class="font-bold text-sm dark:text-white truncate">${item.nama}</span>
                             </div>
@@ -2961,7 +2964,7 @@
             }).join('');
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
-        };       
+        };   
         window.sembunyikanRiwayatMitraAdmin = function() {
             const box = document.getElementById('box-riwayat-trx-inputan');
             const container = document.getElementById('container-admin-log-mitra');
@@ -3527,9 +3530,10 @@
                 const keys = Object.keys(cloudNotaList || {}).sort((a, b) => {
                     const ta = cloudNotaList[a]?.tanggalRaw || '';
                     const tb = cloudNotaList[b]?.tanggalRaw || '';
-                    return tb.localeCompare(ta);
+                    if (tb !== ta) return tb.localeCompare(ta);
+                    return (b || '').localeCompare(a || '');
                 });
-            
+
                 keys.forEach(key => {
                     const n = cloudNotaList[key];
                     if (!n) return;
@@ -3635,19 +3639,20 @@
             const bulan = document.getElementById('laporan-filter-bulan')?.value || '';
             const kurir = document.getElementById('laporan-filter-kurir')?.value || 'semua';
             if (!container) return;
-        
+
             let totalNota = 0;
             let totalPendapatan = 0;
             let totalNotaAdmin = 0;
             let totalNotaOL = 0;
+            let totalTrxMitra = 0;
             let kurirAktifSet = new Set();
             let mapHarian = {};
-        
+
             Object.values(cloudNotaList || {}).forEach(n => {
                 if (!n || !n.tanggalRaw) return;
                 if (bulan && n.tanggalRaw.substring(0, 7) !== bulan) return;
                 if (kurir !== 'semua' && n.kurirUsername !== kurir) return;
-        
+
                 const tgl = n.tanggalRaw;
                 if (!mapHarian[tgl]) {
                     mapHarian[tgl] = {
@@ -3655,19 +3660,20 @@
                         notaAdmin: 0,
                         notaOL: 0,
                         pendapatan: 0,
+                        trxMitra: 0,
                         kurirSet: new Set()
                     };
                 }
-        
+
                 const ongkir = parseInt(n.ongkir) || 0;
                 const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
                 const pendapatan = ongkir + biaya;
-        
+
                 mapHarian[tgl].totalNota++;
                 mapHarian[tgl].pendapatan += pendapatan;
                 mapHarian[tgl].kurirSet.add(n.kurirUsername);
                 kurirAktifSet.add(n.kurirUsername);
-        
+
                 const status = (n.status || '').toLowerCase();
                 if (status === 'admin') {
                     mapHarian[tgl].notaAdmin++;
@@ -3677,30 +3683,67 @@
                     mapHarian[tgl].notaOL++;
                     totalNotaOL++;
                 }
-        
+
                 totalNota++;
                 totalPendapatan += pendapatan;
             });
-        
+
+            Object.values(cloudLogMitra || {}).forEach(log => {
+                if (!log || !log.tglRaw) return;
+                if (bulan && log.tglRaw.substring(0, 7) !== bulan) return;
+                if (kurir !== 'semua' && log.kurirUsername !== kurir) return;
+
+                const tgl = log.tglRaw;
+                if (!mapHarian[tgl]) {
+                    mapHarian[tgl] = {
+                        totalNota: 0,
+                        notaAdmin: 0,
+                        notaOL: 0,
+                        pendapatan: 0,
+                        trxMitra: 0,
+                        kurirSet: new Set()
+                    };
+                }
+
+                const trx = parseInt(log.trxInput) || 0;
+                mapHarian[tgl].trxMitra += trx;
+                totalTrxMitra += trx;
+            });
+
             const rataRata = totalNota > 0 ? Math.round(totalPendapatan / totalNota) : 0;
-        
+
             document.getElementById('laporan-total-nota').innerText = totalNota;
             const detailNota = document.getElementById('laporan-total-nota-detail');
             if (detailNota) {
                 detailNota.innerText = `Admin ${totalNotaAdmin} • OL ${totalNotaOL}`;
             }
-        
+
             document.getElementById('laporan-total-pendapatan').innerText = 'Rp ' + totalPendapatan.toLocaleString('id-ID');
             document.getElementById('laporan-rata-rata').innerText = 'Rp ' + rataRata.toLocaleString('id-ID');
             document.getElementById('laporan-kurir-aktif').innerText = kurirAktifSet.size;
-        
+
+            let trxMitraEl = document.getElementById('laporan-total-trx-mitra');
+            if (!trxMitraEl) {
+                const parent = document.querySelector('#screen-admin-laporan .grid.grid-cols-2.gap-2');
+                if (parent) {
+                    parent.insertAdjacentHTML('beforeend', `
+                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800">
+                            <div class="text-[10px] text-slate-400 uppercase">Total Trx Mitra</div>
+                            <div class="text-lg font-black text-indigo-600 dark:text-indigo-400" id="laporan-total-trx-mitra">0</div>
+                        </div>
+                    `);
+                    trxMitraEl = document.getElementById('laporan-total-trx-mitra');
+                }
+            }
+            if (trxMitraEl) trxMitraEl.innerText = totalTrxMitra + ' Trx';
+
             const urutan = Object.keys(mapHarian).sort((a, b) => b.localeCompare(a));
             let html = '';
-        
+
             urutan.forEach(tgl => {
                 const d = mapHarian[tgl];
                 const avg = d.totalNota > 0 ? Math.round(d.pendapatan / d.totalNota) : 0;
-        
+
                 let infoKurir = '-';
                 if (kurir === 'semua') {
                     infoKurir = `${d.kurirSet.size} kurir aktif`;
@@ -3708,7 +3751,7 @@
                     const found = Object.values(cloudKurirList || {}).find(u => u.username === kurir);
                     infoKurir = found?.nama || kurir;
                 }
-        
+
                 html += `
                     <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs space-y-1.5">
                         <div class="flex justify-between items-center">
@@ -3723,24 +3766,25 @@
                                 <div class="text-[10px] text-slate-400">Admin: ${d.notaAdmin} | OL: ${d.notaOL}</div>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-3 gap-2">
                             <div><span class="text-[10px] text-slate-400 block">Pendapatan</span><span class="font-bold text-success">Rp ${d.pendapatan.toLocaleString('id-ID')}</span></div>
                             <div><span class="text-[10px] text-slate-400 block">Rata-rata</span><span class="font-bold text-amber-500">Rp ${avg.toLocaleString('id-ID')}</span></div>
+                            <div><span class="text-[10px] text-slate-400 block">Trx Mitra</span><span class="font-bold text-indigo-600 dark:text-indigo-400">${d.trxMitra} Trx</span></div>
                         </div>
                     </div>
                 `;
             });
-        
+
             if (!html) {
                 html = '<div class="text-center text-xs text-slate-400 py-4">Belum ada data laporan.</div>';
             }
-        
+
             container.innerHTML = html;
         };
         window.backupLaporanExcel = function() {
             const bulan = document.getElementById('laporan-filter-bulan')?.value || getWibRawDate().substring(0, 7);
             const kurirFilter = document.getElementById('laporan-filter-kurir')?.value || 'semua';
-        
+
             const norm = (v) => (v || '').toString().trim().toLowerCase();
             const bulanLabel = (ym) => {
                 const [y, m] = ym.split('-');
@@ -3749,17 +3793,17 @@
                     year: 'numeric'
                 });
             };
-        
+
             const grouped = {};
-        
+
             Object.values(cloudNotaList || {}).forEach(n => {
                 if (!n || !n.tanggalRaw) return;
                 if (n.tanggalRaw.substring(0, 7) !== bulan) return;
                 if (kurirFilter !== 'semua' && n.kurirUsername !== kurirFilter) return;
-        
+
                 const namaKurir = (n.kurirNama || n.kurirUsername || '-').trim();
                 if (!grouped[namaKurir]) grouped[namaKurir] = {};
-        
+
                 const tgl = n.tanggalRaw;
                 if (!grouped[namaKurir][tgl]) {
                     grouped[namaKurir][tgl] = {
@@ -3769,22 +3813,22 @@
                         totalPendapatan: 0
                     };
                 }
-        
+
                 const status = norm(n.status);
                 const ongkir = parseInt(n.ongkir) || 0;
                 const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
                 const pendapatan = ongkir + biaya;
-        
+
                 grouped[namaKurir][tgl].totalPendapatan += pendapatan;
                 if (status === 'admin') grouped[namaKurir][tgl].totalAdmin += 1;
                 if (status === 'ol') grouped[namaKurir][tgl].totalOL += 1;
             });
-        
+
             Object.values(cloudLogMitra || {}).forEach(log => {
                 if (!log || !log.tglRaw) return;
                 if (log.tglRaw.substring(0, 7) !== bulan) return;
                 if (kurirFilter !== 'semua' && log.kurirUsername !== kurirFilter) return;
-        
+
                 const namaKurir = (log.kurirNama || log.kurirUsername || '-').trim();
                 if (!grouped[namaKurir]) grouped[namaKurir] = {};
                 if (!grouped[namaKurir][log.tglRaw]) {
@@ -3797,26 +3841,26 @@
                 }
                 grouped[namaKurir][log.tglRaw].trxMitra += (parseInt(log.trxInput) || 0);
             });
-        
+
             const wb = XLSX.utils.book_new();
-        
+
             const safeSheetName = (name) => {
                 const s = (name || 'Sheet').replace(/[\\\/\?\*\[\]\:]/g, '').trim();
                 return s.substring(0, 31) || 'Sheet';
             };
-        
+
             const makeStyledSheet = (rows) => {
                 const ws = XLSX.utils.json_to_sheet(rows);
-        
+
                 if (!ws['!ref']) return ws;
-        
+
                 const range = XLSX.utils.decode_range(ws['!ref']);
-        
+
                 for (let R = range.s.r; R <= range.e.r; ++R) {
                     for (let C = range.s.c; C <= range.e.c; ++C) {
                         const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
                         if (!ws[cellRef]) continue;
-        
+
                         ws[cellRef].s = {
                             alignment: {
                                 horizontal: 'center',
@@ -3829,7 +3873,7 @@
                                 right: { style: 'thin', color: { rgb: 'D1D5DB' } }
                             }
                         };
-        
+
                         if (R === 0) {
                             ws[cellRef].s.font = {
                                 bold: true,
@@ -3842,7 +3886,7 @@
                         }
                     }
                 }
-        
+
                 ws['!cols'] = [
                     { wch: 6 },
                     { wch: 18 },
@@ -3854,12 +3898,12 @@
                     { wch: 14 },
                     { wch: 16 }
                 ];
-        
+
                 return ws;
             };
-        
+
             let sheetCount = 0;
-        
+
             Object.entries(grouped).forEach(([namaKurir, dataTanggal]) => {
                 const rows = Object.keys(dataTanggal)
                     .sort((a, b) => a.localeCompare(b))
@@ -3867,7 +3911,7 @@
                         const d = dataTanggal[tgl];
                         const totalNota = d.totalAdmin + d.totalOL;
                         const rataRata = totalNota > 0 ? Math.round(d.totalPendapatan / totalNota) : 0;
-        
+
                         return {
                             No: idx + 1,
                             Bulan: bulanLabel(bulan),
@@ -3878,23 +3922,22 @@
                             'Rata-rata/Nota': `Rp ${rataRata.toLocaleString('id-ID')}`
                         };
                     });
-        
+
                 if (!rows.length) return;
-        
+
                 const ws = makeStyledSheet(rows);
                 XLSX.utils.book_append_sheet(wb, ws, safeSheetName(namaKurir));
                 sheetCount++;
             });
-        
+
             if (!sheetCount) {
                 alert('Tidak ada data untuk dibackup.');
                 return;
             }
-        
+
             const fileName = `Backup_Laporan_${bulan}${kurirFilter !== 'semua' ? '_' + kurirFilter : ''}.xlsx`;
             XLSX.writeFile(wb, fileName);
         };
-        
         window.saveDataOngkir = function() {
             const idEdit = document.getElementById('ongkir-id-edit').value;
             const wilayah = document.getElementById('ongkir-wilayah').value.trim();
