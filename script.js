@@ -275,7 +275,8 @@
                 'am-log-tgl',
                 'filter-date-riwayat',
                 'riwayat-filter-tgl',
-                'm-filter-tgl-kurir'
+                'm-filter-tgl-kurir',
+                'rekap-tanggal'
             ];
         
             daftarInputTgl.forEach(id => {
@@ -654,12 +655,6 @@
                             role: "kurir"
                         };
 
-                        const saldoAwalLogin = parseInt(foundUser.depositSaldo || 0) || 0;
-                        setSaldoKurirRaw(foundKey, foundUser.username, saldoAwalLogin);
-                        window.__saldoAwalKurir = window.__saldoAwalKurir || {};
-                        if (!window.__saldoAwalKurir[foundKey]) {
-                            window.__saldoAwalKurir[foundKey] = saldoAwalLogin;
-                        }
 
                         localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
                         document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);        
@@ -3207,107 +3202,122 @@
         }
         window.loadRekapKurir = function() {
             if (!userSession || userSession.role !== 'kurir') return;
-            
+
             const usernameKurir = userSession.username;
             const rekapBulanSelect = document.getElementById('rekap-bulan');
             const rekapTanggalInput = document.getElementById('rekap-tanggal');
-            
+            const tabelTitle = document.querySelector('#screen-rekap h4');
+            const tabelBody = document.getElementById('rk-tabel-perhari');
+
             const now = new Date();
             const wib = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-            const hariIni = wib.toISOString().split('T')[0]; 
-            const bulanIni = hariIni.substring(0, 7); 
+            const hariIni = wib.toISOString().split('T')[0];
+            const bulanIni = hariIni.substring(0, 7);
 
-            if (rekapTanggalInput && !rekapTanggalInput.value) {
-                rekapTanggalInput.value = hariIni;
+            if (rekapBulanSelect && !rekapBulanSelect.value) rekapBulanSelect.value = bulanIni;
+
+            const bulanFilter = rekapBulanSelect ? rekapBulanSelect.value : bulanIni;
+            const tanggalFilter = rekapTanggalInput ? rekapTanggalInput.value : '';
+            const modeBulanan = !tanggalFilter;
+
+            if (tabelTitle) {
+                tabelTitle.innerText = modeBulanan ? 'Daftar Data Harian (Bulan Ini)' : 'Daftar Data Harian (Bulan Ini)';
             }
-        
+
             let totalPendapatan = 0;
             let totalOngkir = 0;
             let totalTambahan = 0;
             let totalNotaCount = 0;
             let totalTrxMitra = 0;
-            let rekapHarianMap = {};
-            
+            let rekapMap = {};
             let kumpulanBulanUnik = new Set();
-            kumpulanBulanUnik.add(bulanIni); // Pastikan bulan saat ini wajib masuk daftar
+
+            const cocokBulan = (tgl) => tgl && tgl.substring(0, 7) === bulanFilter;
+            const cocokTanggal = (tgl) => tgl && tgl === tanggalFilter;
+
             for (let key in cloudNotaList) {
                 const nota = cloudNotaList[key];
-                if (nota.kurirUsername !== usernameKurir) continue;
-        
+                if (!nota || nota.kurirUsername !== usernameKurir || !nota.tanggalRaw) continue;
+
                 const tglNota = nota.tanggalRaw;
-                if (!tglNota) continue;
-                
-                const blnNota = tglNota.substring(0, 7);
-                kumpulanBulanUnik.add(blnNota);
-        
-                const nominalOngkir = parseInt(nota.ongkir) || 0;
-                let nominalTambahan = 0;
-        
-                if (nota.biayaTambahan && Array.isArray(nota.biayaTambahan)) {
-                    nota.biayaTambahan.forEach(item => {
-                        nominalTambahan += (parseInt(item.nominal) || 0);
-                    });
-                }
-                const pendapatanNotaIni = nominalOngkir + nominalTambahan;
-                if (!rekapHarianMap[tglNota]) {
-                    rekapHarianMap[tglNota] = { notaCount: 0, pendapatan: 0, trxMitra: 0 };
-                }
-                if (rekapBulanSelect && rekapBulanSelect.value === blnNota) {
-                    rekapHarianMap[tglNota].notaCount += 1;
-                    rekapHarianMap[tglNota].pendapatan += pendapatanNotaIni; // REVISI: Sekarang menggunakan (Ongkir + Tambahan)
-                }
-                if (rekapBulanSelect && rekapBulanSelect.value) {
-                    if (rekapTanggalInput && rekapTanggalInput.value) {
-                        if (tglNota !== rekapTanggalInput.value) continue;
-                    } else {
-                        if (blnNota !== rekapBulanSelect.value) continue;
+                kumpulanBulanUnik.add(tglNota.substring(0, 7));
+
+                const ongkir = parseInt(nota.ongkir) || 0;
+                const tambahan = Array.isArray(nota.biayaTambahan)
+                    ? nota.biayaTambahan.reduce((a, b) => a + (parseInt(b.nominal) || 0), 0)
+                    : 0;
+
+                const pendapatan = ongkir + tambahan;
+
+                if (modeBulanan) {
+                    if (!cocokBulan(tglNota)) continue;
+
+                    if (!rekapMap[tglNota]) {
+                        rekapMap[tglNota] = { notaCount: 0, pendapatan: 0, trxMitra: 0, isMonth: false };
                     }
+
+                    rekapMap[tglNota].notaCount += 1;
+                    rekapMap[tglNota].pendapatan += pendapatan;
+
+                    totalOngkir += ongkir;
+                    totalTambahan += tambahan;
+                    totalPendapatan += pendapatan;
+                    totalNotaCount++;
+                } else {
+                    if (!cocokTanggal(tglNota)) continue;
+
+                    if (!rekapMap[tglNota]) {
+                        rekapMap[tglNota] = { notaCount: 0, pendapatan: 0, trxMitra: 0, isMonth: false };
+                    }
+
+                    rekapMap[tglNota].notaCount += 1;
+                    rekapMap[tglNota].pendapatan += pendapatan;
+
+                    totalOngkir += ongkir;
+                    totalTambahan += tambahan;
+                    totalPendapatan += pendapatan;
+                    totalNotaCount++;
                 }
-                totalOngkir += nominalOngkir;
-                totalTambahan += nominalTambahan;
-                totalPendapatan += pendapatanNotaIni;
-                totalNotaCount++;
             }
+
             for (let key in cloudLogMitra) {
                 const log = cloudLogMitra[key];
-                if (log.kurirUsername !== usernameKurir) continue;
-        
+                if (!log || log.kurirUsername !== usernameKurir) continue;
+
                 const tglLog = log.tglRaw || log.tanggalRaw;
                 if (!tglLog) continue;
-                
-                const blnLog = tglLog.substring(0, 7);
-                const jumlahTrxInput = parseInt(log.trxInput) || 0;
-                
-                kumpulanBulanUnik.add(blnLog); // Catat bulan dari transaksi mitra ke sistem dropdown
-        
-                if (!rekapHarianMap[tglLog]) {
-                    rekapHarianMap[tglLog] = { notaCount: 0, pendapatan: 0, trxMitra: 0 };
-                }
-                
-                if (rekapBulanSelect && rekapBulanSelect.value === blnLog) {
-                    rekapHarianMap[tglLog].trxMitra += jumlahTrxInput;
-                }
-                if (rekapBulanSelect && rekapBulanSelect.value) {
-                    if (rekapTanggalInput && rekapTanggalInput.value) {
-                        if (tglLog !== rekapTanggalInput.value) continue;
-                    } else {
-                        if (blnLog !== rekapBulanSelect.value) continue;
+
+                kumpulanBulanUnik.add(tglLog.substring(0, 7));
+                const trx = parseInt(log.trxInput) || 0;
+
+                if (modeBulanan) {
+                    if (!cocokBulan(tglLog)) continue;
+
+                    if (!rekapMap[tglLog]) {
+                        rekapMap[tglLog] = { notaCount: 0, pendapatan: 0, trxMitra: 0, isMonth: false };
                     }
+
+                    rekapMap[tglLog].trxMitra += trx;
+                    totalTrxMitra += trx;
+                } else {
+                    if (!cocokTanggal(tglLog)) continue;
+
+                    if (!rekapMap[tglLog]) {
+                        rekapMap[tglLog] = { notaCount: 0, pendapatan: 0, trxMitra: 0, isMonth: false };
+                    }
+
+                    rekapMap[tglLog].trxMitra += trx;
+                    totalTrxMitra += trx;
                 }
-                totalTrxMitra += jumlahTrxInput;
             }
+
             if (rekapBulanSelect && rekapBulanSelect.options.length === 0) {
                 const daftarBulanUrut = Array.from(kumpulanBulanUnik).sort((a, b) => b.localeCompare(a));
-                
                 daftarBulanUrut.forEach(bln => {
                     const [tahun, bulan] = bln.split('-');
                     const namaBulanIndo = new Date(tahun, parseInt(bulan) - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
-                    const opt = new Option(namaBulanIndo, bln);
-                    rekapBulanSelect.add(opt);
+                    rekapBulanSelect.add(new Option(namaBulanIndo, bln));
                 });
-                rekapBulanSelect.value = bulanIni;
-                loadRekapKurir();
-                return;
             }
 
             document.getElementById('rk-pendapatan').innerText = "Rp " + totalPendapatan.toLocaleString('id-ID');
@@ -3316,40 +3326,37 @@
             document.getElementById('rk-nota-count').innerText = totalNotaCount;
             document.getElementById('rk-total-trx-mitra').innerText = totalTrxMitra + " Trx";
 
-            const tabelBody = document.getElementById('rk-tabel-perhari');
-            if (tabelBody && rekapBulanSelect) {
+            if (tabelBody) {
                 tabelBody.innerHTML = '';
-                const bulanTerpilih = rekapBulanSelect.value;
-                const urutanTanggal = Object.keys(rekapHarianMap).sort((a, b) => b.localeCompare(a));
+                const urutan = Object.keys(rekapMap).sort((a, b) => b.localeCompare(a));
                 let adaData = false;
-        
-                urutanTanggal.forEach(tglKey => {
-                    if (tglKey.substring(0, 7) !== bulanTerpilih) return;
-                    
+
+                urutan.forEach(keyTanggal => {
+                    const data = rekapMap[keyTanggal];
                     adaData = true;
-                    const dataHariIni = rekapHarianMap[tglKey];
-                    const opsiFormat = { day: 'numeric', month: 'short' };
-                    const tglCantik = new Date(tglKey).toLocaleDateString('id-ID', opsiFormat);
-        
+
+                    const tglCantik = new Date(keyTanggal).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                    });
+
                     tabelBody.innerHTML += `
                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="py-2 font-medium text-slate-700 dark:text-slate-300">${tglCantik}</td>
-                            <td class="py-2 text-center text-slate-500">${dataHariIni.notaCount} Nota</td>
-                            <td class="py-2 text-right font-bold text-primary">Rp ${dataHariIni.pendapatan.toLocaleString('id-ID')}</td>
-                            <td class="py-2 text-right font-semibold text-indigo-600">${dataHariIni.trxMitra} Trx</td>
+                            <td class="py-2 text-center text-slate-500">${data.notaCount} Nota</td>
+                            <td class="py-2 text-right font-bold text-primary">Rp ${data.pendapatan.toLocaleString('id-ID')}</td>
+                            <td class="py-2 text-right font-semibold text-indigo-600">${data.trxMitra} Trx</td>
                         </tr>
                     `;
                 });
-        
+
                 if (!adaData) {
-                    tabelBody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-400 py-4 italic">Belum ada aktivitas di bulan ini.</td></tr>`;
+                    tabelBody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-400 py-4 italic">Belum ada aktivitas di filter ini.</td></tr>`;
                 }
             }
-            loadChartJs().then(() => {
-                initChartsEngine(rekapHarianMap);
-            }).catch(err => {
-                console.error(err);
-            });
+
+            loadChartJs().then(() => initChartsEngine(rekapMap)).catch(console.error);
         };
         window.updateKurirDashboard = function() {
             if (!userSession || userSession.role !== 'kurir') return;
