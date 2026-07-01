@@ -983,6 +983,7 @@
           tidakAmbilOff: 0,
           izin: 0,
           sakit: 0,
+          alfa: 0,
           masuk: 0,
           pulang: 0
         };
@@ -1005,6 +1006,47 @@
         if (a.jamMasuk) data[a.namaKurir].masuk++;
         if (a.jamPulang) data[a.namaKurir].pulang++;
       });
+      const today = new Date().toISOString().split('T')[0];
+      const y = currentViewDate.getFullYear();
+      const m = currentViewDate.getMonth();
+      const totalHari = new Date(y, m + 1, 0).getDate();
+
+      Object.values(data).forEach(r => {
+        let alfa = 0;
+        const userObj = Object.values(DATA_USERS).find(u => (u.nama || '') === r.nama);
+        const tglGabung = userObj?.tglGabung || '';
+
+        let startDate = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+        if (tglGabung) {
+          const nextDay = new Date(tglGabung);
+          nextDay.setDate(nextDay.getDate() + 1);
+          const nextDayStr = nextDay.toISOString().split('T')[0];
+          if (nextDayStr > startDate) startDate = nextDayStr;
+        }
+
+        for (let d = 1; d <= totalHari; d++) {
+          const tanggal = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          if (tanggal > today) continue;
+          if (tanggal < startDate) continue;
+
+          const adaJadwal = Object.values(DATA_JADWAL).some(j =>
+            (j.nama || '') === r.nama &&
+            getTanggalItem(j) === tanggal &&
+            ['Off Reguler', 'Tidak Ambil Off', 'Izin', 'Sakit'].includes(j.jenisOff)
+          );
+
+          const adaAbsensi = Object.values(DATA_ABSENSI).some(a =>
+            (a.namaKurir || '') === r.nama &&
+            a.tanggal === tanggal &&
+            (a.jamMasuk || a.jamPulang)
+          );
+
+          if (!adaJadwal && !adaAbsensi) alfa++;
+        }
+
+        r.alfa = alfa;
+      });
+
     
       const rows = Object.values(data).filter(r =>
         r.nama.toLowerCase().includes(search) || r.leader.toLowerCase().includes(search)
@@ -1049,6 +1091,7 @@
             <th class="py-2">No Off</th>
             <th class="py-2">Izin</th>
             <th class="py-2">Sakit</th>
+            <th class="py-2 text-red-500">Alfa</th>
             <th class="py-2">Aksi</th>
           </tr>
         `;
@@ -1062,6 +1105,7 @@
             <td class="py-3">${r.tidakAmbilOff}</td>
             <td class="py-3">${r.izin}</td>
             <td class="py-3">${r.sakit}</td>
+            <td class="py-3 text-red-500 font-bold">${r.alfa}</td>
             <td class="py-3">
               <button onclick="openAdminDetailRekapKurir('${r.nama}')"
                 class="px-3 py-1.5 rounded-xl bg-sahabatku text-white text-[10px] font-bold">
@@ -1069,7 +1113,7 @@
               </button>
             </td>
           </tr>
-        `).join('') || `<tr><td colspan="8" class="py-6 text-center text-xs text-slate-400">Belum ada data.</td></tr>`;
+        `).join('') || `<tr><td colspan="9" class="py-6 text-center text-xs text-slate-400">Belum ada data.</td></tr>`
       }
     }
     window.openAdminTanggalDetail = function(tanggal) {
@@ -1201,9 +1245,19 @@
     
         if (tanggal === today) scrollTargetId = `abs-row-${tanggal}`;
     
+        const userObj = Object.values(DATA_USERS).find(u => (u.nama || '') === namaKurir);
+        const tglGabung = userObj?.tglGabung || '';
+        let startGabung = '';
+
+        if (tglGabung) {
+          const nextDay = new Date(tglGabung);
+          nextDay.setDate(nextDay.getDate() + 1);
+          startGabung = nextDay.toISOString().split('T')[0];
+        }
+
         if (jadwal?.jenisOff) {
           status = jadwal.jenisOff;
-    
+
           if (jadwal.jenisOff === 'Off Reguler') {
             warna = 'border-blue-300 bg-blue-50 dark:bg-blue-950/30';
             badge = 'bg-blue-100 text-blue-700';
@@ -1217,7 +1271,16 @@
             warna = 'border-red-300 bg-red-50 dark:bg-red-950/30';
             badge = 'bg-red-100 text-red-700';
           }
+        } else if (startGabung && tanggal < startGabung) {
+          status = 'Masuk';
+          warna = 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30';
+          badge = 'bg-emerald-100 text-emerald-700';
+        } else if (!abs) {
+          status = 'Alfa';
+          warna = 'border-red-300 bg-red-50 dark:bg-red-950/30';
+          badge = 'bg-red-500 text-white';
         } else if (abs?.jamMasuk && abs?.jamPulang) {
+
           status = 'Lengkap';
           warna = 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30';
           badge = 'bg-emerald-100 text-emerald-700';
@@ -1225,12 +1288,11 @@
           status = 'Belum Pulang';
           warna = 'border-amber-300 bg-amber-50 dark:bg-amber-950/30';
           badge = 'bg-amber-100 text-amber-700';
-        } else if (abs) {
+        } else {
           status = 'Belum Absen';
           warna = 'border-red-300 bg-red-50 dark:bg-red-950/30';
           badge = 'bg-red-100 text-red-700';
         }
-    
         html += `
           <div id="abs-row-${tanggal}" class="p-3 rounded-2xl border ${warna}">
             <div class="flex items-start justify-between gap-3">
@@ -1256,7 +1318,7 @@
                   <div class="text-[10px] text-slate-500 mt-1">${jadwal.keterangan || ''}</div>
                 ` : ''}
               </div>
-              <button onclick="openAbsensiEdit('${tanggal}', '${identifier}')"
+              <button onclick="openAbsensiEdit('${tanggal}', '${idTarget}', '${namaKurir}')"
                 class="px-3 py-2 rounded-xl bg-amber-500 text-white text-[10px] font-bold shrink-0">
                 Edit
               </button>
@@ -1446,65 +1508,81 @@
 
     window.editJadwal = (key) => window.openJadwalPopup(key, DATA_JADWAL[key]);
     window.hapusJadwal = (key) => { if (confirm('Hapus jadwal ini?')) remove(ref(db, `jadwal_off/${key}`)); };
-
     function openAbsensiPopup(key = '', item = null) {
       editingAbsensiKey = key || null;
-      document.getElementById('absensi-tanggal').value = item?.tanggal || '';
-      document.getElementById('absensi-nama').value = item?.namaKurir || '';
-      document.getElementById('absensi-masuk').value = item?.jamMasuk || '';
-      document.getElementById('absensi-pulang').value = item?.jamPulang || '';
+
+      const fixTime = (t) => (t || '').replace('.', ':');
+
+      const tanggal = item?.tanggal || '';
+      const namaKurir = item?.namaKurir || '';
+      const idKurir = item?.idKurir || '';
+
+      const found = Object.entries(DATA_ABSENSI).map(([k, a]) => ({ key: k, ...a })).find(a =>
+        a.tanggal === tanggal &&
+        (
+          (a.idKurir || '') === idKurir ||
+          (a.namaKurir || '') === namaKurir
+        )
+      );
+
+      const data = found || item || {};
+
+      document.getElementById('absensi-tanggal').value = data.tanggal || tanggal || '';
+      document.getElementById('absensi-nama').value = data.namaKurir || namaKurir || '';
+      document.getElementById('absensi-masuk').value = fixTime(data.jamMasuk || data.jam_masuk || data.jammasuk || '');
+      document.getElementById('absensi-pulang').value = fixTime(data.jamPulang || data.jam_pulang || data.jampulang || '');
+
       document.getElementById('popup-manual-absensi').classList.remove('hidden');
       document.getElementById('popup-manual-absensi').classList.add('flex');
     }
-
     window.openAbsensiForName = (nama) => {
       openAbsensiPopup('', { namaKurir: nama, tanggal: new Date().toISOString().split('T')[0] });
       document.getElementById('absensi-nama').value = nama;
       document.getElementById('absensi-tanggal').value = new Date().toISOString().split('T')[0];
     };
-    window.openAbsensiEdit = function(tanggal, identifier) {
-      const target = (identifier || '').trim().toLowerCase();
-    
-      const item = Object.entries(DATA_ABSENSI).find(([key, a]) => {
+    window.openAbsensiEdit = function(tanggal, idTarget, namaKurir) {
+      const targetId = (idTarget || '').trim().toLowerCase();
+      const targetNama = (namaKurir || '').trim().toLowerCase();
+
+      const found = Object.entries(DATA_ABSENSI).find(([key, a]) => {
         const idKurir = (a.idKurir || '').trim().toLowerCase();
         const username = (a.username || '').trim().toLowerCase();
-        const namaKurir = (a.namaKurir || '').trim().toLowerCase();
-    
+        const nama = (a.namaKurir || '').trim().toLowerCase();
+
         return a.tanggal === tanggal && (
-          idKurir === target ||
-          username === target ||
-          namaKurir === target
+          idKurir === targetId ||
+          username === targetId ||
+          nama === targetNama ||
+          nama === targetId
         );
       });
-    
-      if (item) {
-        const [key, data] = item;
+
+      if (found) {
+        const [key, data] = found;
         editingAbsensiKey = key;
         openAbsensiPopup(key, data);
-      } else {
-        editingAbsensiKey = null;
-        const kurirData = Object.entries(DATA_USERS).find(([id, u]) => {
-          const idL = (id || '').trim().toLowerCase();
-          const userL = (u.username || '').trim().toLowerCase();
-          const namaL = (u.nama || '').trim().toLowerCase();
-          return idL === target || userL === target || namaL === target;
-        });
-    
-        const idKurir = kurirData?.[0] || '';
-        const u = kurirData?.[1] || {};
-    
-        openAbsensiPopup('', {
-          tanggal,
-          idKurir,
-          username: (u.username || '').trim(),
-          namaKurir: (u.nama || identifier || '').trim(),
-          leader: (u.leader || '').trim(),
-          jamMasuk: '',
-          jamPulang: ''
-        });
+        return;
       }
-    };
 
+      editingAbsensiKey = null;
+      const kurirData = Object.entries(DATA_USERS).find(([id, u]) => {
+        const idL = (id || '').trim().toLowerCase();
+        const userL = (u.username || '').trim().toLowerCase();
+        const namaL = (u.nama || '').trim().toLowerCase();
+        return idL === targetId || userL === targetId || namaL === targetNama || namaL === targetId;
+      });
+
+      const idKurir = kurirData?.[0] || '';
+      const u = kurirData?.[1] || {};
+
+      openAbsensiPopup('', {
+        tanggal,
+        idKurir,
+        username: (u.username || '').trim(),
+        namaKurir: (u.nama || namaKurir || '').trim(),
+        leader: (u.leader || '').trim()
+      });
+    };
     window.closeAbsensiPopup = () => {
       document.getElementById('popup-manual-absensi').classList.add('hidden');
       document.getElementById('popup-manual-absensi').classList.remove('flex');
@@ -1732,43 +1810,46 @@
       const namaKurir = document.getElementById('absensi-nama').value;
       const jamMasuk = document.getElementById('absensi-masuk').value;
       const jamPulang = document.getElementById('absensi-pulang').value;
-    
+
       const kurirDataEntry = Object.entries(DATA_USERS).find(([id, u]) =>
         (u.nama || u.username || '').trim() === namaKurir
       );
-    
+
       const idKurir = kurirDataEntry?.[0] || '';
       const kurirData = kurirDataEntry?.[1] || {};
       const leader = kurirData?.leader || '';
       const username = (kurirData?.username || '').trim();
-    
+
       if (!tanggal || !namaKurir) return alert('Tanggal dan nama kurir wajib diisi.');
-    
+
       const existing = Object.entries(DATA_ABSENSI).find(([key, a]) =>
         a.tanggal === tanggal && (a.idKurir === idKurir || a.namaKurir === namaKurir)
       );
-    
+
+      const oldData = existing?.[1] || {};
       const key = editingAbsensiKey || existing?.[0] || `${tanggal}_${idKurir || namaKurir}`;
-    
-      await set(ref(db, `absensi_sahabatku/${key}`), {
+
+      const payload = {
         tanggal,
         idKurir,
         username,
         namaKurir,
         leader,
-        jamMasuk,
-        jamPulang,
-        timestamp: new Date().toISOString()
-      });
-    
+        fotoMasuk: oldData.fotoMasuk || '',
+        fotoPulang: oldData.fotoPulang || '',
+        jamMasuk: jamMasuk || oldData.jamMasuk || oldData.jam_masuk || oldData.jammasuk || '',
+        jamPulang: jamPulang || oldData.jamPulang || oldData.jam_pulang || oldData.jampulang || '',
+        timestamp: oldData.timestamp || new Date().toISOString()
+      };
+
+      await set(ref(db, `absensi_sahabatku/${key}`), payload);
       editingAbsensiKey = null;
       closeAbsensiPopup();
       toast('Absensi berhasil disimpan');
-    
+
       renderAll();
       openAbsensiDetail(namaKurir);
     });
-
 
     window.openAdminPopupKurir = () => {
       const list = getKurirAktif().map(u => `<div class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs"><div class="font-bold">${u.nama}</div><div class="text-[10px] text-slate-400">${u.leader}</div></div>`).join('');
