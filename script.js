@@ -3557,12 +3557,27 @@
             
                 let adaData = false;
             
-                const keys = Object.keys(cloudNotaList || {}).sort((a, b) => {
-                    const ta = cloudNotaList[a]?.tanggalRaw || '';
-                    const tb = cloudNotaList[b]?.tanggalRaw || '';
-                    if (tb !== ta) return tb.localeCompare(ta);
-                    return (b || '').localeCompare(a || '');
-                });
+                const keys = Object.keys(cloudNotaList || {})
+                    .filter(key => {
+                        const n = cloudNotaList[key];
+                        if (!isValidNotaItem(n)) return false;
+                        if (filterKurir !== 'semua' && n.kurirUsername !== filterKurir) return false;
+                        if (filterTgl && n.tanggalRaw !== filterTgl) return false;
+                        if (filterBulan && (!n.tanggalRaw || n.tanggalRaw.substring(0, 7) !== filterBulan)) return false;
+                        return true;
+                    })
+                    .sort((a, b) => {
+                        const na = cloudNotaList[a];
+                        const nb = cloudNotaList[b];
+
+                        const jamA = (na?.tanggal || '').match(/(\d{1,2})[:.](\d{2})/);
+                        const jamB = (nb?.tanggal || '').match(/(\d{1,2})[:.](\d{2})/);
+
+                        const menitA = jamA ? (+jamA[1] * 60) + (+jamA[2]) : 0;
+                        const menitB = jamB ? (+jamB[1] * 60) + (+jamB[2]) : 0;
+
+                        return menitB - menitA;
+                    });
 
                 keys.forEach(key => {
                     const n = cloudNotaList[key];
