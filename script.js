@@ -42,8 +42,6 @@
         let cloudAbsensiList = {};
         let cloudJadwalOff = {};
         let selectedTrackingUser = null;
-        let pendingAutoLoginCheck = false;
-
         let isDashboardStatsRunning = false;
         let isRenderLaporanRunning = false;
         let isRenderKpiRunning = false;
@@ -306,7 +304,6 @@
 
             const kpiBulanEl = document.getElementById('kpi-filter-bulan');
             if (kpiBulanEl && !kpiBulanEl.value) kpiBulanEl.value = tglSkrgWib.substring(0, 7);
-
             onValue(ref(db, 'users'), (snapshot) => {
                 cloudKurirList = snapshot.val() || {};
 
@@ -330,7 +327,7 @@
                 populateKurirDropdownFilter();
                 queueUiRefresh();
 
-                if (pendingAutoLoginCheck && userSession && userSession.role === 'kurir') {
+                if (userSession && userSession.role === 'kurir') {
                     const currentKurir = cloudKurirList[userSession.id];
                     if (currentKurir && currentKurir.status === 'aktif') {
                         launchApplicationSession("screen-dashboard");
@@ -339,7 +336,6 @@
                         alert("Sesi berakhir. Akun Anda telah dinonaktifkan oleh Admin.");
                         handleLogout();
                     }
-                    pendingAutoLoginCheck = false;
                 }
             });
             onValue(ref(db, 'nota'), (snapshot) => {
@@ -510,23 +506,23 @@
             if (savedSession) {
                 userSession = JSON.parse(savedSession);
 
-                document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
+                document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama || '-');
                 if (document.getElementById('nota-kurir') && userSession.nama) {
                     document.getElementById('nota-kurir').value = userSession.nama;
                 }
 
                 if (userSession.role === 'owner') {
                     launchApplicationSession("screen-admin-dashboard");
+                    applyManajemenAccess("Owner");
                 } else if (userSession.role === 'manajemen') {
                     launchApplicationSession("screen-admin-dashboard");
                     setTimeout(() => {
                         applyManajemenAccess(userSession.kategori || '-');
-                    }, 100);
-                } else {
-                    pendingAutoLoginCheck = true;
+                    }, 50);
+                } else if (userSession.role === 'kurir') {
+                    launchApplicationSession("screen-dashboard");
                 }
             }
-
             document.addEventListener('click', function(e) {
                 const box = document.getElementById('suggest-absensi-kurir');
                 const input = document.getElementById('absensi-filter-nama');
