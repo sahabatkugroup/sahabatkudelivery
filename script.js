@@ -263,12 +263,12 @@
             if (typeof sembunyikanRiwayatMitraAdmin === 'function') {
                 sembunyikanRiwayatMitraAdmin();
             }
-        
+
             ['nav-dashboard-btn', 'nav-nota-btn', 'nav-sistem-btn'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden', 'opacity-0', 'pointer-events-none');
             });
-        
+
             const tglSkrgWib = getWibRawDate();
             const daftarInputTgl = [
                 'an-filter-tgl',
@@ -276,23 +276,37 @@
                 'filter-date-riwayat',
                 'riwayat-filter-tgl',
                 'm-filter-tgl-kurir',
-                'rekap-tanggal'
+                'rekap-tanggal',
+                'absensi-filter-tgl'
             ];
-        
+
             daftarInputTgl.forEach(id => {
                 const el = document.getElementById(id);
                 if (el && !el.value) el.value = tglSkrgWib;
             });
-        
+
             const amFilterBulanEl = document.getElementById('am-filter-bulan');
             if (amFilterBulanEl && !amFilterBulanEl.value) {
                 amFilterBulanEl.value = tglSkrgWib.substring(0, 7);
             }
-            
+
             const amLogBulanEl = document.getElementById('am-log-bulan');
             if (amLogBulanEl && !amLogBulanEl.value) {
                 amLogBulanEl.value = tglSkrgWib.substring(0, 7);
             }
+
+            const anBulanEl = document.getElementById('an-filter-bulan');
+            if (anBulanEl && !anBulanEl.value) anBulanEl.value = tglSkrgWib.substring(0, 7);
+
+            const filterBulanRiwayatEl = document.getElementById('filter-bulan-riwayat');
+            if (filterBulanRiwayatEl && !filterBulanRiwayatEl.value) filterBulanRiwayatEl.value = tglSkrgWib.substring(0, 7);
+
+            const rekapBulanEl = document.getElementById('rekap-bulan');
+            if (rekapBulanEl && !rekapBulanEl.value) rekapBulanEl.value = tglSkrgWib.substring(0, 7);
+
+            const kpiBulanEl = document.getElementById('kpi-filter-bulan');
+            if (kpiBulanEl && !kpiBulanEl.value) kpiBulanEl.value = tglSkrgWib.substring(0, 7);
+
             onValue(ref(db, 'users'), (snapshot) => {
                 cloudKurirList = snapshot.val() || {};
 
@@ -362,13 +376,13 @@
             onValue(ref(db, 'jadwal_off'), (snapshot) => {
                 cloudJadwalOff = snapshot.val() || {};
             });
+
             window.calcRekapJadwalKurir = function() {
                 const bulan = getKpiMonth();
                 const rekapMap = {};
             
                 const norm = (v) => (v || '').toString().trim().toLowerCase();
             
-                // Siapkan data dasar kurir dari users
                 Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
                     if (!u || u.role !== 'kurir') return;
             
@@ -392,93 +406,91 @@
                         _tanggalMap: {}
                     };
                 });
-            
-                // Hitung absensi
+
                 Object.values(cloudAbsensiList || {}).forEach(a => {
                     if (!a) return;
-            
+
                     const tgl = (a.tanggal || '').trim();
                     if (!tgl || tgl.slice(0, 7) !== bulan) return;
-            
+
                     const namaKurir = norm(a.nama || a.namaKurir);
                     if (!namaKurir || !rekapMap[namaKurir]) return;
-            
+
                     const row = rekapMap[namaKurir];
-            
+
                     if (a.jamMasuk) row.totalAbsenMasuk++;
                     if (a.jamPulang) row.totalAbsenPulang++;
-            
+
                     if (!row._tanggalMap[tgl]) {
                         row._tanggalMap[tgl] = { masuk: false, pulang: false };
                     }
-            
+
                     if (a.jamMasuk) row._tanggalMap[tgl].masuk = true;
                     if (a.jamPulang) row._tanggalMap[tgl].pulang = true;
-            
+
                     const status = norm(a.status);
                     if (status === 'izin') row.totalIzin++;
                     if (status === 'sakit') row.totalSakit++;
                 });
-            
-                // Hitung jadwal off dari field nama
+
                 Object.values(cloudJadwalOff || {}).forEach(j => {
                     if (!j) return;
-            
+
                     const namaKurir = norm(j.nama);
                     const jenisOff = norm(j.jenisOff);
                     const statusOff = norm(j.status);
                     const tglMulai = (j.tanggalMulai || '').trim();
                     const tglSelesai = (j.tanggalSelesai || tglMulai || '').trim();
-            
+
                     if (!tglMulai || tglMulai.slice(0, 7) !== bulan) return;
                     if (!namaKurir || !rekapMap[namaKurir]) return;
-            
+
                     const row = rekapMap[namaKurir];
-            
+
                     const start = new Date(tglMulai);
                     const end = new Date(tglSelesai);
                     const daysCount = Math.max(1, Math.round((end - start) / 86400000) + 1);
-            
+
                     for (let i = 0; i < daysCount; i++) {
                         const d = new Date(start);
                         d.setDate(start.getDate() + i);
-            
+
                         const y = d.getFullYear();
                         const m = String(d.getMonth() + 1).padStart(2, '0');
                         const dd = String(d.getDate()).padStart(2, '0');
                         const tglLoop = `${y}-${m}-${dd}`;
-            
+
                         if (tglLoop.slice(0, 7) !== bulan) continue;
-            
+
                         if (jenisOff === 'off reguler') row.totalOff++;
                         if (jenisOff === 'izin') row.totalIzin++;
                         if (jenisOff === 'tidak ambil off') row.totalTidakAmbilOff++;
                         if (jenisOff === 'sakit') row.totalSakit++;
-            
+
                         if (!row._tanggalMap[tglLoop]) {
                             row._tanggalMap[tglLoop] = { masuk: false, pulang: false, off: true };
                         } else {
                             row._tanggalMap[tglLoop].off = true;
                         }
-            
+
                         if (statusOff !== 'aktif') {
                             row.totalTidakAmbilOff++;
                         }
                     }
                 });
-            
+
                 Object.values(rekapMap).forEach(row => {
                     let score = 0;
-            
+
                     Object.values(row._tanggalMap).forEach(v => {
                         if (v.masuk && v.pulang) score += 1;
                         else if (v.masuk || v.pulang) score += 0.5;
                     });
-            
+
                     row.hadirScore = score;
                     delete row._tanggalMap;
                 });
-            
+
                 return Object.values(rekapMap)
                     .sort((a, b) => a.namaKurir.localeCompare(b.namaKurir))
                     .map(item => ({
@@ -497,12 +509,12 @@
             const savedSession = localStorage.getItem('sahabatku_session');
             if (savedSession) {
                 userSession = JSON.parse(savedSession);
-        
+
                 document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
                 if (document.getElementById('nota-kurir') && userSession.nama) {
                     document.getElementById('nota-kurir').value = userSession.nama;
                 }
-        
+
                 if (userSession.role === 'owner') {
                     launchApplicationSession("screen-admin-dashboard");
                 } else if (userSession.role === 'manajemen') {
@@ -514,7 +526,7 @@
                     pendingAutoLoginCheck = true;
                 }
             }
-        
+
             document.addEventListener('click', function(e) {
                 const box = document.getElementById('suggest-absensi-kurir');
                 const input = document.getElementById('absensi-filter-nama');
@@ -524,8 +536,14 @@
                     box.classList.add('hidden');
                 }
             });
+
+            if (typeof sembunyikanRiwayatMitra === 'function') sembunyikanRiwayatMitra();
+            if (typeof loadNotaDraft === 'function') loadNotaDraft();
+            if (typeof populateLeaderDropdown === 'function') populateLeaderDropdown();
+            if (typeof populateMitraSelectionDropdown === 'function') populateMitraSelectionDropdown();
+            if (typeof initOrderDepositModule === 'function') initOrderDepositModule();
+            if (typeof renderKurirNotifications === 'function') renderKurirNotifications();
         });
-        
         window.handleLogin = function(e) {
             if (e) e.preventDefault();
         
@@ -1765,27 +1783,6 @@
                 console.log('cleanupDailyLiveLocations error:', err.message);
             }
         };
-        
-        window.toggleTestimonialPublish = function(key) {
-            const item = cloudTestimonialList[key];
-            if (!item) return;
-        
-            update(ref(db, `testimonials/${key}`), {
-                isPublished: !item.isPublished
-            }).then(() => {
-                alert(item.isPublished ? 'Testimoni disembunyikan.' : 'Testimoni ditampilkan.');
-            }).catch(err => {
-                alert('Gagal update testimoni: ' + err.message);
-            });
-        };
-        
-        window.hapusTestimonial = function(key) {
-            if (confirm('Hapus testimoni ini secara permanen?')) {
-                remove(ref(db, `testimonials/${key}`))
-                    .then(() => alert('Testimoni berhasil dihapus.'))
-                    .catch(err => alert('Gagal menghapus testimoni: ' + err.message));
-            }
-        };
         window.toggleTestimonialSelectMode = function() {
             const active = document.body.dataset.testimonialSelectMode === '1';
             document.body.dataset.testimonialSelectMode = active ? '0' : '1';
@@ -2346,7 +2343,7 @@
                 if (inputOngkir) inputOngkir.value = '6.000';
 
                 updateKurirDashboard();
-                navigateTo('screen-dashboard');
+                navigateTo('screen-preview');
             });
         }
         window.shareWhatsApp = function() {
@@ -2603,7 +2600,7 @@
             const n = cloudNotaList[key];
             const idNota = n ? n.id : "Nota ini";
 
-            if (confirm(`Apakah Anda yakin ingin menghapus ${idNota} secara permanen dari database cloud?`)) {
+            if (confirm(`Apakah Anda yakin ingin menghapus ${idNota} secara permanen dari riwayat?`)) {
                 const userId = Object.keys(cloudKurirList || {}).find(k =>
                     (cloudKurirList[k]?.username || '').trim() === (n?.kurirUsername || '').trim()
                 );
@@ -2816,14 +2813,14 @@
             const selectMitra = document.getElementById('m-input-pilih');
             if (selectMitra && selectMitra.options.length <= 1) {
                 selectMitra.innerHTML = '<option value="\">-- Pilih Mitra --</option>';
-                Object.entries(cloudMitraList || {}).forEach(([k, m]) => {
-                    if (m && m.nama) {
+                Object.entries(cloudMitraList || {})
+                    .filter(([_, m]) => m && m.nama)
+                    .sort((a, b) => (a[1].nama || '').localeCompare(b[1].nama || ''))
+                    .forEach(([k, m]) => {
                         selectMitra.innerHTML += `<option value="${m.nama}">${m.nama}</option>`;
-                    }
-                });
+                    });
             }
 
-            // Hitung stat global untuk semua mitra
             const mitraStats = {};
             Object.entries(cloudMitraList || {}).forEach(([k, m]) => {
                 if (!m || !m.nama) return;
@@ -2838,10 +2835,10 @@
                 }
             });
 
-            // Render semua mitra sekaligus
             const allMitraHtml = Object.entries(cloudMitraList || {})
                 .filter(([_, m]) => m && m.nama)
-                .map(([k, m], idx) => {
+                .sort((a, b) => (a[1].nama || '').localeCompare(b[1].nama || ''))
+                .map(([k, m]) => {
                     const stats = mitraStats[m.nama] || { totalTrx: 0, target: 0, hp: '', alamat: '' };
                     const target = stats.target || 0;
                     const totalTrx = stats.totalTrx || 0;
@@ -2852,11 +2849,12 @@
 
                     const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
                     const mapsLink = getMapsLink(m.alamat);
+
                     return `
                         <div class="bg-white dark:bg-darkCard p-3 rounded-xl border text-xs space-y-2.5 shadow-sm">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <h5 class="font-bold text-slate-800 dark:text-white">${idx + 1}. ${m.nama}</h5>
+                                    <h5 class="font-bold text-slate-800 dark:text-white">${m.nama}</h5>
                                     <a href="${mapsLink}" target="_blank" class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline block mt-0.5">
                                         Alamat: ${m.alamat || 'Belum Diisi'}
                                     </a>
@@ -2880,7 +2878,6 @@
 
             container.innerHTML = allMitraHtml || '<div class="text-center text-xs text-slate-400 py-4">Belum ada data mitra.</div>';
         };
-
         window.toggleMitraList = function() {
             const box = document.getElementById('container-mitra-list');
             if (!box) return;
@@ -3037,19 +3034,6 @@
             });
         };
         
-        document.addEventListener('DOMContentLoaded', () => {
-            const anBulanEl = document.getElementById('an-filter-bulan');
-            if (anBulanEl && !anBulanEl.value) anBulanEl.value = getWibRawDate().substring(0, 7);
-
-            const tglSkrgWib = getWibRawDate();
-            ['an-filter-tgl', 'riwayat-filter-tgl', 'am-log-tgl', 'm-filter-tgl-kurir'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el && !el.value) el.value = tglSkrgWib;
-            });
-
-            if (typeof sembunyikanRiwayatMitra === 'function') sembunyikanRiwayatMitra();
-            if (typeof loadNotaDraft === 'function') loadNotaDraft();
-        });
 
         window.toggleRiwayatMitraKurir = function() {
             const box = document.getElementById('box-riwayat-mitra-kurir');
@@ -3096,12 +3080,6 @@
             document.getElementById('ongkir-tarif-display').innerText = 'Rp ' + Math.max(0, hasil).toLocaleString('id-ID');
             document.getElementById('ongkir-result-card').classList.remove('hidden');
         };
-
-        window.clearOngkirForm = function() {
-            document.getElementById('ongkir-asal').value = '';
-            document.getElementById('ongkir-tujuan').value = '';
-            document.getElementById('ongkir-result-card').classList.add('hidden');
-        }
         window.openJadwal = function() {
             window.location.href = "absensi-kurir-sahabatku.html";
         };
@@ -5833,11 +5811,6 @@
                     </div>
                 `;
             }).join('');
-        };
-        window.openLeaderModal = function() {
-            resetLeaderForm();
-            document.getElementById('modal-leader').classList.remove('hidden');
-            renderLeaderList();
         };
         window.resetLeaderForm = function() {
             document.getElementById('leader-id-edit').value = '';
