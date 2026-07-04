@@ -30,7 +30,6 @@
         let cloudTestimonialList = {};
         let cloudManajemenList = {}
         let cloudLeaderList = {};;
-        let cloudNotificationList = {};
         let liveLocations = {};
         let liveMap = null;
         let liveMarkers = {};
@@ -1766,6 +1765,27 @@
                 console.log('cleanupDailyLiveLocations error:', err.message);
             }
         };
+        
+        window.toggleTestimonialPublish = function(key) {
+            const item = cloudTestimonialList[key];
+            if (!item) return;
+        
+            update(ref(db, `testimonials/${key}`), {
+                isPublished: !item.isPublished
+            }).then(() => {
+                alert(item.isPublished ? 'Testimoni disembunyikan.' : 'Testimoni ditampilkan.');
+            }).catch(err => {
+                alert('Gagal update testimoni: ' + err.message);
+            });
+        };
+        
+        window.hapusTestimonial = function(key) {
+            if (confirm('Hapus testimoni ini secara permanen?')) {
+                remove(ref(db, `testimonials/${key}`))
+                    .then(() => alert('Testimoni berhasil dihapus.'))
+                    .catch(err => alert('Gagal menghapus testimoni: ' + err.message));
+            }
+        };
         window.toggleTestimonialSelectMode = function() {
             const active = document.body.dataset.testimonialSelectMode === '1';
             document.body.dataset.testimonialSelectMode = active ? '0' : '1';
@@ -2414,26 +2434,7 @@
             container.innerHTML = '';
             let hasData = false;
 
-            const parseNotaTime = (text) => {
-                const match = (text || '').match(/(\d{1,2})[:.](\d{2})/);
-                if (!match) return 0;
-                return (+match[1] * 60) + (+match[2]);
-            };
-
-            const keys = Object.keys(cloudNotaList || {}).sort((a, b) => {
-                const na = cloudNotaList[a];
-                const nb = cloudNotaList[b];
-
-                const dateA = na?.tanggalRaw || '';
-                const dateB = nb?.tanggalRaw || '';
-                if (dateA !== dateB) return dateB.localeCompare(dateA);
-
-                const timeA = parseNotaTime(na?.tanggal || '');
-                const timeB = parseNotaTime(nb?.tanggal || '');
-                if (timeA !== timeB) return timeB - timeA;
-
-                return b.localeCompare(a);
-            });
+            const keys = Object.keys(cloudNotaList || {}).sort((a, b) => b.localeCompare(a));
 
             for (let k of keys) {
                 const n = cloudNotaList[k];
@@ -2500,23 +2501,6 @@
             document.getElementById('p-ongkir').innerText = (n.ongkir || 0).toLocaleString('id-ID');
             document.getElementById('p-biaya').innerText = totalBiayaTambahan.toLocaleString('id-ID');
             document.getElementById('p-total').innerText = (n.total || 0).toLocaleString('id-ID');
-            const tbody = document.getElementById('p-table-body');
-            if (tbody) {
-                tbody.innerHTML = '';
-
-                if (n.items && n.items.length) {
-                    tbody.innerHTML = n.items.map(it => `
-                        <div class="flex justify-between gap-2 px-3 py-2 text-[10px] sm:text-[11px] border-b border-slate-100 dark:border-slate-800 last:border-0">
-                            <span class="min-w-0 flex-1 font-bold text-slate-800 dark:text-white truncate">${it.nama || '-'}</span>
-                            <span class="w-10 text-center text-slate-500 shrink-0">${it.qty || 0}</span>
-                            <span class="w-16 text-right text-slate-500 shrink-0">${(it.harga || 0).toLocaleString('id-ID')}</span>
-                            <span class="w-16 text-right font-bold text-primary shrink-0">${(it.subtotal || 0).toLocaleString('id-ID')}</span>
-                        </div>
-                    `).join('');
-                } else {
-                    tbody.innerHTML = `<div class="px-3 py-2 text-center italic text-slate-400">- Tidak ada rincian.</div>`;
-                }
-            }
 
             const rincianBiayaList = document.getElementById('p-rincian-biaya-list');
             if (rincianBiayaList) {
@@ -2535,7 +2519,19 @@
                     rincianBiayaList.classList.add('hidden');
                 }
             }
-
+            const tbody = document.getElementById('p-table-body');
+            tbody.innerHTML = '';
+            if (n.items && Array.isArray(n.items)) {
+                n.items.forEach(it => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${it.nama}</td>
+                            <td class="text-center">${it.qty}</td>
+                            <td class="text-right">${(it.harga || 0).toLocaleString('id-ID')}</td>
+                            <td class="text-right">${(it.subtotal || 0).toLocaleString('id-ID')}</td>
+                        </tr>`;
+                });
+            }
             notaState = {
                 items: n.items || [],
                 biaya: n.biayaTambahan || [],
@@ -3121,12 +3117,19 @@
             const isOpen = ensureSectionToggleState('container-admin-notification-history', false);
             const items = Object.entries(cloudNotificationList || {}).sort((a, b) => (b[1]?.createdAt || '').localeCompare(a[1]?.createdAt || ''));
 
-            if (!isOpen) {
-                container.innerHTML = '';
-                return;
-            }
+            container.innerHTML = `
+                <div class="flex items-center gap-2 mb-2">
+                    <button type="button" onclick="toggleSectionList('container-admin-notification-history')" class="flex-1 py-2 rounded-xl bg-slate-800 text-white text-[10px] font-bold uppercase">
+                        ${isOpen ? 'Tutup' : 'Buka'}
+                    </button>
+                </div>
+                <div id="container-admin-notification-history-inner" class="${isOpen ? '' : 'hidden'} space-y-2"></div>
+            `;
 
-            container.innerHTML = items.length ? items.map(([key, n]) => `
+            const inner = document.getElementById('container-admin-notification-history-inner');
+            if (!inner || !isOpen) return;
+
+            inner.innerHTML = items.length ? items.map(([key, n]) => `
                 <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border text-xs space-y-2">
                     <div class="flex justify-between items-start gap-2">
                         <div class="min-w-0 flex-1">
@@ -5831,6 +5834,11 @@
                 `;
             }).join('');
         };
+        window.openLeaderModal = function() {
+            resetLeaderForm();
+            document.getElementById('modal-leader').classList.remove('hidden');
+            renderLeaderList();
+        };
         window.resetLeaderForm = function() {
             document.getElementById('leader-id-edit').value = '';
             document.getElementById('leader-nama').value = '';
@@ -6036,6 +6044,7 @@
                 }
             });
         }
+        let cloudNotificationList = {};
         
         window.toggleNotifTarget = function() {
             const target = document.getElementById('notif-target').value;
@@ -6111,7 +6120,7 @@
                 <div class="relative pr-7 leading-snug text-[10px]">
                     ${notif.message || ''}
                     <button onclick="dismissKurirNotification('${notifId}')"
-                        class="absolute -top-5 -right-0 w-4 h-4 flex items-center justify-center rounded-full bg-white text-rose-500 text-[10px] font-black shadow-sm border border-slate-200 active:scale-95 transition leading-none">
+                        class="absolute top-0 right-0 w-5 h-5 flex items-center justify-center rounded-full bg-white/90 text-rose-500 text-[10px] font-bold shadow-sm">
                         ✕
                     </button>
                 </div>
@@ -6233,17 +6242,18 @@
 
         window.toggleAdminNotifHistoryOpen = function() {
             const container = document.getElementById('container-admin-notification-history');
-            if (!container) return;
-
-            container.dataset.open = container.dataset.open === '1' ? '0' : '1';
-
-            if (container.dataset.open === '1') {
+            const btn = document.getElementById('btn-toggle-notif-text');
+            const isOpen = container.dataset.open === '1';
+            
+            container.dataset.open = isOpen ? '0' : '1';
+            btn.innerText = isOpen ? 'Buka' : 'Tutup';
+            
+            if (!isOpen) {
                 renderAdminNotificationHistory();
             } else {
                 container.innerHTML = '';
             }
         };
-
         window.depositKurirSelected = [];
         window.depositKurirAmounts = {};
         window.depositKurirOrder = {};
