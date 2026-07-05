@@ -29,7 +29,7 @@
         let adminOngkirMode = 'normal';
         let cloudTestimonialList = {};
         let cloudManajemenList = {}
-        let cloudLeaderList = {};;
+        let cloudLeaderList = {};
         let liveLocations = {};
         let liveMap = null;
         let liveMarkers = {};
@@ -162,8 +162,69 @@
         window.startLiveLocationTracking = function() {
             if (!userSession || userSession.role !== 'kurir') return;
             if (!navigator.geolocation || !window.isSecureContext) return;
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-            // tetap seperti semula
+
+            if (watchId) {
+                try { navigator.geolocation.clearWatch(watchId); } catch (e) {}
+                watchId = null;
+            }
+
+            const TRACKING = {
+                minTimeMs: 15000,
+                minDistanceM: 30,
+                geoOptions: {
+                    enableHighAccuracy: true,
+                    maximumAge: 5000,
+                    timeout: 20000
+                }
+            };
+
+            let lastSent = null;
+            let lastSentTime = 0;
+
+            const sendLiveLocationToFirebase = async (lat, lng, accuracy) => {
+                const now = Date.now();
+                const userId = userSession?.id;
+                if (!userId) return;
+
+                const timeOk = (now - lastSentTime) >= TRACKING.minTimeMs;
+
+                let distOk = true;
+                if (lastSent && typeof lastSent.lat === 'number' && typeof lastSent.lng === 'number') {
+                    const dist = getDistanceMeters(lastSent.lat, lastSent.lng, lat, lng);
+                    distOk = dist >= TRACKING.minDistanceM;
+                }
+
+                if (!timeOk && !distOk) return;
+
+                lastSent = { lat, lng };
+                lastSentTime = now;
+
+                const payload = {
+                    lat,
+                    lng,
+                    accuracy: accuracy ?? null,
+                    jamTracking: getWibDateTimeString().jam,
+                    tanggalTrackingRaw: getWibRawDate(),
+                    createdAt: new Date().toISOString(),
+                    status: 'aktif'
+                };
+
+                // kirim ke Firebase
+                await set(ref(db, `live_locations/${userId}`), payload).catch(() => {});
+            };
+
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const { latitude, longitude, accuracy } = pos.coords || {};
+                    if (typeof latitude !== 'number' || typeof longitude !== 'number') return;
+
+                    sendLiveLocationToFirebase(latitude, longitude, accuracy);
+                },
+                (err) => {
+                    console.warn('Geolocation error:', err);
+                },
+                TRACKING.geoOptions
+            );
         };
 
         window.renderTrackingKurirList = function() {
