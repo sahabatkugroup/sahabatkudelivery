@@ -71,7 +71,6 @@
                 Object.keys(cloudNotificationList || {}).length
             ].join('|');
         }
-
         function queueUiRefresh(force = false) {
             const now = Date.now();
             const sig = buildCloudSignature();
@@ -87,6 +86,13 @@
                 refreshQueueScheduled = false;
                 uiRefreshInProgress = true;
                 try {
+                    // ===== LOCK RIWAYAT (biar ga kebalik ke dashboard) =====
+                    const lockRiwayat = window.__lockRiwayatScreen === true;
+
+                    if (!lockRiwayat && currentScreen === 'screen-dashboard' && typeof updateKurirDashboard === 'function') {
+                        updateKurirDashboard();
+                    }
+
                     if (currentScreen === 'screen-admin-kurir' && typeof renderAdminKurirList === 'function') renderAdminKurirList();
                     if (currentScreen === 'screen-admin-manajemen' && typeof renderAdminManajemen === 'function') renderAdminManajemen();
                     if (currentScreen === 'screen-admin-nota' && typeof renderAdminNota === 'function') renderAdminNota();
@@ -100,18 +106,16 @@
                     }
                     if (currentScreen === 'screen-admin-ongkir' && typeof renderAdminOngkirList === 'function') renderAdminOngkirList();
                     if (currentScreen === 'screen-admin-kpi' && typeof renderKPISection === 'function') renderKPISection(currentKPISection);
-                    if (currentScreen === 'screen-dashboard' && typeof updateKurirDashboard === 'function') updateKurirDashboard();
                     if (currentScreen === 'screen-rekap' && typeof loadRekapKurir === 'function') loadRekapKurir();
                     if (currentScreen === 'screen-mitra' && typeof renderKurirMitraView === 'function') renderKurirMitraView(true);
 
-                    if (typeof calculateDashboardStats === 'function') calculateDashboardStats();
+                    if (typeof calculateDashboardStats === 'function' && !lockRiwayat) calculateDashboardStats();
                     if (typeof calculateMitraStats === 'function') calculateMitraStats();
                 } finally {
                     uiRefreshInProgress = false;
                 }
             }, 250);
         }
-
         function getWibDate() {
             return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
         }
@@ -2716,6 +2720,9 @@
             const idNota = n ? n.id : "Nota ini";
 
             if (confirm(`Apakah Anda yakin ingin menghapus ${idNota} secara permanen dari riwayat?`)) {
+                // LOCK supaya queueUiRefresh gak bikin balik dashboard
+                window.__lockRiwayatScreen = true;
+
                 const userId = Object.keys(cloudKurirList || {}).find(k =>
                     (cloudKurirList[k]?.username || '').trim() === (n?.kurirUsername || '').trim()
                 );
@@ -2740,24 +2747,31 @@
                             }).then(() => {
                                 cloudKurirList[userId].depositSaldo = saldoBaru;
                                 renderSaldoKurir();
-                                updateKurirDashboard();
                             });
+
                             const notaId = n?.id;
                             if (notaId) remove(ref(db, `ongkir_history/${notaId}`)).catch(() => {});
                         }
 
+                        // paksa tetap di riwayat, dan render ulang
                         if (userSession && userSession.role === 'kurir') {
-                            renderKurirRiwayatList(true);
-                            updateKurirDashboard();
-                        }
+                            currentScreen = 'screen-riwayat';
+                            const elNow = document.getElementById('screen-riwayat');
+                            const elDash = document.getElementById('screen-dashboard');
+                            if (elDash) elDash.classList.remove('active');
+                            if (elNow) elNow.classList.add('active');
 
-                        if (currentScreen === 'screen-admin-nota') renderAdminNota();
-                        if (currentScreen === 'screen-dashboard') updateKurirDashboard();
+                            renderKurirRiwayatList(true);
+                        }
 
                         alert("Nota sukses dihapus!");
                     })
                     .catch((error) => {
                         alert("Gagal menghapus nota: " + error.message);
+                    })
+                    .finally(() => {
+                        // lepaskan lock setelah beberapa detik supaya refresh yang datang belakangan gak skip terus
+                        setTimeout(() => { window.__lockRiwayatScreen = false; }, 900);
                     });
             }
         }
