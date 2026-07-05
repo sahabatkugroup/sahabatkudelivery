@@ -1375,9 +1375,19 @@
         }
         window.hapusNotaGlobal = function(key) {
             if(confirm("Hapus nota ini secara permanen dari server cloud?")) {
-                remove(ref(db, `nota/${key}`));
+                const n = cloudNotaList?.[key];
+                const notaId = n?.id;
+
+                // hapus nota dulu
+                remove(ref(db, `nota/${key}`)).then(() => {
+                    // ikut hapus ongkir history per nota
+                    if (notaId) remove(ref(db, `ongkir_history/${notaId}`)).catch(() => {});
+                    alert('Nota dan history ongkir ikut terhapus!');
+                }).catch(err => {
+                    alert('Gagal hapus nota: ' + err.message);
+                });
             }
-        }
+        };
         window.hapusSemuaNotaTersaring = function() {
             const filterKurir = document.getElementById('an-filter-kurir')?.value || 'semua';
             const filterTgl = document.getElementById('an-filter-tgl')?.value || '';
@@ -1404,12 +1414,11 @@
         
             alert('Nota sesuai filter sedang dihapus.');
         };
-        
         window.viewAdminNota = function(key) {
             const n = cloudNotaList[key];
             const modalCanvas = document.getElementById('canvas-nota-admin');
             if (!n || !modalCanvas) return;
-        
+
             let itemRows = '';
             if (n.items && Array.isArray(n.items)) {
                 n.items.forEach(it => {
@@ -1423,6 +1432,7 @@
                     `;
                 });
             }
+
             let rincianBiaya = '';
             const totalBiaya = (n.biayaTambahan || []).reduce((acc, b) => acc + (b.nominal || 0), 0);
             if (n.biayaTambahan && n.biayaTambahan.length > 0) {
@@ -1435,20 +1445,20 @@
                     `;
                 });
             }
-        
+
             modalCanvas.innerHTML = `
                 <div class="text-center border-b border-dashed border-slate-300 pb-3">
                     <h3 class="font-extrabold text-lg text-primary tracking-wide">SAHABATKU DELIVERY</h3>
                     <p class="text-[10px] text-slate-400">Jatibarang, Indramayu</p>
                 </div>
-        
-                <div class="text-[11px] space-y-1">
+
+                <div class="text-[11px] space-y-1.5">
                     <div class="flex justify-between"><span class="text-slate-400">Nomor Nota:</span><span class="font-bold text-slate-700">${n.id || '-'}</span></div>
                     <div class="flex justify-between"><span class="text-slate-400">Tanggal:</span><span>${n.tanggal || '-'}</span></div>
                     <div class="flex justify-between"><span class="text-slate-400">Kurir:</span><span class="font-medium">${n.kurirNama || '-'}</span></div>
                     <div class="flex justify-between"><span class="text-slate-400">Status:</span><span class="uppercase font-semibold">${n.status || '-'}</span></div>
                 </div>
-        
+
                 <table class="w-full text-[11px] text-left mt-2">
                     <thead>
                         <tr class="border-b border-dashed border-slate-300 text-slate-400 font-semibold">
@@ -1462,7 +1472,7 @@
                         ${itemRows || `<tr><td colspan="4" class="text-center italic text-slate-400 py-2">- Tidak ada rincian -</td></tr>`}
                     </tbody>
                 </table>
-        
+
                 <div class="border-t border-dashed border-slate-300 pt-2.5 text-[11px] space-y-1">
                     <div class="flex justify-between"><span class="text-slate-400">Subtotal Item</span><span>${(n.subtotal || 0).toLocaleString('id-ID')}</span></div>
                     <div class="flex justify-between"><span class="text-slate-400">Ongkir</span><span>${(n.ongkir || 0).toLocaleString('id-ID')}</span></div>
@@ -1472,17 +1482,67 @@
                         <span>TOTAL</span><span class="text-primary">${(n.total || 0).toLocaleString('id-ID')}</span>
                     </div>
                 </div>
-        
+
+                <!-- Ongkir History -->
+                <div class="border-t border-dashed border-slate-300 pt-3 mt-2 text-[10px] space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400 font-bold uppercase">Ongkir History</span>
+                        <span id="p-ongkir-history-count" class="text-slate-400">-</span>
+                    </div>
+                    <div id="p-ongkir-history-container" class="space-y-1"></div>
+                </div>
+
                 <div class="border-t border-dashed border-slate-300 pt-3 text-center space-y-1">
                     <p class="text-[10px] text-slate-500 italic">Terima kasih telah menggunakan jasa Sahabatku Delivery.</p>
-                    <p class="text-[10px] font-medium text-slate-700">Pastikan Selalu Order Melalui WhatsApp Resmi Kami:<br>
-                       <span class="text-primary font-bold text-xs">0821-1845-415</span>
+                    <p class="text-[10px] font-medium text-slate-700">
+                        Pastikan Selalu Order Melalui WhatsApp Resmi Kami:<br>
+                        <span class="text-primary font-bold text-xs">0821-1845-415</span>
                     </p>
                 </div>
             `;
-            document.getElementById('modal-preview-nota').classList.remove('hidden');
-        }
 
+            // RESET isi history (biar nggak nyangkut dari nota sebelumnya)
+            const box = document.getElementById('p-ongkir-history-container');
+            const countEl = document.getElementById('p-ongkir-history-count');
+            if (!box || !countEl) return;
+
+            box.innerHTML = '';
+            countEl.innerText = '-';
+
+            const histories = Array.isArray(n.ongkir_history) ? n.ongkir_history : [];
+            const sorted = histories
+                .slice()
+                .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+            if (!sorted.length) {
+                box.innerHTML = `<div class="text-center text-slate-400 italic py-1">Belum ada history ongkir.</div>`;
+                countEl.innerText = '0';
+                document.getElementById('modal-preview-nota').classList.remove('hidden');
+                return;
+            }
+
+            countEl.innerText = `${sorted.length} item`;
+            box.innerHTML = sorted.map(e => {
+                const asal = e.asal || '-';
+                const tujuan = e.tujuan || '-';
+                const val = parseInt(e.estimasiOngkir || e.ongkir || 0) || 0;
+                const tgl = e.createdAt ? new Date(e.createdAt).toLocaleString('id-ID') : (e.tglRaw || '-');
+
+                return `
+                    <div class="bg-slate-50 dark:bg-darkBg p-2 rounded-lg border border-slate-200/70">
+                        <div class="flex justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="font-bold text-[10px] text-slate-700 truncate">${asal} → ${tujuan}</div>
+                                <div class="text-[9px] text-slate-400">${tgl}</div>
+                            </div>
+                            <div class="font-extrabold text-[10px] text-primary shrink-0">Rp ${val.toLocaleString('id-ID')}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('modal-preview-nota').classList.remove('hidden');
+        };
         window.closeAdminModal = function() {
             document.getElementById('modal-preview-nota').classList.add('hidden');
         }
@@ -2302,30 +2362,72 @@
                 total: notaState.total
             };
 
-            push(ref(db, 'nota'), payload).then(() => {
+            const notaRef = ref(db, 'nota');
+            const pushRef = push(notaRef);
+
+            // simpan nota dengan key yang fix (pushRef.key)
+            set(pushRef, payload).then(async () => {
                 alert("Nota kiriman berhasil disimpan!");
                 localStorage.removeItem('sahabatku_nota_draft');
 
                 const userId = userSession.id;
                 const username = userSession.username;
+
                 const potongSlot = getPotonganKurirKoin(payload);
                 const usageSekarang = parseInt(cloudNotaHabisCounter?.[userId] || 0) || 0;
                 const usageBaru = usageSekarang + potongSlot;
-
                 cloudNotaHabisCounter[userId] = usageBaru;
 
                 const saldoSekarang = getSaldoKurirRaw(userId, username);
                 const saldoBaru = Math.max(0, saldoSekarang - (potongSlot * 1000));
 
-                update(ref(db, `users/${userId}`), {
+                await update(ref(db, `users/${userId}`), {
                     depositSaldo: saldoBaru,
                     depositUpdatedAt: new Date().toISOString()
-                }).then(() => {
-                    cloudKurirList[userId].depositSaldo = saldoBaru;
-                    renderSaldoKurir();
-                    updateKurirDashboard();
                 });
 
+                cloudKurirList[userId].depositSaldo = saldoBaru;
+                renderSaldoKurir();
+                updateKurirDashboard();
+
+                // simpan history ongkir ke JSON nota (nota/<pushKey>.ongkir_history)
+                const draftKey = localStorage.getItem('last_ongkir_draft_key');
+                if (draftKey && userSession?.id) {
+                    try {
+                        const fromRef = ref(db, `ongkir_history_draft/${userSession.id}`);
+                        const snap = await get(fromRef);
+                        const data = snap.val() || {};
+                        const entries = Object.entries(data);
+
+                        const ongkirHistoryJson = [];
+
+                        for (const [k, v] of entries) {
+                            if (!v || v.draftKey !== draftKey) continue;
+
+                            ongkirHistoryJson.push({
+                                draftKey: v.draftKey,
+                                kurirId: v.kurirId || userSession.id,
+                                kurirUsername: v.kurirUsername || userSession.username,
+                                kurirNama: v.kurirNama || userSession.nama,
+                                asal: v.asal || '',
+                                tujuan: v.tujuan || '',
+                                estimasiOngkir: v.estimasiOngkir || 0,
+                                tglRaw: v.tglRaw || getWibRawDate(),
+                                createdAt: v.createdAt || new Date().toISOString()
+                            });
+
+                            await remove(ref(db, `ongkir_history_draft/${userSession.id}/${k}`)).catch(() => {});
+                        }
+
+                        localStorage.removeItem('last_ongkir_draft_key');
+
+                        await update(pushRef, {
+                            ongkir_history: ongkirHistoryJson
+                        }).catch(() => {});
+                    } catch (e) {}
+                }
+
+                // reset nota form state
                 notaState = { items: [], biaya: [], subtotal: 0, ongkir: 6000, total: 6000 };
                 document.getElementById('container-items').innerHTML = '';
                 document.getElementById('container-biaya').innerHTML = '';
@@ -2340,8 +2442,10 @@
 
                 updateKurirDashboard();
                 navigateTo('screen-preview');
+            }).catch(() => {
+                alert('Gagal simpan nota.');
             });
-        }
+        };
         window.shareWhatsApp = function() {
             const num = document.getElementById('p-nota-num').innerText;
             const kurir = document.getElementById('p-nota-kurir').innerText;
@@ -2427,16 +2531,31 @@
             container.innerHTML = '';
             let hasData = false;
 
-            const keys = Object.keys(cloudNotaList || {}).sort((a, b) => b.localeCompare(a));
+            const notaList = Object.entries(cloudNotaList || {})
+                .filter(([_, n]) => !!n)
+                .map(([k, n]) => ({ key: k, n }));
 
-            for (let k of keys) {
-                const n = cloudNotaList[k];
-                if (!n) continue;
-                if (userSession && userSession.role === 'kurir' && n.kurirUsername !== userSession.username) continue;
-                if (filterBulan && (!n.tanggalRaw || n.tanggalRaw.substring(0, 7) !== filterBulan)) continue;
-                if (filterTgl && n.tanggalRaw !== filterTgl) continue;
-                if (searchKeyword && n.id && !n.id.toLowerCase().includes(searchKeyword)) continue;
+            // filter dulu
+            const filtered = notaList.filter(({ n }) => {
+                if (userSession && userSession.role === 'kurir' && n.kurirUsername !== userSession.username) return false;
+                if (filterBulan && (!n.tanggalRaw || n.tanggalRaw.substring(0, 7) !== filterBulan)) return false;
+                if (filterTgl && n.tanggalRaw !== filterTgl) return false;
+                if (searchKeyword && n.id && !n.id.toLowerCase().includes(searchKeyword)) return false;
+                return true;
+            });
 
+            // urut: terbaru (tanggalRaw desc), lalu id (desc)
+            filtered.sort((a, b) => {
+                const tA = a.n?.tanggalRaw || '';
+                const tB = b.n?.tanggalRaw || '';
+                if (tA !== tB) return tB.localeCompare(tA);
+
+                const idA = a.n?.id || '';
+                const idB = b.n?.id || '';
+                return idB.localeCompare(idA);
+            });
+
+            for (let { key: k, n } of filtered) {
                 hasData = true;
                 container.innerHTML += `
                     <div class="bg-white dark:bg-darkCard p-3 rounded-xl border text-xs space-y-2 shadow-sm">
@@ -2623,6 +2742,8 @@
                                 renderSaldoKurir();
                                 updateKurirDashboard();
                             });
+                            const notaId = n?.id;
+                            if (notaId) remove(ref(db, `ongkir_history/${notaId}`)).catch(() => {});
                         }
 
                         if (userSession && userSession.role === 'kurir') {
@@ -4403,27 +4524,189 @@
             document.getElementById('admin-ongkir-tujuan').value = '';
             document.getElementById('admin-ongkir-result-normal').classList.add('hidden');
         };
-
         window.openOngkirFeature = function() {
             if (!userSession || userSession.role !== 'kurir') return;
             const currentKurir = cloudKurirList[userSession.id];
-            if (!currentKurir) {
-                alert('Data akun tidak ditemukan.');
-                return;
-            }
-        
+            if (!currentKurir) { alert('Data akun tidak ditemukan.'); return; }
+
+            // izin cek: kalau locked, minta password dulu
             if (currentKurir.ongkirLocked) {
                 const inputPass = prompt('Masukkan password khusus untuk membuka fitur ongkir:');
-                if (!inputPass) return;        
+                if (!inputPass) return;
                 if (inputPass !== currentKurir.ongkirPassword) {
                     alert('Password ongkir salah!');
                     return;
                 }
-                update(ref(db, `users/${userSession.id}`), {
-                    ongkirLocked: false
-                });
+                update(ref(db, `users/${userSession.id}`), { ongkirLocked: false });
             }
+
             navigateTo('screen-ongkir');
+        };
+        window.openCekOngkirPopupFromNota = function() {
+            if (!userSession || userSession.role !== 'kurir') return;
+            const currentKurir = cloudKurirList[userSession.id];
+            if (!currentKurir) { alert('Data akun tidak ditemukan.'); return; }
+
+            if (currentKurir.ongkirLocked) {
+                const inputPass = prompt('Masukkan password khusus untuk membuka fitur ongkir:');
+                if (!inputPass) return;
+                if (inputPass !== currentKurir.ongkirPassword) {
+                    alert('Password ongkir salah!');
+                    return;
+                }
+                update(ref(db, `users/${userSession.id}`), { ongkirLocked: false });
+            }
+
+            const modal = document.getElementById('modal-cek-ongkir');
+            if (!modal) return;
+
+            // reset form & state popup setiap buka
+            const a = document.getElementById('cek-ongkir-asal');
+            const t = document.getElementById('cek-ongkir-tujuan');
+            const resBox = document.getElementById('cek-ongkir-result');
+            const btnPakai = document.getElementById('btn-pakai-ongkir');
+            const display = document.getElementById('cek-ongkir-display');
+
+            if (a) a.value = '';
+            if (t) t.value = '';
+
+            const sA = document.getElementById('suggest-cek-ongkir-asal');
+            const sT = document.getElementById('suggest-cek-ongkir-tujuan');
+            if (sA) { sA.classList.add('hidden'); sA.innerHTML = ''; }
+            if (sT) { sT.classList.add('hidden'); sT.innerHTML = ''; }
+
+            window.__lastOngkirPopupValue = 0;
+            if (display) display.innerText = 'Rp 0';
+            if (resBox) resBox.classList.add('hidden');
+            if (btnPakai) btnPakai.classList.add('hidden');
+
+            modal.classList.remove('hidden');
+        };
+     
+        window.closeCekOngkirPopup = function() {
+        const modal = document.getElementById('modal-cek-ongkir');
+        if (modal) modal.classList.add('hidden');
+        };
+
+        window.clearOngkirPopupForm = function() {
+            const a = document.getElementById('cek-ongkir-asal');
+            const t = document.getElementById('cek-ongkir-tujuan');
+            if (a) a.value = '';
+            if (t) t.value = '';
+
+            const sA = document.getElementById('suggest-cek-ongkir-asal');
+            const sT = document.getElementById('suggest-cek-ongkir-tujuan');
+            if (sA) { sA.classList.add('hidden'); sA.innerHTML = ''; }
+            if (sT) { sT.classList.add('hidden'); sT.innerHTML = ''; }
+
+            const res = document.getElementById('cek-ongkir-result');
+            if (res) res.classList.add('hidden');
+
+            const btnPakai = document.getElementById('btn-pakai-ongkir');
+            if (btnPakai) btnPakai.classList.add('hidden');
+
+            const display = document.getElementById('cek-ongkir-display');
+            if (display) display.innerText = 'Rp 0';
+
+            window.__lastOngkirPopupValue = 0;
+        };
+
+
+        function popupCariTarif(nama) {
+        for (let k in cloudOngkirList) {
+            const item = cloudOngkirList[k];
+            if (item && normalizeNama(item.wilayah) === normalizeNama(nama)) {
+            return parseInt(item.tarif) || 0;
+            }
+        }
+        return 0;
+        }
+
+        window.hitungOngkirPopup = function() {
+        const asal = document.getElementById('cek-ongkir-asal')?.value.trim() || '';
+        const tujuan = document.getElementById('cek-ongkir-tujuan')?.value.trim() || '';
+
+        if (!asal && !tujuan) return alert('Isi minimal salah satu: asal atau tujuan.');
+
+        const tarifAsal = asal ? popupCariTarif(asal) : 0;
+        const tarifTujuan = tujuan ? popupCariTarif(tujuan) : 0;
+
+        let hasil = 0;
+        if (asal && tujuan) hasil = tarifAsal + tarifTujuan - 6000;
+        else hasil = asal ? tarifAsal : tarifTujuan;
+
+        hasil = Math.max(0, hasil);
+
+        const resBox = document.getElementById('cek-ongkir-result');
+        const display = document.getElementById('cek-ongkir-display');
+        if (display) display.innerText = 'Rp ' + hasil.toLocaleString('id-ID');
+        if (resBox) resBox.classList.remove('hidden');
+
+        const btnPakai = document.getElementById('btn-pakai-ongkir');
+        if (btnPakai) btnPakai.classList.remove('hidden');
+
+        window.__lastOngkirPopupValue = hasil;
+        };
+        window.setOngkirToNotaPopup = function() {
+        const val = window.__lastOngkirPopupValue || 0;
+        if (val <= 0) return alert('Belum ada hasil estimasi ongkir.');
+
+        const asal = document.getElementById('cek-ongkir-asal')?.value?.trim() || '';
+        const tujuan = document.getElementById('cek-ongkir-tujuan')?.value?.trim() || '';
+
+        const draftKey = `d_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        localStorage.setItem('last_ongkir_draft_key', draftKey);
+
+        const payload = {
+            draftKey,
+            kurirId: userSession?.id || '',
+            kurirUsername: userSession?.username || '',
+            kurirNama: userSession?.nama || '',
+            asal,
+            tujuan,
+            estimasiOngkir: val,
+            tglRaw: getWibRawDate(),
+            createdAt: new Date().toISOString()
+        };
+
+        push(ref(db, `ongkir_history_draft/${userSession?.id || 'unknown'}`), payload).catch(() => {});
+
+        const notaOngkir = document.getElementById('nota-ongkir');
+        if (notaOngkir) {
+            notaOngkir.value = val.toLocaleString('id-ID');
+            calculateNotaTotal();
+        }
+
+        closeCekOngkirPopup();
+        };
+        window.updateOngkirPopupSuggestions = function(type) {
+        const input = document.getElementById(`cek-ongkir-${type}`);
+        const box = document.getElementById(`suggest-cek-ongkir-${type}`);
+        if (!input || !box) return;
+
+        const q = normalizeNama(input.value);
+        if (!q) { box.classList.add('hidden'); box.innerHTML=''; return; }
+
+        const matches = [];
+        for (let k in cloudOngkirList) {
+            const item = cloudOngkirList[k];
+            if (item && normalizeNama(item.wilayah).includes(q)) matches.push(item.wilayah);
+        }
+
+        box.innerHTML = matches.slice(0, 6).map(nama => `
+            <div onclick="pilihSuggestionOngkirPopup('${type}','${nama.replace(/'/g,"\\'")}')" class="px-3 py-2 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
+            ${nama}
+            </div>
+        `).join('');
+
+        box.classList.remove('hidden');
+        };
+
+        window.pilihSuggestionOngkirPopup = function(type, nama) {
+        const input = document.getElementById(`cek-ongkir-${type}`);
+        const box = document.getElementById(`suggest-cek-ongkir-${type}`);
+        if (input) input.value = nama;
+        if (box) { box.classList.add('hidden'); box.innerHTML=''; }
         };
 
         let currentKPISection = 'penghargaan';
