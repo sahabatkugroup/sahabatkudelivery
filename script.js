@@ -180,6 +180,45 @@
             }
         };
 
+        // cache alamat biar ga spam request tiap update kecil
+        const addressCache = new Map();
+        let lastAddressFetchAt = 0;
+
+        const reverseGeocodeAlamat = async (lat, lng) => {
+            // quantize 4 desimal ~ beberapa meter
+            const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+            if (addressCache.has(key)) return addressCache.get(key);
+
+            // throttling
+            const now = Date.now();
+            if (now - lastAddressFetchAt < 8000) return null; 
+            lastAddressFetchAt = now;
+
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&accept-language=id&zoom=16&addressdetails=0`;
+
+            try {
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return null;
+            const data = await res.json();
+
+            const alamat =
+                data?.display_name ||
+                (data?.address ? [
+                data.address.road,
+                data.address.suburb,
+                data.address.city || data.address.town || data.address.village,
+                data.address.state,
+                data.address.postcode
+                ].filter(Boolean).join(', ') : null);
+
+            if (alamat) addressCache.set(key, alamat);
+            return alamat || null;
+            } catch (e) {
+            console.warn('[Tracking] reverse geocode fail:', { message: e?.message });
+            return null;
+            }
+        };
+
         let lastSent = null;
         let lastSentTime = 0;
         let hasSentFirst = false;
@@ -189,7 +228,7 @@
             const userId = userSession?.id;
             if (!userId) return;
 
-            // aturan: kirim pertama kali SELALU
+            // kirim pertama kali SELALU
             if (!hasSentFirst) {
             hasSentFirst = true;
             } else {
@@ -207,10 +246,17 @@
             lastSent = { lat, lng };
             lastSentTime = now;
 
+            // reverse geocode untuk alamat popup
+            let alamatLengkap = null;
+            try {
+            alamatLengkap = await reverseGeocodeAlamat(lat, lng);
+            } catch (_) {}
+
             const payload = {
             lat,
             lng,
             accuracy: accuracy ?? null,
+            alamatLengkap: alamatLengkap || '',
             jamTracking: getWibDateTimeString().jam,
             tanggalTrackingRaw: getWibRawDate(),
             createdAt: new Date().toISOString(),
@@ -236,20 +282,11 @@
             const { latitude, longitude, accuracy } = pos.coords || {};
             if (typeof latitude !== 'number' || typeof longitude !== 'number') return;
 
-            console.log('[Tracking] position update:', {
-                latitude,
-                longitude,
-                accuracy,
-                ts: pos.timestamp
-            });
-
+            console.log('[Tracking] position update:', { latitude, longitude, accuracy, ts: pos.timestamp });
             sendLiveLocationToFirebase(latitude, longitude, accuracy);
             },
             (err) => {
-            console.warn('[Tracking] geolocation error:', {
-                code: err?.code,
-                message: err?.message
-            });
+            console.warn('[Tracking] geolocation error:', { code: err?.code, message: err?.message });
             },
             TRACKING.geoOptions
         );
@@ -286,7 +323,8 @@
         window.selectTrackingKurir = function(id) {
             selectedKurirTracking = id;
             selectedTrackingUser = cloudKurirList[id] || null;
-            renderTrackingMap(id);
+            window.openTrackingModal(id);
+
         };
 
         window.renderTrackingMap = function(id) {
@@ -333,7 +371,110 @@
             trackingMap.setView([loc.lat, loc.lng], 16);
             trackingMap.invalidateSize();
         };
+        window.openTrackingModal = function(id) {
+            const modal = document.getElementById('modal-tracking-kurir');
+            if (!modal) return;
 
+            const loc = liveLocations[id];
+            const user = cloudKurirList[id] || null;
+
+            const mapModalEl = document.getElementById('tracking-map-modal');
+            const titleEl = document.getElementById('modal-tracking-title');
+            const subtitleEl = document.getElementById('modal-tracking-subtitle');
+            const latlngEl = document.getElementById('modal-tracking-latlng');
+            const jamEl = document.getElementById('modal-tracking-jam');
+            const alamatEl = document.getElementById('modal-tracking-alamat');
+
+            const hasLoc = loc && typeof loc.lat === 'number' && typeof loc.lng === 'number';
+            const latlngText = hasLoc ? `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : '-';
+
+            if (titleEl) titleEl.innerText = `Live Tracking - ${user?.nama || user?.username || 'Kurir'}`;
+            if (subtitleEl) subtitleEl.innerText = (hasLoc && loc?.jamTracking) ? `Update terakhir: ${loc.jamTracking} WIB` : 'Menunggu lokasi...';
+
+            // LAT,LNG clickable -> Google Maps
+            if (latlngEl) {
+                if (!hasLoc) {
+                    latlngEl.innerText = '-';
+                } else {
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${loc.lat},${loc.lng}`)}`;
+                    latlngEl.innerHTML = `<a href="${mapsUrl}" target="_blank" rel="noopener" class="text-primary font-bold underline">${latlngText}</a>`;
+                }
+            }
+
+            if (jamEl) jamEl.innerText = (loc && loc.jamTracking) ? loc.jamTracking : '-';
+            if (alamatEl) alamatEl.innerText = (loc && loc.alamatLengkap) ? loc.alamatLengkap : (hasLoc ? latlngText : '-');
+
+            modal.classList.remove('hidden');
+
+            if (!mapModalEl) return;
+
+            // CLEAN map modal: hapus map lama + reset container
+            if (window.__trackingModalMap) {
+                try { window.__trackingModalMap.remove(); } catch (e) {}
+                window.__trackingModalMap = null;
+            }
+            mapModalEl.innerHTML = '';
+
+            // Kalau belum ada lokasi: tetap tampil area peta (tapi tanpa tile/marker)
+            if (!hasLoc) {
+                mapModalEl.innerHTML = `<div class="w-full h-full flex items-center justify-center text-[11px] text-slate-400">Belum ada lokasi</div>`;
+                return;
+            }
+
+            // Bikin map baru yang rapi
+            const map = L.map(mapModalEl, { zoomControl: false }).setView([loc.lat, loc.lng], 16);
+            window.__trackingModalMap = map;
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            const markerHtml = `
+                <div style="
+                    width:28px;height:28px;border-radius:50%;
+                    background:linear-gradient(135deg,#0066FF 0%,#008CFF 100%);
+                    border:2px solid #fff;
+                    box-shadow:0 6px 16px rgba(0,102,255,.35);
+                    display:flex;align-items:center;justify-content:center;
+                    color:#fff;font-size:14px;line-height:1;">
+                    📍
+                </div>
+            `;
+
+            const customIcon = L.divIcon({
+                html: markerHtml,
+                iconSize: [28, 28],
+                iconAnchor: [14, 28]
+            });
+
+            const marker = L.marker([loc.lat, loc.lng], { icon: customIcon }).addTo(map);
+
+            const namaKurir = (user?.nama || user?.username || 'Kurir')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;');
+
+            const popupHtml = `
+                <div style="text-align:center; font-family: Inter, sans-serif; padding:4px 6px;">
+                    <div style="font-weight:800; font-size:12px; color:#0f172a; margin-bottom:2px;">${namaKurir}</div>
+                    <div style="font-size:10px; color:#2563eb; font-weight:800; margin-bottom:2px;">📍 ${latlngText}</div>
+                    <div style="font-size:10px; color:#6b7280; font-weight:700;">${loc?.jamTracking || '-'} WIB</div>
+                </div>
+            `;
+
+            marker.bindPopup(popupHtml, { closeButton: true, autoPan: false }).openPopup();
+
+            setTimeout(() => map.invalidateSize(), 50);
+        };
+        window.closeTrackingModal = function() {
+            const modal = document.getElementById('modal-tracking-kurir');
+            if (modal) modal.classList.add('hidden');
+
+            if (window.__trackingModalMap) {
+                window.__trackingModalMap.remove();
+                window.__trackingModalMap = null;
+            }
+        };
         function getWibDateTimeString() {
             const wib = getWibDate();
             return {
