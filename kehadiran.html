@@ -570,7 +570,7 @@
       miniCtx.fillRect(0, 0, miniCanvas.width, miniCanvas.height);
       miniCtx.drawImage(canv, x, y, drawWidth, drawHeight);
     
-      const dataUrl = miniCanvas.toDataURL('image/jpeg', 0.25);
+      const dataUrl = miniCanvas.toDataURL('image/jpeg', 1);
       document.getElementById('img-preview').src = dataUrl;
       
       fetch(dataUrl).then(res => res.blob()).then(blob => { fileBlobFinal = blob; });
