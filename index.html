@@ -1456,15 +1456,15 @@
             </div>
 
             <div id="screen-preview" class="screen p-2 sm:p-4 space-y-3">
-                <div id="canvas-nota" class="receipt-card max-w-[340px] mx-auto">
+                <div id="canvas-nota" class="receipt-card max-w-[380px] mx-auto">
 
                     <div class="receipt-head">
-                        <h3 class="font-extrabold text-sm sm:text-base tracking-wide">SAHABATKU DELIVERY</h3>
-                        <p class="text-[9px] sm:text-[10px] text-white/80 mt-0.5">Jatibarang, Indramayu</p>
+                        <h3 class="font-extrabold text-base sm:text-lg tracking-wide">SAHABATKU DELIVERY</h3>
+                        <p class="text-[10px] sm:text-[11px] text-white/80 mt-0.5">Jatibarang, Indramayu</p>
                     </div>
 
                     <div class="receipt-body">
-                        <div class="receipt-info-grid text-[10px]">
+                        <div class="receipt-info-grid text-[11px]">
                             <div><span class="ri-label">Nomor Nota</span><span class="ri-value" id="p-nota-num">NT-******</span></div>
                             <div><span class="ri-label">Tanggal</span><span class="ri-value" id="p-nota-date">00/00/0000 00:00</span></div>
                             <div><span class="ri-label">Kurir</span><span class="ri-value" id="p-nota-kurir">-</span></div>
@@ -1475,7 +1475,7 @@
                             <span class="rst-label">Rincian Pesanan</span>
                             <span class="rst-count" id="p-item-count">0 item</span>
                         </div>
-                        <table class="receipt-item-table text-[10px] sm:text-[11px] text-left">
+                        <table class="receipt-item-table text-[11px] sm:text-[12px] text-left">
                             <thead>
                                 <tr>
                                     <th class="text-left">Item</th>
@@ -1488,29 +1488,29 @@
                         </table>
 
                         <div class="receipt-divider"></div>
-                        <div class="text-[10px] sm:text-[11px] space-y-0.5 sm:space-y-1">
+                        <div class="text-[11px] sm:text-[12px] space-y-1 sm:space-y-1.5">
                             <div class="flex justify-between text-slate-500"><span>Subtotal Item</span><span id="p-subtotal">0</span></div>
                             <div class="flex justify-between text-slate-500"><span>Ongkir</span><span id="p-ongkir">0</span></div>
                             <div class="flex justify-between text-slate-500"><span>Tambahan Biaya</span><span id="p-biaya">0</span></div>
-                            <div id="p-rincian-biaya-list" class="pl-2 space-y-0.5 text-[10px] text-slate-400 hidden"></div>
+                            <div id="p-rincian-biaya-list" class="pl-2 space-y-0.5 text-[10.5px] text-slate-400 hidden"></div>
                         </div>
 
-                        <div class="receipt-total-box mt-2.5">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-white/70">Total</span>
-                            <span class="text-base font-black" id="p-total">0</span>
+                        <div class="receipt-total-box mt-3">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Total</span>
+                            <span class="text-lg font-black" id="p-total">0</span>
                         </div>
 
                         <div class="receipt-divider"></div>
-                        <div class="text-center space-y-0.5 sm:space-y-1">
-                            <p class="text-[9px] sm:text-[10px] text-slate-400 italic">Terima kasih telah menggunakan jasa Sahabatku Delivery.</p>
-                            <p class="text-[9px] sm:text-[10px] font-medium text-slate-600">Pastikan Selalu Order Melalui WhatsApp Resmi Kami:<br>
-                               <span class="text-primary font-bold text-[10px] sm:text-xs">0821-1845-415</span>
+                        <div class="text-center space-y-1">
+                            <p class="text-[10px] sm:text-[11px] text-slate-400 italic">Terima kasih telah menggunakan jasa Sahabatku Delivery.</p>
+                            <p class="text-[10px] sm:text-[11px] font-medium text-slate-600">Pastikan Selalu Order Melalui WhatsApp Resmi Kami:<br>
+                               <span class="text-primary font-bold text-xs sm:text-sm">0821-1845-415</span>
                             </p>
                         </div>
                     </div>
                 </div>
             
-                <div id="preview-action-buttons" class="grid gap-2 max-w-[340px] mx-auto">
+                <div id="preview-action-buttons" class="grid gap-2 max-w-[380px] mx-auto">
                     <button id="btn-simpan-gambar" onclick="saveNotaAsJpg()" class="py-2.5 bg-slate-800 text-white font-medium text-[10px] rounded-xl flex items-center justify-center gap-2 shadow active:scale-95 transition-transform">
                         <i data-lucide="image" class="w-3.5 h-3.5"></i> Simpan Gambar
                     </button>
@@ -1891,12 +1891,12 @@
     </div>
 
     <div id="modal-preview-nota" class="hidden fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4">
-        <div class="w-full max-w-[340px] space-y-3 max-h-[90vh] overflow-y-auto">
+        <div class="w-full max-w-[380px] space-y-3 max-h-[90vh] overflow-y-auto">
 
-            <div id="canvas-nota-admin" class="receipt-card text-[10px] leading-tight">
+            <div id="canvas-nota-admin" class="receipt-card text-[11px] leading-tight">
                 <div class="receipt-head">
-                    <h3 class="font-extrabold text-sm tracking-wide">SAHABATKU DELIVERY</h3>
-                    <p class="text-[9px] text-white/80 mt-0.5">Jatibarang, Indramayu</p>
+                    <h3 class="font-extrabold text-base tracking-wide">SAHABATKU DELIVERY</h3>
+                    <p class="text-[10px] text-white/80 mt-0.5">Jatibarang, Indramayu</p>
                 </div>
                 <div class="receipt-body text-center py-6 text-slate-400 text-xs">Memuat data nota...</div>
             </div>
