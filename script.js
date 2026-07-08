@@ -4551,7 +4551,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
             let trxMitraEl = document.getElementById('laporan-total-trx-mitra');
             if (!trxMitraEl) {
-                const parent = document.querySelector('#screen-admin-laporan .grid.grid-cols-2.gap-2');
+                const parent = document.querySelector('#screen-admin-laporan .grid.grid-cols-2.gap-2\\.5.pt-1');
                 if (parent) {
                     parent.insertAdjacentHTML('beforeend', `
                         <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800">
