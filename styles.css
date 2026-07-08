@@ -338,7 +338,7 @@ body { -webkit-tap-highlight-color: transparent; }
   position: relative; margin-top: -20px;
 }
 .receipt-notch-wrap svg { display: block; width: 100%; height: 22px; }
-.receipt-body { padding: 4px 16px 16px; }
+.receipt-body { padding: 6px 18px 20px; }
 /* Garis solid tipis, bukan dashed. Pola dashed harus digambar per-segmen
    berulang oleh html2canvas di sepanjang garis — solid cukup satu langkah
    dan tetap terlihat rapi/modern sebagai pemisah bagian nota. */
@@ -416,7 +416,7 @@ select[multiple] {
   /* 2 warna saja (bukan 3 titik gradient) — lebih ringan dirender, hasil
      visual tetap biru gradasi modern seperti sebelumnya. */
   background: linear-gradient(135deg, #0058E6 0%, #14A0FF 100%);
-  padding: 20px 16px 34px;
+  padding: 22px 18px 38px;
 }
 .receipt-head .receipt-logo-chip {
   width: 40px; height: 40px; border-radius: 12px;
@@ -434,20 +434,20 @@ select[multiple] {
   background: linear-gradient(180deg, #f8fafc, #f1f5f9);
   border: 1px solid #eef2f7;
   border-radius: 16px;
-  padding: 12px;
-  margin-top: -18px;
+  padding: 14px;
+  margin-top: -20px;
   position: relative;
   z-index: 1;
 }
 .receipt-info-grid .ri-label {
-  display: block; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.08em;
+  display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em;
   color: #94a3b8; font-weight: 700; margin-bottom: 1px;
 }
-.receipt-info-grid .ri-value { font-size: 11px; font-weight: 800; color: #1e293b; }
+.receipt-info-grid .ri-value { font-size: 12.5px; font-weight: 800; color: #1e293b; }
 
 .receipt-status-pill {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 9px; border-radius: 999px; font-size: 9.5px; font-weight: 800;
+  padding: 3px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.03em;
   background: rgba(0,102,255,0.12); color: #0066FF;
 }
@@ -455,24 +455,24 @@ select[multiple] {
 /* Section title dengan badge jumlah item */
 .receipt-section-title {
   display: flex; align-items: center; justify-content: space-between;
-  margin-top: 14px; margin-bottom: 4px;
+  margin-top: 16px; margin-bottom: 6px;
 }
 .receipt-section-title span.rst-label {
-  font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8;
+  font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8;
 }
 .receipt-section-title span.rst-count {
-  font-size: 9px; font-weight: 800; padding: 1px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; padding: 2px 9px; border-radius: 999px;
   background: rgba(0,102,255,0.1); color: #0066FF;
 }
 
 /* Tabel item nota — zebra + rapi */
 .receipt-item-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .receipt-item-table thead th {
-  font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8;
-  font-weight: 800; padding: 5px 6px; border-bottom: 1px solid #e2e8f0;
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8;
+  font-weight: 800; padding: 6px 6px; border-bottom: 1px solid #e2e8f0;
 }
 .receipt-item-table tbody td {
-  font-size: 10.5px; padding: 6px; color: #334155; vertical-align: middle;
+  font-size: 12px; padding: 8px 6px; color: #334155; vertical-align: middle;
 }
 .receipt-item-table tbody tr:nth-child(odd) { background: #f8fafc; }
 .receipt-item-table tbody tr td:first-child { border-radius: 8px 0 0 8px; font-weight: 700; }
