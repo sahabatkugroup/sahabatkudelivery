@@ -1,4 +1,4 @@
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, remove, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         const firebaseConfig = {
         apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
@@ -12,6 +12,98 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+
+        // ===================================================================
+        // SISTEM NOTIFIKASI TOAST & KONFIRMASI MODERN
+        // Pengganti alert()/confirm() bawaan browser di seluruh aplikasi.
+        // ===================================================================
+        let __toastSeq = 0;
+        window.toast = function(message, type) {
+            if (!message) return;
+            if (!type) {
+                const m = String(message).toLowerCase();
+                if (m.includes('berhasil') || m.includes('tersimpan') || m.includes('sukses') || m.includes('terkirim')) {
+                    type = 'success';
+                } else if (m.includes('gagal') || m.includes('tidak terdaftar') || m.includes('salah') || m.includes('gangguan')
+                    || m.includes('dinonaktifkan') || m.includes('tidak ditemukan') || m.includes('tidak boleh')
+                    || m.includes('mohon') || m.includes('lengkapi') || m.includes('kosong') || m.includes('sudah dipakai')
+                    || m.includes('sudah terdaftar') || m.includes('belum ada')) {
+                    type = 'warning';
+                } else {
+                    type = 'info';
+                }
+            }
+            const container = document.getElementById('toast-container');
+            if (!container) { console.log('[toast]', message); return; }
+
+            const styleMap = {
+                success: { bg: 'bg-emerald-500', icon: 'check-circle-2' },
+                warning: { bg: 'bg-rose-500', icon: 'alert-circle' },
+                info: { bg: 'bg-slate-800', icon: 'info' }
+            };
+            const s = styleMap[type] || styleMap.info;
+
+            // Batasi maksimal 3 toast tampil bersamaan agar ringan di HP RAM kecil
+            while (container.children.length >= 3) {
+                container.removeChild(container.firstChild);
+            }
+
+            const id = 'toast-' + (++__toastSeq);
+            const el = document.createElement('div');
+            el.id = id;
+            el.className = `${s.bg} text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg flex items-start gap-2.5 pointer-events-auto toast-enter`;
+            el.innerHTML = `<i data-lucide="${s.icon}" class="w-4 h-4 mt-0.5 shrink-0"></i><span class="leading-snug">${message}</span>`;
+            container.appendChild(el);
+            if (window.lucide) lucide.createIcons();
+
+            requestAnimationFrame(() => el.classList.add('toast-show'));
+
+            const lifeMs = 3200;
+            const timer = setTimeout(() => removeToast(el), lifeMs);
+            el.addEventListener('click', () => { clearTimeout(timer); removeToast(el); });
+
+            function removeToast(node) {
+                if (!node || !node.parentNode) return;
+                node.classList.add('toast-exit');
+                setTimeout(() => node.remove(), 250);
+            }
+        };
+
+        // Modal konfirmasi kustom, menggantikan window.confirm().
+        // Pemakaian: const ok = await showConfirm("Yakin hapus data ini?");
+        window.showConfirm = function(message, opts) {
+            opts = opts || {};
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modal-confirm-global');
+                if (!modal) { resolve(window.confirm(message)); return; }
+
+                const msgEl = document.getElementById('confirm-message');
+                const titleEl = document.getElementById('confirm-title');
+                const okBtn = document.getElementById('confirm-btn-ok');
+                const cancelBtn = document.getElementById('confirm-btn-cancel');
+
+                if (msgEl) msgEl.textContent = message || 'Apakah Anda yakin?';
+                if (titleEl) titleEl.textContent = opts.title || 'Konfirmasi';
+                if (okBtn) okBtn.textContent = opts.okText || 'Ya, Lanjutkan';
+                if (cancelBtn) cancelBtn.textContent = opts.cancelText || 'Batal';
+
+                modal.classList.remove('hidden');
+                if (window.lucide) lucide.createIcons();
+
+                function cleanup(result) {
+                    modal.classList.add('hidden');
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    resolve(result);
+                }
+                function onOk() { cleanup(true); }
+                function onCancel() { cleanup(false); }
+
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+            });
+        };
+
         let userSession = null; 
         let currentScreen = 'screen-login';
         let navigationHistory = [];
@@ -307,17 +399,23 @@
             kurirEntries.forEach(([id, user]) => {
                 const loc = liveLocations[id];
                 const hasLocation = loc && typeof loc.lat === 'number' && typeof loc.lng === 'number';
+                const nama = user.nama || user.username || '?';
+                const initial = nama.trim().charAt(0).toUpperCase();
 
                 container.innerHTML += `
-                    <button onclick="selectTrackingKurir('${id}')" class="w-full flex items-center justify-between px-3 py-2 rounded-xl border bg-slate-50 dark:bg-slate-800 dark:border-slate-700 hover:border-primary text-left transition-all active:scale-95">
-                        <div>
-                            <div class="font-bold text-sm">${user.nama || user.username}</div>
-                            <div class="text-[10px] text-slate-400">${hasLocation ? 'Lokasi terdeteksi' : 'Belum ada lokasi'}</div>
+                    <button onclick="selectTrackingKurir('${id}')" class="tracking-item w-full text-left active:scale-95">
+                        <div class="tracking-avatar">${initial}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-bold text-sm truncate">${nama}</div>
+                            <div class="text-[10px] ${hasLocation ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'} flex items-center gap-1 mt-0.5">
+                                ${hasLocation ? '<span class="tracking-live-dot"></span> Lokasi terdeteksi' : 'Belum ada lokasi'}
+                            </div>
                         </div>
-                        <span class="w-3 h-3 rounded-full ${hasLocation ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'} shrink-0"></span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0"></i>
                     </button>
                 `;
             });
+            if (window.lucide) lucide.createIcons();
         };
 
         window.selectTrackingKurir = function(id) {
@@ -568,8 +666,8 @@
                         launchApplicationSession("screen-dashboard");
                         if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
                     } else if (currentKurir && currentKurir.status !== 'aktif') {
-                        alert("Sesi berakhir. Akun Anda telah dinonaktifkan oleh Admin.");
-                        handleLogout();
+                        toast("Sesi berakhir. Akun Anda telah dinonaktifkan oleh Admin.");
+                        performLogout();
                     }
                 }
             });
@@ -756,6 +854,9 @@
                     }, 50);
                 } else if (userSession.role === 'kurir') {
                     launchApplicationSession("screen-dashboard");
+                    // Mulai kirim lokasi live SEKARANG JUGA saat refresh/auto-login,
+                    // jangan menunggu data 'users' selesai sinkron dari cloud dulu.
+                    if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
                 }
             }
             document.addEventListener('click', function(e) {
@@ -775,6 +876,27 @@
             if (typeof initOrderDepositModule === 'function') initOrderDepositModule();
             if (typeof renderKurirNotifications === 'function') renderKurirNotifications();
         });
+        window.toggleLoginPasswordVisibility = function() {
+            const input = document.getElementById('login-password');
+            const btn = document.getElementById('btn-toggle-login-pass');
+            if (!input || !btn) return;
+            const showing = input.type === 'text';
+            input.type = showing ? 'password' : 'text';
+            btn.innerHTML = showing
+                ? '<i data-lucide="eye" class="w-4 h-4"></i>'
+                : '<i data-lucide="eye-off" class="w-4 h-4"></i>';
+            if (window.lucide) lucide.createIcons();
+        };
+
+        function setLoginButtonLoading(isLoading) {
+            const btnSubmit = document.getElementById('btn-login-submit');
+            const label = document.getElementById('btn-login-submit-text');
+            if (!btnSubmit) return;
+            btnSubmit.disabled = isLoading;
+            btnSubmit.classList.toggle('opacity-80', isLoading);
+            if (label) label.innerText = isLoading ? 'Memverifikasi...' : 'Masuk';
+        }
+
         window.handleLogin = function(e) {
             if (e) e.preventDefault();
         
@@ -783,14 +905,12 @@
             const btnSubmit = document.getElementById('btn-login-submit');
         
             if (!userIn || !passIn) {
-                alert("Mohon masukkan username dan password Anda.");
+                if (typeof toast === 'function') toast('Mohon masukkan username dan password Anda.', 'warning');
+                else toast("Mohon masukkan username dan password Anda.");
                 return;
             }
         
-            if (btnSubmit) {
-                btnSubmit.disabled = true;
-                btnSubmit.innerText = "MEMVERIFIKASI...";
-            }
+            setLoginButtonLoading(true);
         
             // 1) Cek login admin utama
             get(ref(db, 'loginadmin'))
@@ -808,10 +928,7 @@
                             launchApplicationSession("screen-admin-dashboard");
                             applyManajemenAccess("Owner");
                         
-                            if (btnSubmit) {
-                                btnSubmit.disabled = false;
-                                btnSubmit.innerText = "Masuk Sistem";
-                            }
+                            setLoginButtonLoading(false);
                             return true;
                         }
                     }
@@ -850,10 +967,7 @@
                                     applyManajemenAccess(m.kategori || "-");
                                 }, 100);
         
-                                if (btnSubmit) {
-                                    btnSubmit.disabled = false;
-                                    btnSubmit.innerText = "Masuk Sistem";
-                                }
+                                setLoginButtonLoading(false);
                                 return true;
                             }
                         }
@@ -886,14 +1000,11 @@
                         }
                     }
         
-                    if (btnSubmit) {
-                        btnSubmit.disabled = false;
-                        btnSubmit.innerText = "Masuk Sistem";
-                    }
+                    setLoginButtonLoading(false);
         
                     if (foundUser) {
                         if (foundUser.status !== "aktif") {
-                            alert("Gagal masuk! Status akun Anda dinonaktifkan atau diblokir oleh Admin.");
+                            toast("Gagal masuk! Status akun Anda dinonaktifkan atau diblokir oleh Admin.");
                             return;
                         }
         
@@ -914,44 +1025,42 @@
                         launchApplicationSession("screen-dashboard");
                         if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
                     } else {
-                        alert("Username & Password tidak terdaftar atau salah!");
+                        toast("Username & Password tidak terdaftar atau salah!");
                     }
                 })
                 .catch((error) => {
                     console.error("Login Error: ", error);
-                    alert("Terjadi gangguan koneksi ke server: " + error.message);
-                    if (btnSubmit) {
-                        btnSubmit.disabled = false;
-                        btnSubmit.innerText = "Masuk Sistem";
-                    }
+                    toast("Terjadi gangguan koneksi ke server: " + error.message);
+                    setLoginButtonLoading(false);
                 });
         };
-        window.changePassword = function() {
+        window.changePassword = async function() {
             const newPassword = document.getElementById('new-password').value.trim();
             
             if (!newPassword) {
-                alert("Mohon masukkan password baru!");
+                toast("Mohon masukkan password baru!");
                 return;
             }
             
             if (!userSession || !userSession.id) {
-                alert("Sesi tidak ditemukan. Silakan login ulang.");
+                toast("Sesi tidak ditemukan. Silakan login ulang.");
                 return;
             }
         
-            if (confirm("Apakah Anda yakin ingin mengubah password Anda?")) {
+            const ok = await showConfirm("Apakah Anda yakin ingin mengubah password Anda?");
+            if (ok) {
                 const dbRef = ref(db, 'users/' + userSession.id);
                 
                 update(dbRef, {
                     password: newPassword
                 })
                 .then(() => {
-                    alert("Password berhasil diperbarui! Silakan login kembali untuk keamanan.");
+                    toast("Password berhasil diperbarui! Silakan login kembali untuk keamanan.");
                     document.getElementById('new-password').value = '';
-                    handleLogout(); 
+                    performLogout(); 
                 })
                 .catch((error) => {
-                    alert("Gagal mengubah password: " + error.message);
+                    toast("Gagal mengubah password: " + error.message);
                 });
             }
         };
@@ -960,11 +1069,11 @@
             const newPassword = document.getElementById('admin-password').value.trim();
         
             if (!newUsername || !newPassword) {
-                alert("Mohon isi username dan password baru!");
+                toast("Mohon isi username dan password baru!");
                 return;
             }
         
-            if (!confirm("Yakin ingin mengubah username dan password akun ini?")) return;
+            if (!(await showConfirm("Yakin ingin mengubah username dan password akun ini?"))) return;
         
             try {
                 if (userSession && userSession.role === 'owner') {
@@ -978,38 +1087,38 @@
                         password: newPassword
                     });
                 } else {
-                    alert("Akun tidak dikenali.");
+                    toast("Akun tidak dikenali.");
                     return;
                 }
         
-                alert("Username dan password berhasil diubah!");
+                toast("Username dan password berhasil diubah!");
                 document.getElementById('admin-username').value = '';
                 document.getElementById('admin-password').value = '';
                 document.getElementById('admin-current-username').value = newUsername;
                 userSession.username = newUsername;
                 localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
             } catch (err) {
-                alert("Gagal mengubah login: " + err.message);
+                toast("Gagal mengubah login: " + err.message);
             }
         };
 
-        window.changeKurirLogin = function() {
+        window.changeKurirLogin = async function() {
             const newUsername = document.getElementById('new-username').value.trim().toLowerCase();
             const newPassword = document.getElementById('new-password').value.trim();
         
             if (!newUsername || !newPassword) {
-                alert("Mohon isi username dan password baru!");
+                toast("Mohon isi username dan password baru!");
                 return;
             }
         
             if (!userSession || !userSession.id || userSession.role !== 'kurir') {
-                alert("Sesi kurir tidak ditemukan!");
+                toast("Sesi kurir tidak ditemukan!");
                 return;
             }
         
             const currentUser = cloudKurirList[userSession.id];
             if (!currentUser) {
-                alert("Data kurir tidak ditemukan!");
+                toast("Data kurir tidak ditemukan!");
                 return;
             }
         
@@ -1018,25 +1127,25 @@
             });
         
             if (duplicate) {
-                alert("Username sudah dipakai kurir lain!");
+                toast("Username sudah dipakai kurir lain!");
                 return;
             }
         
-            if (!confirm("Yakin ingin mengubah username dan password kurir?")) return;
+            if (!(await showConfirm("Yakin ingin mengubah username dan password kurir?"))) return;
         
             update(ref(db, `users/${userSession.id}`), {
                 username: newUsername,
                 password: newPassword
             })
             .then(() => {
-                alert("Username dan password kurir berhasil diubah!");
+                toast("Username dan password kurir berhasil diubah!");
                 userSession.username = newUsername;
                 localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
                 document.getElementById('new-username').value = '';
                 document.getElementById('new-password').value = '';
             })
             .catch((error) => {
-                alert("Gagal mengubah login kurir: " + error.message);
+                toast("Gagal mengubah login kurir: " + error.message);
             });
         };
         window.launchApplicationSession = function(targetDashboard) {
@@ -1053,17 +1162,32 @@
             const navDashboardBtn = document.getElementById('nav-dashboard-btn');
             const navNotaBtn = document.getElementById('nav-nota-btn');
             const navSistemBtn = document.getElementById('nav-sistem-btn');
+            const globalNav = document.getElementById('global-nav');
+            const mainLayoutEl = document.getElementById('main-layout');
+            // Bottom nav (Dashboard / + / Sistem) hanya untuk role kurir.
+            // Admin (owner/manajemen) tidak menampilkan nav bawah sama sekali.
             const showKurirNav = userSession && userSession.role === 'kurir';
-            const showOwnerNav = userSession && userSession.role === 'owner';
-            
+
             [navDashboardBtn, navNotaBtn, navSistemBtn].forEach(btn => {
                 if (!btn) return;
-                if (showKurirNav || showOwnerNav) {
+                if (showKurirNav) {
                     btn.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
                 } else {
                     btn.classList.add('hidden', 'opacity-0', 'pointer-events-none');
                 }
             });
+
+            if (globalNav) {
+                if (showKurirNav) {
+                    globalNav.classList.remove('hidden');
+                } else {
+                    globalNav.classList.add('hidden');
+                }
+            }
+            if (mainLayoutEl) {
+                mainLayoutEl.classList.toggle('pb-20', showKurirNav);
+                mainLayoutEl.classList.toggle('pb-4', !showKurirNav);
+            }
         
             const kurirBox = document.getElementById('security-account-box');
             const adminBox = document.getElementById('admin-security-account-box');
@@ -1108,6 +1232,7 @@
             const adminMenus = [
                 'screen-admin-kurir',
                 'screen-admin-manajemen',
+                'screen-admin-leader',
                 'screen-admin-nota',
                 'screen-admin-mitra',
                 'screen-admin-laporan',
@@ -1145,35 +1270,78 @@
             if (userSession && userSession.role === 'manajemen') {
                 applyManajemenAccess(userSession.kategori || '-');
             }
+
+            // Reminder otomatis "belum input mitra" — hanya untuk kurir
+            if (userSession && userSession.role === 'kurir') {
+                if (typeof startMitraReminderWatcher === 'function') startMitraReminderWatcher();
+            } else {
+                if (typeof stopMitraReminderWatcher === 'function') stopMitraReminderWatcher();
+            }
         
             navigateTo(targetDashboard);
         };
 
-        window.handleLogout = function() {
-            if(confirm("Apakah Anda yakin ingin keluar dari sistem Sahabatku Delivery?")) {
-                localStorage.removeItem('sahabatku_session');
-                userSession = {};
-                
-                if(document.getElementById('login-username')) document.getElementById('login-username').value = '';
-                if(document.getElementById('login-password')) document.getElementById('login-password').value = '';
-                
-                ['nav-dashboard-btn', 'nav-nota-btn', 'nav-sistem-btn'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.classList.add('hidden', 'opacity-0', 'pointer-events-none');
-                    }
-                });
-                if (watchId) {
-                    navigator.geolocation.clearWatch(watchId);
-                    watchId = null;
+        function performLogout() {
+            localStorage.removeItem('sahabatku_session');
+            userSession = {};
+            if (typeof stopMitraReminderWatcher === 'function') stopMitraReminderWatcher();
+            
+            if(document.getElementById('login-username')) document.getElementById('login-username').value = '';
+            if(document.getElementById('login-password')) document.getElementById('login-password').value = '';
+            
+            ['nav-dashboard-btn', 'nav-nota-btn', 'nav-sistem-btn'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('hidden', 'opacity-0', 'pointer-events-none');
                 }
-                navigateTo('screen-login');
+            });
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
             }
+            navigateTo('screen-login');
+        }
+
+        window.handleLogout = async function() {
+            const ok = await showConfirm("Apakah Anda yakin ingin keluar dari sistem Sahabatku Delivery?");
+            if (ok) performLogout();
+        }
+
+        const SCREEN_META = {
+            'screen-nota': { title: 'Buat Nota', icon: 'receipt' },
+            'screen-preview': { title: 'Pratinjau Nota', icon: 'eye' },
+            'screen-riwayat': { title: 'Riwayat Nota', icon: 'history' },
+            'screen-rekap': { title: 'Rekap Kerja', icon: 'bar-chart-4' },
+            'screen-statistik': { title: 'Statistik & Peringkat', icon: 'trending-up' },
+            'screen-mitra': { title: 'Mitra & Transaksi', icon: 'store' },
+            'screen-ongkir': { title: 'Cek Ongkir', icon: 'route' },
+            'screen-pengaturan': { title: 'Pengaturan', icon: 'settings-2' },
+            'screen-admin-kurir': { title: 'Data Akun Kurir', icon: 'users' },
+            'screen-admin-manajemen': { title: 'Manajemen', icon: 'users-round' },
+            'screen-admin-leader': { title: 'Leader & Penilaian', icon: 'crown' },
+            'screen-admin-nota': { title: 'Semua Nota Kurir', icon: 'file-spreadsheet' },
+            'screen-admin-mitra': { title: 'Kelola Mitra', icon: 'store' },
+            'screen-admin-laporan': { title: 'Laporan', icon: 'file-down' },
+            'screen-admin-tracking': { title: 'Tracking Kurir', icon: 'map-pin' },
+            'screen-admin-kpi': { title: 'KPI & Penghargaan', icon: 'trophy' },
+            'screen-admin-absensi': { title: 'Absensi', icon: 'calendar-check' },
+            'screen-admin-ongkir': { title: 'Wilayah Ongkir', icon: 'route' },
+            'screen-admin-order-deposit': { title: 'Input Deposit', icon: 'clipboard-list' },
+            'screen-admin-testimonial': { title: 'Testimoni Customer', icon: 'message-circle-more' },
+            'screen-admin-notifikasi': { title: 'Kirim Notifikasi', icon: 'bell-ring' }
+        };
+        function applyAppBarMeta(screenId) {
+            const appBarTitle = document.getElementById('app-bar-title');
+            const appBarIcon = document.getElementById('app-bar-icon');
+            const meta = SCREEN_META[screenId] || { title: screenId.replace('screen-', '').replace(/-/g, ' ').toUpperCase(), icon: 'layout-grid' };
+            if (appBarTitle) appBarTitle.innerText = meta.title;
+            if (appBarIcon) appBarIcon.setAttribute('data-lucide', meta.icon);
+            if (window.lucide) lucide.createIcons();
         }
 
         window.navigateTo = function(screenId) {
             if (screenId === 'screen-nota' && (!userSession || userSession.role !== 'kurir')) {
-                alert('Menu Nota hanya untuk login kurir.');
+                toast('Menu Nota hanya untuk login kurir.');
                 return;
             }
             if (screenId === 'screen-admin-laporan') {
@@ -1206,6 +1374,8 @@
             if (screenId === 'screen-admin-notifikasi') {
                 setTimeout(() => {
                     populateNotifKurirList();
+                    const senderLabelEl = document.getElementById('notif-sender-label');
+                    if (senderLabelEl) senderLabelEl.innerText = getSenderInfo().senderLabel;
                 }, 100);
             }
             
@@ -1214,6 +1384,17 @@
                     const bulanEl = document.getElementById('kpi-filter-bulan');
                     if (bulanEl && !bulanEl.value) bulanEl.value = getWibRawDate().slice(0, 7);
                     renderKPISection(currentKPISection);
+                }, 100);
+            }
+            if (screenId === 'screen-admin-leader') {
+                setTimeout(() => {
+                    if (typeof populateAnggotaDropdownLeader === 'function') populateAnggotaDropdownLeader();
+                    if (typeof renderLeaderList === 'function') renderLeaderList();
+                }, 100);
+            }
+            if (screenId === 'screen-statistik') {
+                setTimeout(() => {
+                    if (typeof renderStatistikKurir === 'function') renderStatistikKurir();
                 }, 100);
             }
             if (screenId === currentScreen) return;
@@ -1229,8 +1410,7 @@
                 } else {
                     appBar.classList.remove('hidden');
                     appBar.classList.add('flex');
-                    const appBarTitle = document.getElementById('app-bar-title');
-                    if (appBarTitle) appBarTitle.innerText = screenId.replace('screen-', '').toUpperCase();
+                    applyAppBarMeta(screenId);
                 }
             }
         
@@ -1267,8 +1447,7 @@
                         appBar.classList.remove('flex');
                         appBar.classList.add('hidden');
                     } else {
-                        const appBarTitle = document.getElementById('app-bar-title');
-                        if (appBarTitle) appBarTitle.innerText = prev.replace('screen-', '').toUpperCase();
+                        applyAppBarMeta(prev);
                     }
                 }
 
@@ -1363,12 +1542,12 @@
             const status = document.getElementById('ak-status').value;
         
             if (!nama || !username || !password || !tglGabung) {
-                alert('Mohon lengkapi seluruh form akun kurir!');
+                toast('Mohon lengkapi seluruh form akun kurir!');
                 return;
             }
         
             if (leader && !isLeaderExist(leader)) {
-                alert('Leader yang dipilih belum ada di data leader!');
+                toast('Leader yang dipilih belum ada di data leader!');
                 return;
             }
         
@@ -1393,7 +1572,7 @@
                 );
         
                 if (isDuplicated) {
-                    alert(`Username "${username}" sudah terdaftar! Gunakan username yang berbeda.`);
+                    toast(`Username "${username}" sudah terdaftar! Gunakan username yang berbeda.`);
                     return;
                 }
         
@@ -1402,12 +1581,12 @@
         
             set(targetRef, userData)
                 .then(() => {
-                    alert('Akun kurir berhasil disimpan!');
+                    toast('Akun kurir berhasil disimpan!');
                     resetFormKurir();
                 })
                 .catch((error) => {
                     console.error("Error saving to Firebase:", error);
-                    alert('Gagal menyimpan data: ' + error.message);
+                    toast('Gagal menyimpan data: ' + error.message);
                 });
         };
         window.resetFormKurir = function() {
@@ -1456,11 +1635,11 @@
             const tglGabung = document.getElementById('edit-kurir-tgl-gabung').value;
             const status = document.getElementById('edit-kurir-status').value;
         
-            if (!id) return alert('Data kurir tidak ditemukan!');
-            if (!nama || !username || !password || !tglGabung) return alert('Lengkapi semua data kurir!');
+            if (!id) return toast('Data kurir tidak ditemukan!');
+            if (!nama || !username || !password || !tglGabung) return toast('Lengkapi semua data kurir!');
         
             if (leader && !isLeaderExist(leader)) {
-                alert('Leader yang dipilih belum ada di data leader!');
+                toast('Leader yang dipilih belum ada di data leader!');
                 return;
             }
         
@@ -1472,18 +1651,19 @@
                 tglGabung,
                 status
             }).then(() => {
-                alert('Data kurir berhasil diperbarui!');
+                toast('Data kurir berhasil diperbarui!');
                 closeEditKurirModal();
             }).catch(err => {
-                alert('Gagal update kurir: ' + err.message);
+                toast('Gagal update kurir: ' + err.message);
             });
         };
 
-        window.hapusAkunKurir = function(key) {
-            if (confirm("Apakah Anda yakin ingin menghapus akun kurir ini secara permanen dari database?")) {
+        window.hapusAkunKurir = async function(key) {
+            const ok = await showConfirm("Apakah Anda yakin ingin menghapus akun kurir ini secara permanen dari database?");
+            if (ok) {
                 remove(ref(db, `users/${key}`))
-                .then(() => alert("Akun kurir berhasil dihapus."))
-                .catch(err => alert("Gagal menghapus: " + err.message));
+                .then(() => toast("Akun kurir berhasil dihapus."))
+                .catch(err => toast("Gagal menghapus: " + err.message));
             }
         };
         let selectedKpiDetail = null;
@@ -1574,14 +1754,14 @@
         
             const passwordOngkir = input.value.trim();
             if (!passwordOngkir) {
-                alert('Password ongkir tidak boleh kosong!');
+                toast('Password ongkir tidak boleh kosong!');
                 return;
             }
         
             update(ref(db, `users/${key}`), {
                 ongkirPassword: passwordOngkir
             }).then(() => {
-                alert('Password ongkir berhasil disimpan!');
+                toast('Password ongkir berhasil disimpan!');
             });
         };
         
@@ -1594,7 +1774,7 @@
             update(ref(db, `users/${key}`), {
                 ongkirLocked: newStatus
             }).then(() => {
-                alert(newStatus ? 'Akses ongkir dikunci.' : 'Akses ongkir dibuka.');
+                toast(newStatus ? 'Akses ongkir dikunci.' : 'Akses ongkir dibuka.');
             });
         };
 
@@ -1608,8 +1788,9 @@
                 }
             }
         }
-        window.hapusNotaGlobal = function(key) {
-            if(confirm("Hapus nota ini secara permanen dari server cloud?")) {
+        window.hapusNotaGlobal = async function(key) {
+            const ok = await showConfirm("Hapus nota ini secara permanen dari server cloud?");
+            if (ok) {
                 const n = cloudNotaList?.[key];
                 const notaId = n?.id;
 
@@ -1617,13 +1798,13 @@
                 remove(ref(db, `nota/${key}`)).then(() => {
                     // ikut hapus ongkir history per nota
                     if (notaId) remove(ref(db, `ongkir_history/${notaId}`)).catch(() => {});
-                    alert('Nota dan history ongkir ikut terhapus!');
+                    toast('Nota dan history ongkir ikut terhapus!');
                 }).catch(err => {
-                    alert('Gagal hapus nota: ' + err.message);
+                    toast('Gagal hapus nota: ' + err.message);
                 });
             }
         };
-        window.hapusSemuaNotaTersaring = function() {
+        window.hapusSemuaNotaTersaring = async function() {
             const filterKurir = document.getElementById('an-filter-kurir')?.value || 'semua';
             const filterTgl = document.getElementById('an-filter-tgl')?.value || '';
             const filterBulan = document.getElementById('an-filter-bulan')?.value || '';
@@ -1637,22 +1818,23 @@
             });
         
             if (!hasil.length) {
-                alert('Tidak ada nota sesuai filter untuk dihapus.');
+                toast('Tidak ada nota sesuai filter untuk dihapus.');
                 return;
             }
         
-            if (!confirm(`Yakin hapus ${hasil.length} nota sesuai filter ini?`)) return;
+            if (!(await showConfirm(`Yakin hapus ${hasil.length} nota sesuai filter ini?`))) return;
         
             hasil.forEach(([key]) => {
                 remove(ref(db, `nota/${key}`));
             });
         
-            alert('Nota sesuai filter sedang dihapus.');
+            toast('Nota sesuai filter sedang dihapus.');
         };
         window.viewAdminNota = function(key) {
             const n = cloudNotaList[key];
             const modalCanvas = document.getElementById('canvas-nota-admin');
             if (!n || !modalCanvas) return;
+            invalidateNotaCanvasCache('canvas-nota-admin'); // isi nota berganti, canvas lama tidak valid lagi
 
             let itemRows = '';
             if (n.items && Array.isArray(n.items)) {
@@ -1681,60 +1863,77 @@
                 });
             }
 
+            const jumlahItemAdmin = (n.items && Array.isArray(n.items)) ? n.items.length : 0;
+
             modalCanvas.innerHTML = `
-                <div class="text-center border-b border-dashed border-slate-300 pb-3">
-                    <h3 class="font-extrabold text-lg text-primary tracking-wide">SAHABATKU DELIVERY</h3>
-                    <p class="text-[10px] text-slate-400">Jatibarang, Indramayu</p>
+                <div class="receipt-head">
+                    <h3 class="font-extrabold text-sm tracking-wide">SAHABATKU DELIVERY</h3>
+                    <p class="text-[9px] text-white/80 mt-0.5">Jatibarang, Indramayu</p>
                 </div>
 
-                <div class="text-[11px] space-y-1.5">
-                    <div class="flex justify-between"><span class="text-slate-400">Nomor Nota:</span><span class="font-bold text-slate-700">${n.id || '-'}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Tanggal:</span><span>${n.tanggal || '-'}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Kurir:</span><span class="font-medium">${n.kurirNama || '-'}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Status:</span><span class="uppercase font-semibold">${n.status || '-'}</span></div>
-                </div>
-
-                <table class="w-full text-[11px] text-left mt-2">
-                    <thead>
-                        <tr class="border-b border-dashed border-slate-300 text-slate-400 font-semibold">
-                            <th class="py-1">Item</th>
-                            <th class="text-center">Qty</th>
-                            <th class="text-right">Harga</th>
-                            <th class="text-right">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemRows || `<tr><td colspan="4" class="text-center italic text-slate-400 py-2">- Tidak ada rincian -</td></tr>`}
-                    </tbody>
-                </table>
-
-                <div class="border-t border-dashed border-slate-300 pt-2.5 text-[11px] space-y-1">
-                    <div class="flex justify-between"><span class="text-slate-400">Subtotal Item</span><span>${(n.subtotal || 0).toLocaleString('id-ID')}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Ongkir</span><span>${(n.ongkir || 0).toLocaleString('id-ID')}</span></div>
-                    <div class="flex justify-between"><span class="text-slate-400">Tambahan Biaya</span><span>${totalBiaya.toLocaleString('id-ID')}</span></div>
-                    ${rincianBiaya ? `<div id="p-rincian-biaya-list" class="pl-2 space-y-0.5 text-[10px] text-slate-500">${rincianBiaya}</div>` : ''}
-                    <div class="flex justify-between text-sm font-extrabold text-slate-900 pt-1">
-                        <span>TOTAL</span><span class="text-primary">${(n.total || 0).toLocaleString('id-ID')}</span>
+                <div class="receipt-body">
+                    <div class="receipt-info-grid text-[10px]">
+                        <div><span class="ri-label">Nomor Nota</span><span class="ri-value">${n.id || '-'}</span></div>
+                        <div><span class="ri-label">Tanggal</span><span class="ri-value">${n.tanggal || '-'}</span></div>
+                        <div><span class="ri-label">Kurir</span><span class="ri-value">${n.kurirNama || '-'}</span></div>
+                        <div><span class="ri-label">Status</span><span class="receipt-status-pill">${n.status || '-'}</span></div>
                     </div>
-                </div>
 
-                <!-- Ongkir History -->
-                <div class="border-t border-dashed border-slate-300 pt-3 mt-2 text-[10px] space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-400 font-bold uppercase">Ongkir History</span>
-                        <span id="p-ongkir-history-count" class="text-slate-400">-</span>
+                    <div class="receipt-section-title">
+                        <span class="rst-label">Rincian Pesanan</span>
+                        <span class="rst-count">${jumlahItemAdmin} item</span>
                     </div>
-                    <div id="p-ongkir-history-container" class="space-y-1"></div>
-                </div>
+                    <table class="receipt-item-table text-[11px] text-left">
+                        <thead>
+                            <tr>
+                                <th class="text-left">Item</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-right">Harga</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemRows || `<tr><td colspan="4" class="text-center italic text-slate-400 py-2">- Tidak ada rincian -</td></tr>`}
+                        </tbody>
+                    </table>
 
-                <div class="border-t border-dashed border-slate-300 pt-3 text-center space-y-1">
-                    <p class="text-[10px] text-slate-500 italic">Terima kasih telah menggunakan jasa Sahabatku Delivery.</p>
-                    <p class="text-[10px] font-medium text-slate-700">
-                        Pastikan Selalu Order Melalui WhatsApp Resmi Kami:<br>
-                        <span class="text-primary font-bold text-xs">0821-1845-415</span>
-                    </p>
+                    <div class="receipt-divider"></div>
+                    <div class="text-[11px] space-y-1">
+                        <div class="flex justify-between text-slate-500"><span>Subtotal Item</span><span>${(n.subtotal || 0).toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between text-slate-500"><span>Ongkir</span><span>${(n.ongkir || 0).toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between text-slate-500"><span>Tambahan Biaya</span><span>${totalBiaya.toLocaleString('id-ID')}</span></div>
+                        ${rincianBiaya ? `<div id="p-rincian-biaya-list" class="pl-2 space-y-0.5 text-[10px] text-slate-400">${rincianBiaya}</div>` : ''}
+                    </div>
+
+                    <div class="receipt-total-box mt-2.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-white/70">Total</span>
+                        <span class="text-base font-black">${(n.total || 0).toLocaleString('id-ID')}</span>
+                    </div>
+
+                    <!-- Ongkir History -->
+                    <div class="receipt-divider"></div>
+                    <div class="text-[10px] space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400 font-bold uppercase">Ongkir History</span>
+                            <span id="p-ongkir-history-count" class="text-slate-400">-</span>
+                        </div>
+                        <div id="p-ongkir-history-container" class="space-y-1"></div>
+                    </div>
+
+                    <div class="receipt-divider"></div>
+                    <div class="text-center space-y-1">
+                        <p class="text-[10px] text-slate-400 italic">Terima kasih telah menggunakan jasa Sahabatku Delivery.</p>
+                        <p class="text-[10px] font-medium text-slate-600">
+                            Pastikan Selalu Order Melalui WhatsApp Resmi Kami:<br>
+                            <span class="text-primary font-bold text-xs">0821-1845-415</span>
+                        </p>
+                    </div>
                 </div>
             `;
+            if (window.lucide) lucide.createIcons();
+            // Siapkan cache gambar di background begitu preview admin tampil, biar pas
+            // tombol Unduh Gambar/Bagikan WhatsApp ditekan prosesnya sudah instan.
+            requestAnimationFrame(() => prefetchNotaImages(modalCanvas));
 
             // RESET isi history (biar nggak nyangkut dari nota sebelumnya)
             const box = document.getElementById('p-ongkir-history-container');
@@ -1781,32 +1980,28 @@
         window.closeAdminModal = function() {
             document.getElementById('modal-preview-nota').classList.add('hidden');
         }
+        function getAdminNotaIdentity() {
+            const noNota = document.querySelector('#canvas-nota-admin .ri-value')?.innerText || 'Nota';
+            const kurir = document.querySelectorAll('#canvas-nota-admin .ri-value')[2]?.innerText || 'Kurir';
+            return { noNota, kurir };
+        }
         window.downloadAdminNotaJpg = function() {
-            const el = document.getElementById('canvas-nota-admin');
-            if (!el) return;
-        
-            if (typeof html2canvas === 'undefined') {
-                alert('Fitur gambar belum siap. Coba reload halaman.');
-                return;
-            }
-        
-            html2canvas(el, {
-                scale: 1,
-                useCORS: true,
-                backgroundColor: '#ffffff'
-            }).then(canvas => {
-                const link = document.createElement('a');
-        
-                const noNota = document.querySelector('#canvas-nota-admin .font-bold.text-slate-700')?.innerText || 'Nota';
-                const kurir = 'Kurir';
-        
-                const fileName = `${noNota}_${kurir}.jpg`
-                    .replace(/\s+/g, '_')
-                    .replace(/[\/\\:*?"<>|]/g, '');
-        
-                link.download = fileName;
-                link.href = canvas.toDataURL('image/jpeg', 0.7);
-                link.click();
+            const { noNota, kurir } = getAdminNotaIdentity();
+            processNotaImage('canvas-nota-admin', {
+                mode: 'download',
+                num: noNota,
+                kurir,
+                btn: document.getElementById('btn-unduh-admin'),
+                successMsg: 'Gambar nota berhasil diunduh!'
+            });
+        }
+        window.shareWhatsAppAdmin = function() {
+            const { noNota, kurir } = getAdminNotaIdentity();
+            processNotaImage('canvas-nota-admin', {
+                mode: 'share',
+                num: noNota,
+                kurir,
+                btn: document.getElementById('btn-share-wa-admin')
             });
         }
         window.saveDataMitra = function() {
@@ -1817,16 +2012,16 @@
             const target = parseInt(document.getElementById('am-target').value) || 0;
 
             if(!nama || !alamat || !hp || target <= 0) {
-                alert("Lengkapi seluruh form mitra!");
+                toast("Lengkapi seluruh form mitra!");
                 return;
             }
 
             const payload = { nama, alamat, hp, target };
 
             if(idEdit) {
-                update(ref(db, `mitra/${idEdit}`), payload).then(() => { alert("Mitra berhasil di-update!"); resetFormMitra(); });
+                update(ref(db, `mitra/${idEdit}`), payload).then(() => { toast("Mitra berhasil di-update!"); resetFormMitra(); });
             } else {
-                push(ref(db, 'mitra'), payload).then(() => { alert("Mitra baru sukses ditambahkan!"); resetFormMitra(); });
+                push(ref(db, 'mitra'), payload).then(() => { toast("Mitra baru sukses ditambahkan!"); resetFormMitra(); });
             }
         }
         window.editDataMitra = function(key) {
@@ -1847,8 +2042,8 @@
             const hp = document.getElementById('edit-mitra-hp').value.trim();
             const target = parseInt(document.getElementById('edit-mitra-target').value) || 0;
         
-            if (!id) return alert('Data mitra tidak ditemukan!');
-            if (!nama || !alamat || !hp || target <= 0) return alert('Lengkapi semua data mitra!');
+            if (!id) return toast('Data mitra tidak ditemukan!');
+            if (!nama || !alamat || !hp || target <= 0) return toast('Lengkapi semua data mitra!');
         
             update(ref(db, `mitra/${id}`), {
                 nama,
@@ -1856,10 +2051,10 @@
                 hp,
                 target
             }).then(() => {
-                alert('Data mitra berhasil diperbarui!');
+                toast('Data mitra berhasil diperbarui!');
                 closeEditMitraModal();
             }).catch(err => {
-                alert('Gagal update mitra: ' + err.message);
+                toast('Gagal update mitra: ' + err.message);
             });
         };
         window.closeEditMitraModal = function() {
@@ -1870,8 +2065,9 @@
             document.getElementById('edit-mitra-hp').value = '';
             document.getElementById('edit-mitra-target').value = '';
         };
-        window.hapusMitra = function(key) {
-            if(confirm("Hapus mitra ini beserta seluruh data record?")) {
+        window.hapusMitra = async function(key) {
+            const ok = await showConfirm("Hapus mitra ini beserta seluruh data record?");
+            if (ok) {
                 remove(ref(db, `mitra/${key}`));
             }
         }
@@ -1943,19 +2139,15 @@
             }
             dropdown.value = currentSelection;
         }
-        window.hapusLogMitra = function(key) {
-            if (confirm('Hapus riwayat transaksi input ini?')) {
+        window.hapusLogMitra = async function(key) {
+            const ok = await showConfirm('Hapus riwayat transaksi input ini?');
+            if (ok) {
                 remove(ref(db, `log_mitra/${key}`)).then(() => {
-                    // Gunakan alert atau implementasi toast yang sudah ada
-                    if (typeof toast === 'function') {
-                        toast('Riwayat transaksi dihapus');
-                    } else {
-                        alert('Riwayat transaksi dihapus');
-                    }
+                    toast('Riwayat transaksi dihapus', 'success');
                     // Refresh list tanpa tutup popup
                     renderAdminLogMitra();
                 }).catch(err => {
-                    alert('Gagal hapus riwayat: ' + err.message);
+                    toast('Gagal hapus riwayat: ' + err.message);
                 });
             }
         };
@@ -2036,8 +2228,8 @@
                                 <div><span class="text-slate-400 block text-[9px] uppercase">Target Bulanan</span><span class="font-extrabold text-amber-500">${targetMitra} Trx</span></div>
                             </div>
                             <div class="grid grid-cols-3 gap-2 pt-0.5">
-                                <button onclick="bukaInputTransaksiMitra('${m.nama}')" class="py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] uppercase">Input Trx</button>
-                                <button onclick="lihatRiwayatMitraOtomatis('${m.nama}')" class="py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-lg text-[10px] uppercase border border-slate-200/50">Lihat</button>
+                                <button onclick="bukaInputTransaksiMitra('${m.nama.replace(/'/g, "\\'")}')" class="py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] uppercase">Input Trx</button>
+                                <button onclick="lihatRiwayatMitraOtomatis('${m.nama.replace(/'/g, "\\'")}')" class="py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-lg text-[10px] uppercase border border-slate-200/50">Lihat</button>
                                 <button onclick="hapusMitra('${key}')" class="py-2 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 font-bold rounded-lg text-[10px] uppercase">Hapus</button>
                             </div>
                             ${isOwner ? `
@@ -2085,9 +2277,9 @@
             
             renderAdminTestimonial();
         };
-        window.hapusSemuaTestimonialBulan = function() {
+        window.hapusSemuaTestimonialBulan = async function() {
             const bulanFilter = document.getElementById('testimonial-filter-bulan')?.value || '';
-            if (!bulanFilter) return alert('Pilih bulan terlebih dahulu.');
+            if (!bulanFilter) return toast('Pilih bulan terlebih dahulu.');
 
             const keys = Object.keys(cloudTestimonialList || {}).filter(key => {
                 const t = cloudTestimonialList[key];
@@ -2096,35 +2288,35 @@
                 return rawBulan === bulanFilter;
             });
 
-            if (!keys.length) return alert('Tidak ada testimoni pada bulan ini.');
-            if (!confirm(`Hapus semua ${keys.length} testimoni pada bulan ini?`)) return;
+            if (!keys.length) return toast('Tidak ada testimoni pada bulan ini.');
+            if (!(await showConfirm(`Hapus semua ${keys.length} testimoni pada bulan ini?`))) return;
 
             keys.forEach(key => remove(ref(db, `testimonials/${key}`)));
             
-            alert('Testimoni sedang dihapus...');
+            toast('Testimoni sedang dihapus...');
             
             setTimeout(() => {
                 renderAdminTestimonial();
             }, 800);
         };
-        window.hapusTestimonialPilihan = function() {
+        window.hapusTestimonialPilihan = async function() {
             const checkboxes = document.querySelectorAll('.testimonial-checkbox:checked');
             if (!checkboxes.length) {
-                alert('Pilih minimal 1 testimoni untuk dihapus!');
+                toast('Pilih minimal 1 testimoni untuk dihapus!');
                 return;
             }
 
             const jumlah = checkboxes.length;
-            const konfirmasi = confirm(`Apakah Anda YAKIN ingin menghapus ${jumlah} testimoni yang dipilih?\n\nTindakan ini TIDAK BISA DIBATALKAN!`);
+            const konfirmasi = await showConfirm(`Apakah Anda YAKIN ingin menghapus ${jumlah} testimoni yang dipilih? Tindakan ini TIDAK BISA DIBATALKAN!`);
             
             if (!konfirmasi) {
-                alert('Penghapusan dibatalkan. Data testimoni aman.');
+                toast('Penghapusan dibatalkan. Data testimoni aman.');
                 return;
             }
 
-            const konfirmasi2 = confirm(`Hapus ${jumlah} testimoni secara PERMANEN?`);
+            const konfirmasi2 = await showConfirm(`Hapus ${jumlah} testimoni secara PERMANEN?`, { okText: 'Ya, Hapus Permanen' });
             if (!konfirmasi2) {
-                alert('Penghapusan dibatalkan. Data testimoni aman.');
+                toast('Penghapusan dibatalkan. Data testimoni aman.');
                 return;
             }
 
@@ -2139,7 +2331,7 @@
                 });
             });
 
-            alert(`${jumlah} testimoni sedang dihapus dari server...`);
+            toast(`${jumlah} testimoni sedang dihapus dari server...`);
             
             setTimeout(() => {
                 document.body.dataset.testimonialSelectMode = '0';
@@ -2283,17 +2475,18 @@
             update(ref(db, `testimonials/${key}`), {
                 isPublished: !item.isPublished
             }).then(() => {
-                alert(item.isPublished ? 'Testimoni disembunyikan.' : 'Testimoni ditampilkan.');
+                toast(item.isPublished ? 'Testimoni disembunyikan.' : 'Testimoni ditampilkan.');
             }).catch(err => {
-                alert('Gagal update testimoni: ' + err.message);
+                toast('Gagal update testimoni: ' + err.message);
             });
         };
 
-        window.hapusTestimonial = function(key) {
-            if (confirm('Hapus testimoni ini secara permanen?')) {
+        window.hapusTestimonial = async function(key) {
+            const ok = await showConfirm('Hapus testimoni ini secara permanen?');
+            if (ok) {
                 remove(ref(db, `testimonials/${key}`))
-                    .then(() => alert('Testimoni berhasil dihapus.'))
-                    .catch(err => alert('Gagal menghapus testimoni: ' + err.message));
+                    .then(() => toast('Testimoni berhasil dihapus.'))
+                    .catch(err => toast('Gagal menghapus testimoni: ' + err.message));
             }
         };
 
@@ -2511,9 +2704,10 @@
         window.prosesPratinjauNota = function() {
             const cekOngkir = parseInt(document.getElementById('nota-ongkir').value) || 0;
             if (cekOngkir <= 0) { 
-                alert("Wajib mengisi Ongkir untuk melanjutkan!"); 
+                toast("Wajib mengisi Ongkir untuk melanjutkan!"); 
                 return; 
             }
+            invalidateNotaCanvasCache('canvas-nota'); // isi nota berganti, canvas lama tidak valid lagi
             calculateNotaTotal();
             
             const tgl = new Date();
@@ -2555,29 +2749,202 @@
                     tbody.innerHTML += `<tr><td>${it.nama}</td><td class="text-center">${it.qty}</td><td class="text-right">${it.harga.toLocaleString('id-ID')}</td><td class="text-right">${it.subtotal.toLocaleString('id-ID')}</td></tr>`;
                 });
             }
+            const itemCountEl = document.getElementById('p-item-count');
+            if (itemCountEl) itemCountEl.innerText = `${notaState.items.length} item`;
             const btnSimpanNota = document.getElementById('btn-simpan-nota');
             if (btnSimpanNota) btnSimpanNota.classList.remove('hidden');
             updatePreviewButtonsLayout();
             navigateTo('screen-preview');
+            requestAnimationFrame(() => prefetchNotaImages(document.getElementById('canvas-nota')));
         }
-        window.saveNotaAsJpg = function() {
-            const el = document.getElementById('canvas-nota');
+        const notaImageCache = {};
+        async function fetchAndCacheNotaImage(src) {
+            if (!src || src.startsWith('data:') || notaImageCache[src]) return notaImageCache[src];
+            try {
+                const res = await fetch(src, { mode: 'cors', cache: 'force-cache' });
+                const blob = await res.blob();
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                notaImageCache[src] = dataUrl;
+                return dataUrl;
+            } catch (e) {
+                return null; // Kalau gagal fetch, biarkan html2canvas coba render seperti biasa.
+            }
+        }
+        function prefetchNotaImages(el) {
             if (!el) return;
+            const srcs = Array.from(el.querySelectorAll('img')).map(img => img.getAttribute('src') || '').filter(Boolean);
+            Promise.all(srcs.map(fetchAndCacheNotaImage)).catch(() => {});
+        }
+        async function inlineExternalImagesForCapture(el) {
+            const imgs = Array.from(el.querySelectorAll('img'));
+            await Promise.all(imgs.map(async (img) => {
+                const src = img.getAttribute('src') || '';
+                if (!src || src.startsWith('data:')) return;
+                const dataUrl = await fetchAndCacheNotaImage(src);
+                if (dataUrl) {
+                    img.setAttribute('data-original-src', src);
+                    img.src = dataUrl;
+                }
+            }));
+        }
+        function waitFontsReady() {
+            if (!(document.fonts && document.fonts.ready)) return Promise.resolve();
+            return Promise.race([
+                document.fonts.ready,
+                new Promise((resolve) => setTimeout(resolve, 1500))
+            ]);
+        }
+        // semua tombol terkait sampai proses sebelumnya selesai.
+        let notaImageBusy = false;
+        const NOTA_BUSY_BUTTON_IDS = ['btn-simpan-gambar', 'btn-simpan-nota', 'btn-share-wa', 'btn-unduh-admin', 'btn-share-wa-admin'];
+        function setNotaImageBusy(busy, activeBtn) {
+            notaImageBusy = busy;
+            NOTA_BUSY_BUTTON_IDS.forEach(id => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.disabled = busy;
+                btn.classList.toggle('btn-busy', busy);
+            });
+            if (activeBtn) {
+                if (busy && !activeBtn.dataset.origHtml) {
+                    activeBtn.dataset.origHtml = activeBtn.innerHTML;
+                    activeBtn.innerHTML = '<span class="btn-spin"></span> Memproses...';
+                } else if (!busy && activeBtn.dataset.origHtml) {
+                    activeBtn.innerHTML = activeBtn.dataset.origHtml;
+                    delete activeBtn.dataset.origHtml;
+                }
+            }
+        }
+        function restoreExternalImagesAfterCapture(el) {
+            el.querySelectorAll('img[data-original-src]').forEach((img) => {
+                img.src = img.getAttribute('data-original-src');
+                img.removeAttribute('data-original-src');
+            });
+        }
+        const notaCanvasCache = {};
+        function invalidateNotaCanvasCache(elementId) {
+            notaCanvasCache[elementId] = null;
+        }
+        window.addEventListener('resize', () => {
+            notaCanvasCache['canvas-nota'] = null;
+            notaCanvasCache['canvas-nota-admin'] = null;
+        });
+        window.addEventListener('orientationchange', () => {
+            notaCanvasCache['canvas-nota'] = null;
+            notaCanvasCache['canvas-nota-admin'] = null;
+        });
+        // navigator.deviceMemory tidak didukung semua browser (mis. Safari/iOS).
+        // Kalau tidak tersedia, pakai jumlah core CPU (hardwareConcurrency) sebagai
+        // perkiraan cadangan — HP RAM kecil biasanya juga core-nya sedikit (<=4).
+        const NOTA_MEM = navigator.deviceMemory || null;
+        const NOTA_CORES = navigator.hardwareConcurrency || null;
+        const NOTA_VERY_LOW_RAM_DEVICE = !!(NOTA_MEM && NOTA_MEM <= 1);
+        const NOTA_LOW_RAM_DEVICE = NOTA_VERY_LOW_RAM_DEVICE ||
+            !!(NOTA_MEM && NOTA_MEM <= 2) ||
+            (!NOTA_MEM && !!(NOTA_CORES && NOTA_CORES <= 4));
+        // 3 tingkat: sangat rendah, rendah, normal — makin kecil skala & kualitas,
+        // makin cepat & ringan proses render/unduh/share-nya.
+        const NOTA_CAPTURE_SCALE = NOTA_VERY_LOW_RAM_DEVICE ? 1.25 : (NOTA_LOW_RAM_DEVICE ? 1.5 : 2);
+        const NOTA_JPEG_QUALITY = NOTA_VERY_LOW_RAM_DEVICE ? 0.72 : (NOTA_LOW_RAM_DEVICE ? 0.8 : 0.85);
+        async function captureNotaCanvas(el, elementId) {
+            if (elementId && notaCanvasCache[elementId]) {
+                return notaCanvasCache[elementId];
+            }
+            await Promise.all([
+                inlineExternalImagesForCapture(el),
+                waitFontsReady()
+            ]);
+            await new Promise(requestAnimationFrame);
+            try {
+                const canvas = await html2canvas(el, {
+                    scale: NOTA_CAPTURE_SCALE,
+                    useCORS: true,
+                    allowTaint: false,
+                    backgroundColor: '#ffffff',
+                    imageTimeout: 8000,
+                    logging: false,
+                    // scrollX/scrollY: 0 mencegah bug umum html2canvas yang membuat hasil
+                    // capture "bergeser"/terpotong dari tampilan aslinya kalau halaman atau
+                    // modal preview sedang dalam kondisi ter-scroll saat tombol ditekan.
+                    scrollX: -window.scrollX,
+                    scrollY: -window.scrollY,
+                    windowWidth: document.documentElement.clientWidth,
+                    windowHeight: document.documentElement.clientHeight
+                });
+                if (elementId) notaCanvasCache[elementId] = canvas;
+                return canvas;
+            } finally {
+                restoreExternalImagesAfterCapture(el);
+            }
+        }
+        async function processNotaImage(elementId, { mode, num, kurir, btn, successMsg }) {
+            if (notaImageBusy) return; // cegah dobel-tap saat proses sebelumnya masih jalan
+
+            const el = document.getElementById(elementId);
+            if (!el) { toast('Preview nota tidak ditemukan.'); return; }
 
             if (typeof html2canvas === 'undefined') {
-                alert('Fitur gambar belum siap. Coba reload halaman.');
+                toast('Fitur gambar belum siap. Coba reload halaman.');
                 return;
             }
 
-            html2canvas(el, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff'
-            }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `${document.getElementById('p-nota-num').innerText}.jpg`;
-                link.href = canvas.toDataURL('image/jpeg', 0.9);
-                link.click();
+            setNotaImageBusy(true, btn);
+            try {
+                const canvas = await captureNotaCanvas(el, elementId);
+                const fileName = `${num}_${kurir}.jpg`.replace(/\s+/g, '_').replace(/[\/\\:*?"<>|]/g, '');
+
+                if (mode === 'download') {
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = canvas.toDataURL('image/jpeg', NOTA_JPEG_QUALITY);
+                    link.click();
+                    toast(successMsg || 'Gambar nota berhasil disimpan!');
+                    return;
+                }
+
+                // mode === 'share': bagikan lewat share-sheet (kalau didukung) atau fallback unduh + buka WhatsApp
+                const captionText = `Nota: ${num}\nKurir: ${kurir}`;
+                await new Promise((resolve) => {
+                    canvas.toBlob(function(blob) {
+                        if (!blob) {
+                            toast('Gagal memproses gambar nota.');
+                            resolve();
+                            return;
+                        }
+                        const file = new File([blob], fileName, { type: 'image/jpeg' });
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            navigator.share({ files: [file], title: `Nota ${num}`, text: captionText })
+                                .catch(() => {})
+                                .finally(resolve);
+                        } else {
+                            const link = document.createElement('a');
+                            link.download = fileName;
+                            link.href = canvas.toDataURL('image/jpeg', NOTA_JPEG_QUALITY);
+                            link.click();
+                            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(captionText)}`, '_blank');
+                            resolve();
+                        }
+                    }, 'image/jpeg', NOTA_JPEG_QUALITY);
+                });
+            } catch (err) {
+                toast('Terjadi kesalahan gambar: ' + (err?.message || err));
+            } finally {
+                setNotaImageBusy(false, btn);
+            }
+        }
+        window.saveNotaAsJpg = function() {
+            const num = document.getElementById('p-nota-num').innerText || 'Nota';
+            const kurir = document.getElementById('p-nota-kurir').innerText || (userSession?.nama || 'Kurir');
+            processNotaImage('canvas-nota', {
+                mode: 'download',
+                num,
+                kurir,
+                btn: document.getElementById('btn-simpan-gambar')
             });
         }
         window.commitSaveNota = function() {
@@ -2602,7 +2969,7 @@
 
             // simpan nota dengan key yang fix (pushRef.key)
             set(pushRef, payload).then(async () => {
-                alert("Nota kiriman berhasil disimpan!");
+                toast("Nota kiriman berhasil disimpan!");
                 localStorage.removeItem('sahabatku_nota_draft');
 
                 const userId = userSession.id;
@@ -2625,7 +2992,6 @@
                 renderSaldoKurir();
                 updateKurirDashboard();
 
-                // simpan history ongkir ke JSON nota (nota/<pushKey>.ongkir_history)
                 const draftKey = localStorage.getItem('last_ongkir_draft_key');
                 if (draftKey && userSession?.id) {
                     try {
@@ -2678,64 +3044,17 @@
                 updateKurirDashboard();
                 navigateTo('screen-preview');
             }).catch(() => {
-                alert('Gagal simpan nota.');
+                toast('Gagal simpan nota.');
             });
         };
         window.shareWhatsApp = function() {
             const num = document.getElementById('p-nota-num').innerText;
             const kurir = document.getElementById('p-nota-kurir').innerText;
-            const element = document.getElementById('canvas-nota');
-            const captionText = `Nota: ${num}\nKurir: ${kurir}`;
-            const fileNameJpg = `${num}_${kurir}.jpg`.replace(/\s+/g, '_');
-            const btnShare = document.querySelector("button[onclick='shareWhatsApp()']");
-
-            if (!element) {
-                alert('Preview nota tidak ditemukan.');
-                return;
-            }
-
-            if (typeof html2canvas === 'undefined') {
-                alert('Fitur gambar belum siap. Coba reload halaman.');
-                return;
-            }
-
-            if (btnShare) btnShare.disabled = true;
-
-            html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff'
-            }).then(canvas => {
-                canvas.toBlob(function(blob) {
-                    if (!blob) {
-                        alert("Gagal memproses gambar nota.");
-                        if (btnShare) btnShare.disabled = false;
-                        return;
-                    }
-
-                    const file = new File([blob], fileNameJpg, { type: 'image/jpeg' });
-
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        navigator.share({
-                            files: [file],
-                            title: `Nota ${num}`,
-                            text: captionText
-                        }).finally(() => {
-                            if (btnShare) btnShare.disabled = false;
-                        });
-                    } else {
-                        const link = document.createElement('a');
-                        link.download = fileNameJpg;
-                        link.href = canvas.toDataURL('image/jpeg', 0.9);
-                        link.click();
-
-                        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(captionText)}`, '_blank');
-                        if (btnShare) btnShare.disabled = false;
-                    }
-                }, 'image/jpeg', 0.9);
-            }).catch(err => {
-                if (btnShare) btnShare.disabled = false;
-                alert("Terjadi kesalahan gambar: " + err.message);
+            processNotaImage('canvas-nota', {
+                mode: 'share',
+                num,
+                kurir,
+                btn: document.getElementById('btn-share-wa')
             });
         }
 
@@ -2792,25 +3111,31 @@
 
             for (let { key: k, n } of filtered) {
                 hasData = true;
+                const statusVal = (n.status || 'Lunas');
+                const isOL = statusVal.toUpperCase() === 'OL';
                 container.innerHTML += `
-                    <div class="bg-white dark:bg-darkCard p-3 rounded-xl border text-xs space-y-2 shadow-sm">
-                        <div class="flex justify-between font-bold">
-                            <span>${n.id}</span>
-                            <span class="text-primary">Rp ${(n.total || 0).toLocaleString('id-ID')}</span>
-                        </div>
-                        <div class="flex justify-between items-center text-[10px] text-slate-400">
-                            <div>
-                                <p>${n.tanggal}</p>
-                                <p class="mt-0.5">Status: <span class="font-semibold text-slate-600 dark:text-slate-300">${n.status || 'Lunas'}</span></p>
+                    <div class="list-card-hover bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs space-y-2 shadow-sm border-l-4 ${isOL ? 'border-l-purple-400' : 'border-l-primary'}">
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-8 h-8 rounded-lg ${isOL ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-500' : 'bg-blue-50 dark:bg-blue-950/40 text-primary'} flex items-center justify-center shrink-0"><i data-lucide="receipt" class="w-3.5 h-3.5"></i></div>
+                                <div class="min-w-0">
+                                    <p class="font-bold truncate">${n.id}</p>
+                                    <p class="text-[10px] text-slate-400 mt-0.5">${n.tanggal}</p>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <button onclick="previewRiwayatNota('${k}')" class="text-blue-500 font-bold bg-blue-50 dark:bg-blue-950/40 px-2 py-1 rounded-md">Preview</button>
-                                <button onclick="hapusRiwayatNota('${k}')" class="text-danger font-bold bg-red-50 dark:bg-red-950/40 px-2 py-1 rounded-md">Hapus</button>
+                            <span class="text-primary font-black shrink-0">Rp ${(n.total || 0).toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-1.5 border-t border-dashed border-slate-100 dark:border-slate-800">
+                            <span class="status-pill ${isOL ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40' : 'bg-blue-50 text-primary dark:bg-blue-950/40'}"><i data-lucide="tag" class="w-2.5 h-2.5"></i> ${statusVal}</span>
+                            <div class="flex items-center gap-2">
+                                <button onclick="previewRiwayatNota('${k}')" class="flex items-center gap-1 text-blue-500 font-bold bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="eye" class="w-3 h-3"></i> Preview</button>
+                                <button onclick="hapusRiwayatNota('${k}')" class="flex items-center gap-1 text-danger font-bold bg-red-50 dark:bg-red-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="trash-2" class="w-3 h-3"></i> Hapus</button>
                             </div>
                         </div>
                     </div>
                 `;
             }
+            if (window.lucide) lucide.createIcons();
 
             if (!hasData) {
                 container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Tidak ada riwayat nota untuk filter ini.</div>';
@@ -2832,9 +3157,10 @@
         window.previewRiwayatNota = function(key) {
             const n = cloudNotaList[key];
             if (!n) {
-                alert("Data nota tidak ditemukan!");
+                toast("Data nota tidak ditemukan!");
                 return;
             }
+            invalidateNotaCanvasCache('canvas-nota'); // isi nota berganti, canvas lama tidak valid lagi
             document.getElementById('p-nota-num').innerText = n.id;
             document.getElementById('p-nota-date').innerText = n.tanggal;
             document.getElementById('p-nota-kurir').innerText = n.kurirNama || n.kurirUsername;
@@ -2868,7 +3194,7 @@
             }
             const tbody = document.getElementById('p-table-body');
             tbody.innerHTML = '';
-            if (n.items && Array.isArray(n.items)) {
+            if (n.items && Array.isArray(n.items) && n.items.length > 0) {
                 n.items.forEach(it => {
                     tbody.innerHTML += `
                         <tr>
@@ -2878,7 +3204,11 @@
                             <td class="text-right">${(it.subtotal || 0).toLocaleString('id-ID')}</td>
                         </tr>`;
                 });
+            } else {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center italic text-slate-400 py-2">- Tidak ada rincian.</td></tr>`;
             }
+            const itemCountEl = document.getElementById('p-item-count');
+            if (itemCountEl) itemCountEl.innerText = `${(n.items && Array.isArray(n.items)) ? n.items.length : 0} item`;
             notaState = {
                 items: n.items || [],
                 biaya: n.biayaTambahan || [],
@@ -2896,8 +3226,8 @@
                 localStorage.setItem('sahabatku_nota_draft', JSON.stringify(notaState));
             } catch (e) {}
         }
-        window.resetNotaBaru = function() {
-            if (!confirm('Bersihkan semua isi nota dan buat nota baru?')) return;
+        window.resetNotaBaru = async function() {
+            if (!(await showConfirm('Bersihkan semua isi nota dan buat nota baru?'))) return;
         
             notaState = { items: [], biaya: [], subtotal: 0, ongkir: 6000, total: 6000 };
             localStorage.removeItem('sahabatku_nota_draft');
@@ -2946,11 +3276,12 @@
                 return false;
             }
         }
-        window.hapusRiwayatNota = function(key) {
+        window.hapusRiwayatNota = async function(key) {
             const n = cloudNotaList[key];
             const idNota = n ? n.id : "Nota ini";
 
-            if (confirm(`Apakah Anda yakin ingin menghapus ${idNota} secara permanen dari riwayat?`)) {
+            const ok = await showConfirm(`Apakah Anda yakin ingin menghapus ${idNota} secara permanen dari riwayat?`);
+            if (ok) {
                 // LOCK supaya queueUiRefresh gak bikin balik dashboard
                 window.__lockRiwayatScreen = true;
 
@@ -2995,10 +3326,10 @@
                             renderKurirRiwayatList(true);
                         }
 
-                        alert("Nota sukses dihapus!");
+                        toast("Nota sukses dihapus!");
                     })
                     .catch((error) => {
-                        alert("Gagal menghapus nota: " + error.message);
+                        toast("Gagal menghapus nota: " + error.message);
                     })
                     .finally(() => {
                         // lepaskan lock setelah beberapa detik supaya refresh yang datang belakangan gak skip terus
@@ -3009,35 +3340,51 @@
         function populateMitraSelectionDropdown() {
             const drop = document.getElementById('m-input-pilih');
             if(!drop) return;
-            drop.innerHTML = '';
-            for(let k in cloudMitraList) {
-                drop.innerHTML += `<option value="${cloudMitraList[k].nama}">${cloudMitraList[k].nama}</option>`;
-            }
+            drop.innerHTML = '<option value="">-- Pilih Mitra --</option>';
+            const sortedMitra = Object.values(cloudMitraList || {})
+                .filter(m => m && m.nama)
+                .sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+            sortedMitra.forEach(m => {
+                drop.innerHTML += `<option value="${m.nama}">${m.nama}</option>`;
+            });
         }
         window.addTransaksiMitra = function() {
+            const btnTambah = document.getElementById('btn-tambah-transaksi-mitra');
+
+            // Cegah klik dobel yang bisa membuat transaksi kepush berulang (duplikat)
+            if (btnTambah && btnTambah.disabled) return;
+
             const mNama = document.getElementById('m-input-pilih').value;
             const trxInput = parseInt(document.getElementById('m-input-trx').value) || 0;
-            
-            if(!mNama) { alert("Silahkan pilih mitra terlebih dahulu!"); return; }
-            if(trxInput <= 0) { alert("Jumlah transaksi harus lebih dari 0!"); return; }
-        
+
+            if(!mNama) { toast("Silahkan pilih mitra terlebih dahulu!"); return; }
+            if(trxInput <= 0) { toast("Jumlah transaksi harus lebih dari 0!"); return; }
+            if(!userSession || !userSession.nama) { toast("Sesi login tidak ditemukan. Silakan login ulang."); return; }
+
             const wib = getWibDate();
             const tglRawLokal = getWibRawDate();
             const waktuLokal = wib.toTimeString().split(' ')[0];
-        
+
             const payload = {
                 mitraNama: mNama,
                 trxInput: trxInput,
                 kurirNama: userSession.nama,
                 kurirUsername: userSession.username,
                 waktu: waktuLokal,
-                tglRaw: tglRawLokal
+                tglRaw: tglRawLokal,
+                bulan: tglRawLokal.substring(0, 7)
             };
-        
+
+            if (btnTambah) btnTambah.disabled = true;
+
             push(ref(db, 'log_mitra'), payload).then(() => {
-                alert("Transaksi mitra berhasil di-input!");
+                toast("Transaksi mitra berhasil di-input!");
                 document.getElementById('m-input-trx').value = '';
                 if (typeof calculateMitraStats === 'function') calculateMitraStats();
+            }).catch((err) => {
+                toast('Gagal menyimpan transaksi: ' + (err && err.message ? err.message : 'Terjadi kesalahan.'));
+            }).finally(() => {
+                if (btnTambah) btnTambah.disabled = false;
             });
         };
         window.sembunyikanRiwayatMitra = function() {
@@ -3049,7 +3396,7 @@
         window.lihatRiwayatMitraOtomatis = function(namaMitra) {
             const mitra = Object.values(cloudMitraList || {}).find(m => normalizeNama(m.nama) === normalizeNama(namaMitra));
             if (!mitra) {
-                alert('Data mitra tidak ditemukan!');
+                toast('Data mitra tidak ditemukan!');
                 return;
             }
         
@@ -3093,20 +3440,13 @@
         
         window.renderKurirLogMitra = function(filterNamaMitraKhusus = '', filterBulanKhusus = '') {
             const container = document.getElementById('container-kurir-log-mitra');
-            const fTgl = document.getElementById('m-filter-tgl-kurir')?.value || '';
-        
-            if (!filterNamaMitraKhusus && !fTgl) {
-                alert("Pilih tanggal atau klik Lihat pada mitra!");
-                return;
-            }
-        
             if (!container) return;
-            container.innerHTML = '';
+            const fTgl = document.getElementById('m-filter-tgl-kurir')?.value || '';
         
             const bulanSkrg = getWibRawDate().substring(0, 7);
             const bulanFilter = filterBulanKhusus || bulanSkrg;
         
-            let adaDataLog = false;
+            let entries = [];
             let logKeysSorted = Object.keys(cloudLogMitra || {}).sort((a, b) => b.localeCompare(a));
         
             logKeysSorted.forEach(k => {
@@ -3115,28 +3455,47 @@
         
                 if (userSession && log.kurirUsername !== userSession.username) return;
                 if (filterNamaMitraKhusus && log.mitraNama !== filterNamaMitraKhusus) return;
-                if (!filterNamaMitraKhusus && fTgl && log.tglRaw !== fTgl) return;
-                if (log.tglRaw && log.tglRaw.substring(0, 7) !== bulanFilter) return;
+                if (fTgl) {
+                    if (log.tglRaw !== fTgl) return;
+                } else if (log.tglRaw && log.tglRaw.substring(0, 7) !== bulanFilter) {
+                    return;
+                }
         
-                adaDataLog = true;
-                const waktuTampil = log.waktu ? log.waktu.substring(0, 5) : '00:00';
-        
-                container.innerHTML += `
-                    <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded flex justify-between items-center text-[11px] border border-slate-100 dark:border-slate-700/50 mb-1">
-                        <div class="flex flex-col">
-                            <span class="font-bold text-slate-800 dark:text-white">${log.mitraNama}</span>
-                            <span class="text-[9px] text-slate-500 font-medium">
-                                ${log.tglRaw} • ${waktuTampil} WIB
-                            </span>
-                        </div>
-                        <b class="text-blue-600 dark:text-blue-400 text-sm">+${log.trxInput} Trx</b>
-                    </div>
-                `;
+                entries.push(log);
             });
         
-            if (!adaDataLog) {
-                container.innerHTML = `<div class="text-center text-slate-400 italic py-2">Tidak ada data ditemukan.</div>`;
+            if (!entries.length) {
+                const label = fTgl ? `tanggal ${new Date(fTgl).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}` : `bulan ${new Date(bulanFilter + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+                container.innerHTML = `
+                    <div class="text-center py-6 space-y-1">
+                        <div class="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto"><i data-lucide="inbox" class="w-4 h-4"></i></div>
+                        <p class="text-[11px] text-slate-400">Belum ada transaksi untuk ${label}.</p>
+                    </div>`;
+                if (window.lucide) lucide.createIcons();
+                return;
             }
+        
+            const totalTrx = entries.reduce((a, log) => a + (parseInt(log.trxInput) || 0), 0);
+        
+            container.innerHTML = `
+                <div class="flex items-center justify-between px-1 pb-1">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">${entries.length} transaksi</span>
+                    <span class="text-[10px] font-black text-blue-600 dark:text-blue-400">Total ${totalTrx} Trx</span>
+                </div>
+                ${entries.map(log => {
+                    const waktuTampil = log.waktu ? log.waktu.substring(0, 5) : '00:00';
+                    return `
+                    <div class="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center shrink-0"><i data-lucide="receipt" class="w-3.5 h-3.5"></i></div>
+                        <div class="min-w-0 flex-1">
+                            <div class="font-bold text-[11px] text-slate-700 dark:text-white truncate">${log.mitraNama}</div>
+                            <div class="text-[9px] text-slate-400 flex items-center gap-1"><i data-lucide="clock" class="w-2.5 h-2.5"></i>${log.tglRaw} • ${waktuTampil} WIB</div>
+                        </div>
+                        <div class="shrink-0 text-sm font-black text-blue-600 dark:text-blue-400">+${log.trxInput}</div>
+                    </div>
+                `;}).join('')}
+            `;
+            if (window.lucide) lucide.createIcons();
         };
         window.cariMitra = function() {
             const input = document.getElementById('input-cari-mitra').value.toLowerCase();
@@ -3212,45 +3571,55 @@
                     const waLink = cleanPhone ? `https://wa.me/${cleanPhone}` : '#';
                     const mapsLink = getMapsLink(m.alamat);
 
+                    const pct = target > 0 ? Math.min(100, Math.round((totalTrx / target) * 100)) : 0;
                     return `
-                        <div class="bg-white dark:bg-darkCard p-3 rounded-xl border text-xs space-y-2.5 shadow-sm">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h5 class="font-bold text-slate-800 dark:text-white">${m.nama}</h5>
-                                    <a href="${mapsLink}" target="_blank" class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline block mt-0.5">
-                                        Alamat: ${m.alamat || 'Belum Diisi'}
-                                    </a>
+                        <div class="bg-white dark:bg-darkCard p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-2.5 shadow-sm list-card-hover">
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center shrink-0"><i data-lucide="store" class="w-4 h-4"></i></div>
+                                    <div class="min-w-0">
+                                        <h5 class="font-bold text-slate-800 dark:text-white truncate">${m.nama}</h5>
+                                        <a href="${mapsLink}" target="_blank" class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 mt-0.5">
+                                            <i data-lucide="map-pin" class="w-2.5 h-2.5"></i> ${m.alamat || 'Belum Diisi'}
+                                        </a>
+                                    </div>
                                 </div>
-                                <a href="${waLink}" target="_blank" class="px-2.5 py-1 bg-emerald-50 text-success rounded font-bold text-[10px] border border-emerald-100">
-                                    WhatsApp
+                                <a href="${waLink}" target="_blank" class="shrink-0 flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 text-success rounded-lg font-bold text-[10px] border border-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-900">
+                                    <i data-lucide="message-circle" class="w-3 h-3"></i> WA
                                 </a>
                             </div>
-                            <div class="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg text-[11px] border border-slate-100 dark:border-slate-800">
-                                <div><span class="text-slate-400 block text-[9px] uppercase">Total Trx</span><span class="font-extrabold text-slate-700 dark:text-slate-200">${totalTrx} Trx</span></div>
-                                <div><span class="text-slate-400 block text-[9px] uppercase">Target</span><span class="font-extrabold text-amber-500">${target} Trx</span></div>
+                            <div class="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5">
+                                <div class="flex justify-between text-[11px]">
+                                    <span class="text-slate-400">Total Trx <b class="text-slate-700 dark:text-slate-200">${totalTrx}</b></span>
+                                    <span class="text-slate-400">Target <b class="text-amber-500">${target}</b></span>
+                                </div>
+                                <div class="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                                    <div class="h-full rounded-full ${pct >= 100 ? 'bg-success' : 'bg-amber-400'}" style="width:${pct}%"></div>
+                                </div>
                             </div>
-                            <div class="flex gap-1.5 pt-0.5">
-                                <button onclick="bukaInputTransaksiMitra('${m.nama}')" class="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] uppercase">Input Trx</button>
-                                <button onclick="lihatRiwayatMitraOtomatis('${m.nama}')" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-lg text-[10px] uppercase border border-slate-200/50">Lihat</button>
-                            </div>
+                            <button onclick="bukaInputTransaksiMitra('${m.nama.replace(/'/g, "\\'")}')" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] uppercase flex items-center justify-center gap-1 active:scale-95 transition-transform"><i data-lucide="plus" class="w-3 h-3"></i> Input Trx</button>
                         </div>
                     `;
                 })
                 .join('');
 
             container.innerHTML = allMitraHtml || '<div class="text-center text-xs text-slate-400 py-4">Belum ada data mitra.</div>';
+            if (window.lucide) lucide.createIcons();
         };
         window.toggleMitraList = function() {
             const box = document.getElementById('container-mitra-list');
+            const btn = document.getElementById('btn-toggle-daftar-mitra');
             if (!box) return;
 
             if (box.dataset.loaded === '1') {
                 box.dataset.loaded = '0';
                 box.innerHTML = '';
-                renderKurirMitraView(false);
+                if (btn) btn.innerHTML = '<i data-lucide="store" class="w-3.5 h-3.5"></i> <span>Tampilkan Daftar Mitra</span>';
             } else {
                 renderKurirMitraView(true);
+                if (btn) btn.innerHTML = '<i data-lucide="chevron-up" class="w-3.5 h-3.5"></i> <span>Sembunyikan Daftar Mitra</span>';
             }
+            if (window.lucide) lucide.createIcons();
         };
 
         window.toggleRiwayatTrxInputan = function() {
@@ -3266,6 +3635,7 @@
         
             box.classList.toggle('hidden');
             if (!box.classList.contains('hidden')) {
+                populateMitraLogKurirDropdown();
                 renderAdminLogMitra();
             }
         };
@@ -3274,6 +3644,9 @@
             if (!container) return;
 
             const isOpen = ensureSectionToggleState('container-admin-kurir', false);
+            container.classList.toggle('hidden', !isOpen);
+            if (!isOpen) return;
+
             const searchValue = (document.getElementById('admin-kurir-search')?.value || '').toLowerCase().trim();
 
             const filtered = Object.entries(cloudKurirList || {})
@@ -3283,22 +3656,14 @@
                 })
                 .sort((a, b) => (a[1]?.nama || '').localeCompare(b[1]?.nama || ''));
 
-            container.innerHTML = `
-                <input type="text" id="admin-kurir-search" value="${searchValue}" oninput="renderAdminKurirList()" placeholder="Cari nama kurir..." class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700 mb-2">
-                <div id="container-admin-kurir-inner" class="${isOpen ? '' : 'hidden'} space-y-2"></div>
-            `;
-
-            const inner = document.getElementById('container-admin-kurir-inner');
-            if (!inner || !isOpen) return;
-
             if (!filtered.length) {
-                inner.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Belum ada data kurir.</p>';
+                container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">Belum ada data kurir.</p>';
                 return;
             }
 
             const isHeadOperasional = userSession && userSession.role === 'manajemen' && (userSession.kategori || '').trim() === 'Head Operasional';
 
-            inner.innerHTML = filtered.map(([key, item], index) => {
+            container.innerHTML = filtered.map(([key, item], index) => {
                 const dotStatus = item.status === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500';
                 return `
                     <div class="bg-white dark:bg-darkCard p-3.5 rounded-xl border dark:border-slate-800 shadow-sm space-y-2 text-xs">
@@ -3350,35 +3715,65 @@
         };
 
         window.bukaInputTransaksiMitra = function(namaMitra) {
+            if (!userSession) {
+                toast('Sesi login tidak ditemukan. Silakan login ulang.');
+                return;
+            }
+
             const modal = document.getElementById('modal-input-trx-mitra');
             const inputNama = document.getElementById('trx-mitra-name');
             const display = document.getElementById('trx-mitra-display');
             const bulan = document.getElementById('trx-mitra-bulan');
             const jumlah = document.getElementById('trx-mitra-jumlah');
-        
+            const btnSave = document.getElementById('btn-save-trx-mitra');
+
             if (!modal || !inputNama || !display || !bulan || !jumlah) return;
-        
+
             inputNama.value = namaMitra;
             display.value = namaMitra;
             bulan.value = getWibRawDate().substring(0, 7);
             jumlah.value = '';
-        
+
+            // Pastikan tombol Simpan selalu dalam kondisi aktif setiap kali popup dibuka
+            if (btnSave) {
+                btnSave.disabled = false;
+                btnSave.innerText = 'Simpan';
+            }
+
             modal.classList.remove('hidden');
         };
         window.closeInputTrxMitraModal = function() {
             const modal = document.getElementById('modal-input-trx-mitra');
             if (modal) modal.classList.add('hidden');
+
+            // Reset tombol Simpan agar tidak "nyangkut" di kondisi loading saat modal dibuka lagi
+            const btnSave = document.getElementById('btn-save-trx-mitra');
+            if (btnSave) {
+                btnSave.disabled = false;
+                btnSave.innerText = 'Simpan';
+            }
         };
-        
+
         window.saveInputTrxMitra = function() {
+            const btnSave = document.getElementById('btn-save-trx-mitra');
+
+            // Cegah klik dobel yang bisa membuat transaksi kepush berulang (duplikat)
+            if (btnSave && btnSave.disabled) return;
+
             const namaMitra = document.getElementById('trx-mitra-name').value;
             const bulan = document.getElementById('trx-mitra-bulan').value;
             const trxInput = parseInt(document.getElementById('trx-mitra-jumlah').value) || 0;
-        
-            if (!namaMitra) return alert('Mitra belum dipilih!');
-            if (!bulan) return alert('Pilih bulan!');
-            if (trxInput <= 0) return alert('Jumlah transaksi harus lebih dari 0!');
-        
+
+            if (!namaMitra) return toast('Mitra belum dipilih!');
+            if (!bulan) return toast('Pilih bulan!');
+            if (trxInput <= 0) return toast('Jumlah transaksi harus lebih dari 0!');
+            if (!userSession || !userSession.nama) return toast('Sesi login tidak ditemukan. Silakan login ulang.');
+
+            if (btnSave) {
+                btnSave.disabled = true;
+                btnSave.innerText = 'Menyimpan...';
+            }
+
             const wib = getWibDate();
             const payload = {
                 mitraNama: namaMitra,
@@ -3389,27 +3784,43 @@
                 tglRaw: getWibRawDate(),
                 bulan: bulan
             };
-        
+
             push(ref(db, 'log_mitra'), payload).then(() => {
-                alert('Transaksi mitra berhasil disimpan!');
+                toast('Transaksi mitra berhasil disimpan!');
                 closeInputTrxMitraModal();
+            }).catch((err) => {
+                toast('Gagal menyimpan transaksi: ' + (err && err.message ? err.message : 'Terjadi kesalahan.'));
+            }).finally(() => {
+                if (btnSave) {
+                    btnSave.disabled = false;
+                    btnSave.innerText = 'Simpan';
+                }
             });
         };
         
 
         window.toggleRiwayatMitraKurir = function() {
             const box = document.getElementById('box-riwayat-mitra-kurir');
+            const btn = document.getElementById('btn-toggle-riwayat-mitra');
             if (!box) return;
             box.classList.toggle('hidden');
-            if (!box.classList.contains('hidden')) {
+            const isOpen = !box.classList.contains('hidden');
+            if (btn) btn.innerHTML = isOpen
+                ? '<i data-lucide="chevron-up" class="w-3 h-3"></i> <span>Tutup</span>'
+                : '<i data-lucide="history" class="w-3 h-3"></i> <span>Riwayat</span>';
+            if (isOpen) {
                 renderKurirLogMitra();
             }
+            if (window.lucide) lucide.createIcons();
         };
         window.sembunyikanRiwayatMitraKurir = function() {
             const box = document.getElementById('box-riwayat-mitra-kurir');
             const container = document.getElementById('container-kurir-log-mitra');
+            const btn = document.getElementById('btn-toggle-riwayat-mitra');
             if (container) container.innerHTML = '';
             if (box) box.classList.add('hidden');
+            if (btn) btn.innerHTML = '<i data-lucide="history" class="w-3 h-3"></i> <span>Riwayat</span>';
+            if (window.lucide) lucide.createIcons();
         };
         
         window.hitungTarifOngkir = function() {
@@ -3417,7 +3828,7 @@
             const tujuan = document.getElementById('ongkir-tujuan').value.trim();
         
             if (!asal && !tujuan) {
-                alert('Isi minimal salah satu: asal atau tujuan.');
+                toast('Isi minimal salah satu: asal atau tujuan.');
                 return;
             }
         
@@ -3454,36 +3865,59 @@
             const container = document.getElementById('container-admin-notification-history');
             if (!container) return;
 
-            const isOpen = ensureSectionToggleState('container-admin-notification-history', false);
+            const isOpen = container.dataset.open === '1';
+
+            const btnText = document.getElementById('btn-toggle-notif-text');
+            const btnIcon = document.getElementById('btn-toggle-notif-icon');
+            if (btnText) btnText.innerText = isOpen ? 'Tutup' : 'Buka';
+            if (btnIcon) btnIcon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+
+            if (!isOpen) {
+                container.innerHTML = '';
+                return;
+            }
+
             const items = Object.entries(cloudNotificationList || {}).sort((a, b) => (b[1]?.createdAt || '').localeCompare(a[1]?.createdAt || ''));
 
-            container.innerHTML = `
-                <div class="flex items-center gap-2 mb-2">
-                    <button type="button" onclick="toggleSectionList('container-admin-notification-history')" class="flex-1 py-2 rounded-xl bg-slate-800 text-white text-[10px] font-bold uppercase">
-                        ${isOpen ? 'Tutup' : 'Buka'}
-                    </button>
-                </div>
-                <div id="container-admin-notification-history-inner" class="${isOpen ? '' : 'hidden'} space-y-2"></div>
-            `;
+            if (!items.length) {
+                container.innerHTML = `
+                    <div class="text-center py-6 space-y-1">
+                        <div class="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto"><i data-lucide="bell-off" class="w-5 h-5"></i></div>
+                        <p class="text-xs text-slate-400">Belum ada notifikasi terkirim.</p>
+                    </div>`;
+                if (window.lucide) lucide.createIcons();
+                return;
+            }
 
-            const inner = document.getElementById('container-admin-notification-history-inner');
-            if (!inner || !isOpen) return;
+            const roleIcon = { owner: 'crown', head_ops: 'briefcase', manajemen: 'shield' };
 
-            inner.innerHTML = items.length ? items.map(([key, n]) => `
-                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border text-xs space-y-2">
-                    <div class="flex justify-between items-start gap-2">
-                        <div class="min-w-0 flex-1">
-                            <div class="font-bold text-[11px] sm:text-sm leading-snug break-words">${n.message || '-'}</div>
-                            <div class="text-[10px] text-slate-400 mt-1">${n.target === 'all' ? 'Semua Kurir' : `Kurir Terpilih (${(n.targetList || []).length})`}</div>
-                            <div class="text-[10px] text-slate-400">${n.createdAt ? new Date(n.createdAt).toLocaleString('id-ID') : '-'}</div>
+            container.innerHTML = items.map(([key, n]) => {
+                const role = n.senderRole || 'owner';
+                const isInactive = n.active === false;
+                const targetLabel = n.target === 'all' ? 'Semua Kurir' : `Kurir Terpilih (${(n.targetList || []).length})`;
+                const waktu = n.createdAt ? new Date(n.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+                return `
+                <div class="notif-history-item role-${role} ${isInactive ? 'is-inactive' : ''}">
+                    <div class="flex items-start justify-between gap-2 mb-2">
+                        <div class="flex items-center gap-1.5 flex-wrap min-w-0">
+                            <span class="sender-badge" data-role="${role}"><i data-lucide="${roleIcon[role] || 'user'}" class="w-2.5 h-2.5 inline-block mr-0.5 -mt-0.5"></i>${n.senderLabel || 'Admin'}</span>
+                            ${isInactive ? '<span class="status-pill bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400">Nonaktif</span>' : '<span class="status-pill bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">Aktif</span>'}
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="resendNotification('${key}')" class="w-full py-2 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-bold uppercase">Kirim Lagi</button>
-                        <button onclick="deleteNotification('${key}')" class="w-full py-2 rounded-lg bg-rose-50 text-rose-600 text-[10px] font-bold uppercase">Hapus</button>
+                    <div class="font-bold text-[11px] sm:text-xs leading-snug break-words text-slate-700 dark:text-slate-200">${n.message || '-'}</div>
+                    <div class="flex items-center gap-3 mt-2 text-[10px] text-slate-400 flex-wrap">
+                        <span class="flex items-center gap-1"><i data-lucide="users" class="w-3 h-3"></i> ${targetLabel}</span>
+                        <span class="flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${waktu}</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-3">
+                        <button onclick="resendNotification('${key}')" class="w-full py-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase flex items-center justify-center gap-1 active:scale-95 transition-transform"><i data-lucide="send" class="w-3 h-3"></i> Kirim Lagi</button>
+                        <button onclick="deleteNotification('${key}')" class="w-full py-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-[10px] font-bold uppercase flex items-center justify-center gap-1 active:scale-95 transition-transform"><i data-lucide="trash-2" class="w-3 h-3"></i> Hapus</button>
                     </div>
                 </div>
-            `).join('') : '<div class="text-center text-xs text-slate-400 py-4">Belum ada notifikasi.</div>';
+                `;
+            }).join('');
+            if (window.lucide) lucide.createIcons();
         };        
         window.closeModal = function(id) {
             const modal = document.getElementById(id);
@@ -3931,53 +4365,63 @@
             
                     const totalBiaya = (n.biayaTambahan || []).reduce((acc, b) => acc + (b.nominal || 0), 0);
                     const statusText = normalizeStatusNota(n.status) || '-';
-                    const statusColor = statusText === 'admin'
+                    const isAdminStatus = statusText === 'admin';
+                    const statusColor = isAdminStatus
                         ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
                         : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300';
+                    const accentBorder = isAdminStatus ? 'border-l-blue-400' : 'border-l-amber-400';
+                    const iconBg = isAdminStatus
+                        ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-500'
+                        : 'bg-amber-50 dark:bg-amber-950/40 text-amber-500';
+                    const kurirInitial = (n.kurirNama || '?').trim().charAt(0).toUpperCase();
             
                     container.innerHTML += `
-                        <div class="bg-white dark:bg-darkCard p-2.5 rounded-lg border shadow-sm text-[11px] space-y-1.5">
+                        <div class="list-card-hover bg-white dark:bg-darkCard p-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-[11px] space-y-2.5 border-l-4 ${accentBorder}">
                             <div class="flex justify-between items-start gap-2">
-                                <div class="min-w-0">
-                                    <div class="font-bold text-[12px] leading-tight truncate">${n.id || '-'}</div>
-                                    <div class="text-[10px] text-slate-400">${n.tanggal || '-'}</div>
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0"><i data-lucide="receipt" class="w-3.5 h-3.5"></i></div>
+                                    <div class="min-w-0">
+                                        <div class="font-bold text-[12px] leading-tight truncate">${n.id || '-'}</div>
+                                        <div class="text-[10px] text-slate-400">${n.tanggal || '-'}</div>
+                                    </div>
                                 </div>
-                                <div class="flex flex-col items-end gap-1">
-                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${statusColor}">
-                                        ${statusText.toUpperCase()}
-                                    </span>
-                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                        ${n.kurirNama || '-'}
-                                    </span>
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${statusColor} shrink-0">
+                                    ${statusText.toUpperCase()}
+                                </span>
+                            </div>
+
+                            <div class="flex items-center gap-1.5 pl-1">
+                                <div class="leader-avatar" style="width:20px;height:20px;font-size:9px;border-radius:6px;">${kurirInitial}</div>
+                                <span class="text-[10px] font-semibold text-slate-500 dark:text-slate-300 truncate">${n.kurirNama || '-'}</span>
+                            </div>
+            
+                            <div class="grid grid-cols-4 gap-1.5 bg-slate-50 dark:bg-slate-800/60 p-2 rounded-xl text-center">
+                                <div>
+                                    <div class="text-[8px] text-slate-400 uppercase">Ongkir</div>
+                                    <div class="font-bold text-[10px]">${(n.ongkir || 0).toLocaleString('id-ID')}</div>
+                                </div>
+                                <div>
+                                    <div class="text-[8px] text-slate-400 uppercase">Tambahan</div>
+                                    <div class="font-bold text-[10px]">${totalBiaya.toLocaleString('id-ID')}</div>
+                                </div>
+                                <div>
+                                    <div class="text-[8px] text-slate-400 uppercase">Item</div>
+                                    <div class="font-bold text-[10px]">${(n.items || []).length}</div>
+                                </div>
+                                <div>
+                                    <div class="text-[8px] text-slate-400 uppercase">Total</div>
+                                    <div class="font-black text-[10px] text-primary">${(n.total || 0).toLocaleString('id-ID')}</div>
                                 </div>
                             </div>
             
-                            <div class="grid grid-cols-2 gap-1.5 bg-slate-50 dark:bg-slate-800 p-2 rounded-md">
-                                <div>
-                                    <div class="text-[9px] text-slate-400">Ongkir</div>
-                                    <div class="font-bold text-[11px]">Rp ${(n.ongkir || 0).toLocaleString('id-ID')}</div>
-                                </div>
-                                <div>
-                                    <div class="text-[9px] text-slate-400">Tambahan</div>
-                                    <div class="font-bold text-[11px]">Rp ${totalBiaya.toLocaleString('id-ID')}</div>
-                                </div>
-                                <div>
-                                    <div class="text-[9px] text-slate-400">Item</div>
-                                    <div class="font-bold text-[11px]">${(n.items || []).length}</div>
-                                </div>
-                                <div>
-                                    <div class="text-[9px] text-slate-400">Total</div>
-                                    <div class="font-bold text-[11px] text-primary">Rp ${(n.total || 0).toLocaleString('id-ID')}</div>
-                                </div>
-                            </div>
-            
-                            <div class="flex justify-end gap-2 pt-0.5">
-                                <button onclick="viewAdminNota('${key}')" class="px-2.5 py-1 rounded-md bg-blue-50 text-blue-600 font-bold text-[10px]">Preview</button>
-                                <button onclick="hapusNotaGlobal('${key}')" class="px-2.5 py-1 rounded-md bg-red-50 text-red-600 font-bold text-[10px]">Hapus</button>
+                            <div class="flex justify-end gap-2 pt-0.5 border-t border-dashed border-slate-100 dark:border-slate-800 pt-2">
+                                <button onclick="viewAdminNota('${key}')" class="flex items-center gap-1 text-blue-500 font-bold bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="eye" class="w-3 h-3"></i> Preview</button>
+                                <button onclick="hapusNotaGlobal('${key}')" class="flex items-center gap-1 text-danger font-bold bg-red-50 dark:bg-red-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="trash-2" class="w-3 h-3"></i> Hapus</button>
                             </div>
                         </div>
                     `;
                 });
+                if (window.lucide) lucide.createIcons();
             
                 if (!adaData) {
                     container.innerHTML = `<div class="text-center text-xs text-slate-400 py-4">Tidak ada nota sesuai filter.</div>`;
@@ -4163,7 +4607,101 @@
             }
 
             container.innerHTML = html;
+
+            loadChartJs().then(() => initAdminLaporanChart(mapHarian)).catch(console.error);
         };
+
+        let instanceChartLaporanAdmin = null;
+        function initAdminLaporanChart(mapHarian = {}) {
+            const chartContainer = document.getElementById('chart-laporan-admin-container');
+            if (!chartContainer) return;
+            if (instanceChartLaporanAdmin !== null) {
+                instanceChartLaporanAdmin.destroy();
+                instanceChartLaporanAdmin = null;
+            }
+            chartContainer.innerHTML = '<canvas id="chartLaporanAdmin" class="w-full h-40"></canvas>';
+            const ctx = document.getElementById('chartLaporanAdmin').getContext('2d');
+
+            const urutanTgl = Object.keys(mapHarian).sort((a, b) => a.localeCompare(b));
+            const tampil = urutanTgl.slice(-14); // 14 hari terakhir biar chart tetap ringan di HP RAM kecil
+
+            let labels = [];
+            let dataPendapatan = [];
+            let dataNota = [];
+
+            tampil.forEach(tgl => {
+                labels.push(new Date(tgl).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
+                dataPendapatan.push(mapHarian[tgl].pendapatan || 0);
+                dataNota.push(mapHarian[tgl].totalNota || 0);
+            });
+
+            if (labels.length === 0) {
+                labels = ['Belum Ada Data'];
+                dataPendapatan = [0];
+                dataNota = [0];
+            }
+
+            instanceChartLaporanAdmin = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Pendapatan (Rp)',
+                            data: dataPendapatan,
+                            backgroundColor: 'rgba(0, 102, 255, 0.55)',
+                            borderRadius: 6,
+                            yAxisID: 'yPendapatan',
+                            order: 2
+                        },
+                        {
+                            type: 'line',
+                            label: 'Jumlah Nota',
+                            data: dataNota,
+                            borderColor: '#F59E0B',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#F59E0B',
+                            yAxisID: 'yNota',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, labels: { boxWidth: 12, font: { size: 9, weight: 'bold' } } }
+                    },
+                    scales: {
+                        yPendapatan: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            grid: { color: 'rgba(148, 163, 184, 0.06)' },
+                            ticks: {
+                                font: { size: 8 },
+                                callback: (v) => v >= 1000 ? 'Rp ' + (v / 1000) + 'k' : 'Rp ' + v
+                            }
+                        },
+                        yNota: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            grid: { drawOnChartArea: false },
+                            ticks: { font: { size: 8 }, stepSize: 1, callback: (v) => v + ' Nta' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 9 } }
+                        }
+                    }
+                }
+            });
+        }
         window.backupLaporanExcel = function() {
             const bulan = document.getElementById('laporan-filter-bulan')?.value || getWibRawDate().substring(0, 7);
             const kurirFilter = document.getElementById('laporan-filter-kurir')?.value || 'semua';
@@ -4314,7 +4852,7 @@
             });
 
             if (!sheetCount) {
-                alert('Tidak ada data untuk dibackup.');
+                toast('Tidak ada data untuk dibackup.');
                 return;
             }
 
@@ -4327,7 +4865,7 @@
             const tarif = bersihkanAngka(document.getElementById('ongkir-tarif').value);
         
             if (!wilayah || tarif <= 0) {
-                alert('Lengkapi nama wilayah dan tarif ongkir!');
+                toast('Lengkapi nama wilayah dan tarif ongkir!');
                 return;
             }
         
@@ -4335,12 +4873,12 @@
         
             if (idEdit) {
                 update(ref(db, `ongkir_wilayah/${idEdit}`), payload).then(() => {
-                    alert('Data ongkir berhasil diupdate!');
+                    toast('Data ongkir berhasil diupdate!');
                     resetFormOngkir();
                 });
             } else {
                 push(ref(db, 'ongkir_wilayah'), payload).then(() => {
-                    alert('Data ongkir berhasil disimpan!');
+                    toast('Data ongkir berhasil disimpan!');
                     resetFormOngkir();
                 });
             }
@@ -4374,17 +4912,17 @@
             const wilayah = document.getElementById('edit-ongkir-wilayah').value.trim();
             const tarif = bersihkanAngka(document.getElementById('edit-ongkir-tarif').value);
         
-            if (!id) return alert('Data ongkir tidak ditemukan!');
-            if (!wilayah || tarif <= 0) return alert('Lengkapi nama wilayah dan tarif ongkir!');
+            if (!id) return toast('Data ongkir tidak ditemukan!');
+            if (!wilayah || tarif <= 0) return toast('Lengkapi nama wilayah dan tarif ongkir!');
         
             update(ref(db, `ongkir_wilayah/${id}`), {
                 wilayah,
                 tarif
             }).then(() => {
-                alert('Data ongkir berhasil diperbarui!');
+                toast('Data ongkir berhasil diperbarui!');
                 closeEditOngkirModal();
             }).catch(err => {
-                alert('Gagal update ongkir: ' + err.message);
+                toast('Gagal update ongkir: ' + err.message);
             });
         };
         window.closeEditOngkirModal = function() {
@@ -4400,8 +4938,9 @@
             document.getElementById('title-form-ongkir').innerText = 'Tambah / Edit Ongkir';
         };
         
-        window.hapusDataOngkir = function(key) {
-            if (confirm('Hapus data ongkir ini?')) {
+        window.hapusDataOngkir = async function(key) {
+            const ok = await showConfirm('Hapus data ongkir ini?');
+            if (ok) {
                 remove(ref(db, `ongkir_wilayah/${key}`));
             }
         };
@@ -4614,7 +5153,7 @@
           const asal = document.getElementById('admin-ongkir-asal').value.trim();
           const tujuan = document.getElementById('admin-ongkir-tujuan').value.trim();
       
-          if (!asal && !tujuan) return alert('Isi minimal salah satu.');
+          if (!asal && !tujuan) return toast('Isi minimal salah satu.');
       
           const cariTarif = (nama) => {
               for (let k in cloudOngkirList) {
@@ -4672,10 +5211,10 @@
             const asal = document.getElementById('admin-jarak-asal').value.trim();
             const jarak = parseFloat(document.getElementById('admin-jarak-km').value) || 0;
 
-            if (!asal || jarak <= 0) return alert('Isi wilayah dan jarak.');
+            if (!asal || jarak <= 0) return toast('Isi wilayah dan jarak.');
 
             if (jarak <= 12) {
-                alert('⚠️ Jarak ≤ 12km. Gunakan fitur "Cek Ongkir" normal untuk hasil akurat.');
+                toast('⚠️ Jarak ≤ 12km. Gunakan fitur "Cek Ongkir" normal untuk hasil akurat.');
                 return;
             }
 
@@ -4703,7 +5242,7 @@
             const titik = document.getElementById('admin-ongkir-3-titik').value.trim();
             const tujuan = document.getElementById('admin-ongkir-3-tujuan').value.trim();
             if (!asal || !titik || !tujuan) {
-                alert('Lengkapi semua kolom.');
+                toast('Lengkapi semua kolom.');
                 return;
             }
             const cariTarif = (nama) => {
@@ -4772,14 +5311,14 @@
         window.openOngkirFeature = function() {
             if (!userSession || userSession.role !== 'kurir') return;
             const currentKurir = cloudKurirList[userSession.id];
-            if (!currentKurir) { alert('Data akun tidak ditemukan.'); return; }
+            if (!currentKurir) { toast('Data akun tidak ditemukan.'); return; }
 
             // izin cek: kalau locked, minta password dulu
             if (currentKurir.ongkirLocked) {
                 const inputPass = prompt('Masukkan password khusus untuk membuka fitur ongkir:');
                 if (!inputPass) return;
                 if (inputPass !== currentKurir.ongkirPassword) {
-                    alert('Password ongkir salah!');
+                    toast('Password ongkir salah!');
                     return;
                 }
                 update(ref(db, `users/${userSession.id}`), { ongkirLocked: false });
@@ -4790,13 +5329,13 @@
         window.openCekOngkirPopupFromNota = function() {
             if (!userSession || userSession.role !== 'kurir') return;
             const currentKurir = cloudKurirList[userSession.id];
-            if (!currentKurir) { alert('Data akun tidak ditemukan.'); return; }
+            if (!currentKurir) { toast('Data akun tidak ditemukan.'); return; }
 
             if (currentKurir.ongkirLocked) {
                 const inputPass = prompt('Masukkan password khusus untuk membuka fitur ongkir:');
                 if (!inputPass) return;
                 if (inputPass !== currentKurir.ongkirPassword) {
-                    alert('Password ongkir salah!');
+                    toast('Password ongkir salah!');
                     return;
                 }
                 update(ref(db, `users/${userSession.id}`), { ongkirLocked: false });
@@ -4871,7 +5410,7 @@
         const asal = document.getElementById('cek-ongkir-asal')?.value.trim() || '';
         const tujuan = document.getElementById('cek-ongkir-tujuan')?.value.trim() || '';
 
-        if (!asal && !tujuan) return alert('Isi minimal salah satu: asal atau tujuan.');
+        if (!asal && !tujuan) return toast('Isi minimal salah satu: asal atau tujuan.');
 
         const tarifAsal = asal ? popupCariTarif(asal) : 0;
         const tarifTujuan = tujuan ? popupCariTarif(tujuan) : 0;
@@ -4894,7 +5433,7 @@
         };
         window.setOngkirToNotaPopup = function() {
         const val = window.__lastOngkirPopupValue || 0;
-        if (val <= 0) return alert('Belum ada hasil estimasi ongkir.');
+        if (val <= 0) return toast('Belum ada hasil estimasi ongkir.');
 
         const asal = document.getElementById('cek-ongkir-asal')?.value?.trim() || '';
         const tujuan = document.getElementById('cek-ongkir-tujuan')?.value?.trim() || '';
@@ -5381,6 +5920,15 @@
                 if (!container) return;
             
                 currentKPISection = section;
+                ['penghargaan', 'top5', 'ranking', 'rekapjadwal'].forEach(key => {
+                    const btn = document.getElementById('kpi-tab-' + key);
+                    if (!btn) return;
+                    if (key === section) {
+                        btn.className = 'kpi-tab active';
+                    } else {
+                        btn.className = 'kpi-tab';
+                    }
+                });
                 const bulan = getKpiMonth();
                 const data = buildKPIData(bulan);
             
@@ -5407,137 +5955,195 @@
 
                 if (section === 'rekapjadwal') {
                     const rekap = window.calcRekapJadwalKurir();
-                
+                    const namaBulanLabel = new Date(bulan + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+                    const totalHadir = rekap.reduce((a, r) => a + (r.kehadiran || 0), 0);
+                    const totalOffAll = rekap.reduce((a, r) => a + (r.totalOff || 0), 0);
+                    const totalTanpaOffAll = rekap.reduce((a, r) => a + (r.totalTidakAmbilOff || 0), 0);
+
                     container.innerHTML = `
                         <div class="space-y-3">
-                            ${rekap.length ? rekap.map((r, i) => `
-                                <div class="bg-white dark:bg-darkCard rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-3">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div class="min-w-0">
-                                            <div class="flex items-center gap-2">
-                                                <div class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-violet-600 dark:text-violet-300 font-black text-xs">
-                                                    ${i + 1}
-                                                </div>
-                                                <div class="min-w-0">
-                                                    <div class="font-bold text-sm truncate">${r.namaKurir}</div>
-                                                    <div class="text-[10px] text-slate-400 truncate">Leader: ${r.leader || '-'}</div>
-                                                </div>
+                            <div class="rounded-3xl p-4 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 shadow-xl shadow-emerald-600/25 text-white relative overflow-hidden">
+                                <div class="pointer-events-none absolute inset-0 opacity-[0.10]" style="background-image:radial-gradient(circle,#fff 1.5px,transparent 1.5px);background-size:16px 16px;"></div>
+                                <div class="relative flex items-center gap-3 mb-3">
+                                    <div class="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0"><i data-lucide="calendar-days" class="w-5 h-5"></i></div>
+                                    <div class="min-w-0">
+                                        <div class="text-[9px] font-black uppercase tracking-widest text-white/70">Rekap Jadwal Kurir</div>
+                                        <div class="text-sm font-black">${namaBulanLabel}</div>
+                                    </div>
+                                </div>
+                                <div class="relative grid grid-cols-3 gap-2">
+                                    <div class="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 text-center">
+                                        <div class="text-[9px] font-bold uppercase text-white/70">Total Hadir</div>
+                                        <div class="text-base font-black mt-0.5">${totalHadir}</div>
+                                    </div>
+                                    <div class="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 text-center">
+                                        <div class="text-[9px] font-bold uppercase text-white/70">Total Off</div>
+                                        <div class="text-base font-black mt-0.5">${totalOffAll}</div>
+                                    </div>
+                                    <div class="bg-white/15 backdrop-blur-sm rounded-xl p-2.5 text-center">
+                                        <div class="text-[9px] font-bold uppercase text-white/70">Tanpa Off</div>
+                                        <div class="text-base font-black mt-0.5">${totalTanpaOffAll}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            ${rekap.length ? rekap.map((r, i) => {
+                                const initial = (r.namaKurir || '?').trim().charAt(0).toUpperCase();
+                                const rank = i + 1;
+                                const crownClass = rank === 1 ? 'rank-crown-1' : rank === 2 ? 'rank-crown-2' : rank === 3 ? 'rank-crown-3' : 'rank-crown-default';
+                                return `
+                                <div class="rekap-jadwal-card bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 shadow-sm p-4 space-y-3">
+                                    <div class="rjc-glow"></div>
+                                    <div class="relative flex items-start justify-between gap-3">
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <div class="w-10 h-10 rounded-2xl ${crownClass} flex items-center justify-center text-white font-black text-xs shrink-0">
+                                                ${initial}
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="font-bold text-sm truncate">${r.namaKurir}</div>
+                                                <div class="text-[10px] text-slate-400 truncate flex items-center gap-1"><i data-lucide="crown" class="w-2.5 h-2.5"></i>${r.leader || '-'}</div>
                                             </div>
                                         </div>
                                         <div class="text-right shrink-0">
-                                            <div class="text-[10px] text-slate-400 uppercase font-bold">Kehadiran</div>
-                                            <div class="text-lg font-black text-success">${r.kehadiran}</div>
+                                            <div class="text-[9px] text-slate-400 uppercase font-bold tracking-wide">Kehadiran</div>
+                                            <div class="text-xl font-black text-emerald-500 leading-none">${r.kehadiran}</div>
                                         </div>
                                     </div>
-                                    <div class="grid grid-cols-2 gap-2 text-xs">
-                                        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                            <div class="text-[10px] text-slate-400 uppercase">Total Off</div>
-                                            <div class="font-bold">${r.totalOff}</div>
+                                    <div class="relative grid grid-cols-3 gap-2">
+                                        <div class="rekap-mini-stat">
+                                            <div class="rms-icon bg-slate-100 dark:bg-slate-800 text-slate-500"><i data-lucide="calendar-off" class="w-3 h-3"></i></div>
+                                            <div class="rms-label">Total Off</div>
+                                            <div class="rms-value">${r.totalOff}</div>
                                         </div>
-                                        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                            <div class="text-[10px] text-slate-400 uppercase">Tidak Ambil Off</div>
-                                            <div class="font-bold text-rose-500">${r.totalTidakAmbilOff}</div>
+                                        <div class="rekap-mini-stat">
+                                            <div class="rms-icon bg-rose-100 dark:bg-rose-950/40 text-rose-500"><i data-lucide="alert-triangle" class="w-3 h-3"></i></div>
+                                            <div class="rms-label">Tanpa Off</div>
+                                            <div class="rms-value text-rose-500">${r.totalTidakAmbilOff}</div>
                                         </div>
-                                        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                            <div class="text-[10px] text-slate-400 uppercase">Izin</div>
-                                            <div class="font-bold text-amber-500">${r.totalIzin}</div>
+                                        <div class="rekap-mini-stat">
+                                            <div class="rms-icon bg-amber-100 dark:bg-amber-950/40 text-amber-500"><i data-lucide="hand" class="w-3 h-3"></i></div>
+                                            <div class="rms-label">Izin</div>
+                                            <div class="rms-value text-amber-500">${r.totalIzin}</div>
                                         </div>
-                                        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                            <div class="text-[10px] text-slate-400 uppercase">Sakit</div>
-                                            <div class="font-bold text-blue-500">${r.totalSakit}</div>
+                                        <div class="rekap-mini-stat">
+                                            <div class="rms-icon bg-blue-100 dark:bg-blue-950/40 text-blue-500"><i data-lucide="thermometer" class="w-3 h-3"></i></div>
+                                            <div class="rms-label">Sakit</div>
+                                            <div class="rms-value text-blue-500">${r.totalSakit}</div>
                                         </div>
-                                        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                            <div class="text-[10px] text-slate-400 uppercase">Absen Masuk</div>
-                                            <div class="font-bold">${r.totalAbsenMasuk}</div>
+                                        <div class="rekap-mini-stat">
+                                            <div class="rms-icon bg-emerald-100 dark:bg-emerald-950/40 text-emerald-500"><i data-lucide="log-in" class="w-3 h-3"></i></div>
+                                            <div class="rms-label">Absen Masuk</div>
+                                            <div class="rms-value">${r.totalAbsenMasuk}</div>
                                         </div>
-                                        <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
-                                            <div class="text-[10px] text-slate-400 uppercase">Absen Pulang</div>
-                                            <div class="font-bold">${r.totalAbsenPulang}</div>
+                                        <div class="rekap-mini-stat">
+                                            <div class="rms-icon bg-violet-100 dark:bg-violet-950/40 text-violet-500"><i data-lucide="log-out" class="w-3 h-3"></i></div>
+                                            <div class="rms-label">Absen Pulang</div>
+                                            <div class="rms-value">${r.totalAbsenPulang}</div>
                                         </div>
                                     </div>
                                 </div>
-                            `).join('') : `
-                                <div class="text-center text-xs text-slate-400 py-6 bg-white dark:bg-darkCard rounded-2xl border">
-                                    Belum ada data rekap jadwal.
+                            `; }).join('') : `
+                                <div class="text-center py-8 space-y-1 bg-white dark:bg-darkCard rounded-2xl border border-slate-100 dark:border-slate-800">
+                                    <div class="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto"><i data-lucide="calendar-x" class="w-5 h-5"></i></div>
+                                    <p class="text-xs text-slate-400">Belum ada data rekap jadwal.</p>
                                 </div>
                             `}
                         </div>
                     `;
+                    if (window.lucide) lucide.createIcons();
                     return;
                 }
 
                 if (section === 'penghargaan') {
                     const testimoniTerbaik = getTestimoniTerbaik(bulan);
-                
+                    const namaBulanLabel = new Date(bulan + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+                    // Susunan podium: kiri #2, tengah #1 (paling tinggi), kanan #3
+                    const podiumOrder = [
+                        { d: top2, rank: 2, medal: '🥈', barH: 'h-14', grad: 'from-slate-300 to-slate-400', ring: 'ring-slate-300' },
+                        { d: top1, rank: 1, medal: '🥇', barH: 'h-20', grad: 'from-yellow-300 to-amber-400', ring: 'ring-amber-300' },
+                        { d: top3, rank: 3, medal: '🥉', barH: 'h-10', grad: 'from-orange-300 to-orange-400', ring: 'ring-orange-300' }
+                    ];
+
+                    const awardCards = [
+                        {
+                            icon: '💬', tone: 'from-pink-400 to-rose-500', label: 'Testimoni Terbaik',
+                            nama: testimoniTerbaik?.nama, metric: testimoniTerbaik ? `⭐ ${testimoniTerbaik.avgRating.toFixed(1)}/5 · ${testimoniTerbaik.jumlah} testimoni` : '-',
+                            metricClass: 'text-rose-500 dark:text-rose-400'
+                        },
+                        {
+                            icon: '🏪', tone: 'from-indigo-400 to-blue-500', label: 'Trx Mitra Terbanyak',
+                            nama: topTrxMitra?.nama, metric: `${topTrxMitra?.trxMitra || 0} transaksi`,
+                            metricClass: 'text-indigo-500 dark:text-indigo-400'
+                        },
+                        {
+                            icon: '🔥', tone: 'from-orange-400 to-amber-500', label: 'Kurir Paling Aktif',
+                            nama: topAktif?.nama, metric: `Rating ${topAktif?.rating || 0}%`,
+                            metricClass: 'text-orange-500 dark:text-orange-400'
+                        }
+                    ];
+
                     container.innerHTML = `
                         <div class="space-y-4">
-                            <div class="rounded-3xl p-5 bg-gradient-to-br from-yellow-100 to-yellow-300 dark:from-yellow-900/40 dark:to-yellow-800/20 border border-yellow-200 dark:border-yellow-900 shadow-xl">
-                                <div class="text-[10px] uppercase tracking-wider text-yellow-700 dark:text-yellow-200 font-black">🏆 Kurir Terbaik</div>
-                                <div class="flex items-center justify-between mt-2">
-                                    <div>
-                                        <div class="text-2xl font-black">${topKurirTerbaik?.nama || '-'}</div>
-                                        <div class="text-xs font-bold mt-1">${topKurirTerbaik ? `${getRatingBadge(topKurirTerbaik.rating).emoji} ${Number(topKurirTerbaik.rating).toFixed(1)}% ${getRatingBadge(topKurirTerbaik.rating).label}` : '-'}</div>
+                            <!-- HERO: Kurir Terbaik Bulan Ini -->
+                            <div class="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 shadow-xl shadow-amber-500/30">
+                                <div class="pointer-events-none absolute inset-0 opacity-[0.12]" style="background-image:radial-gradient(circle,#fff 1.5px,transparent 1.5px);background-size:16px 16px;"></div>
+                                <div class="relative flex items-center gap-4">
+                                    <div class="relative w-[68px] h-[68px] shrink-0 rounded-[22px] bg-white/25 ring-4 ring-white/40 flex items-center justify-center backdrop-blur-sm shadow-lg">
+                                        <span class="text-xl font-black text-white drop-shadow-sm">${getKpiAvatarName(topKurirTerbaik?.nama || '')}</span>
+                                        <div class="absolute -top-2.5 -right-2.5 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md text-base">👑</div>
                                     </div>
-                                    <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-yellow-900 shadow-lg">
-                                        ${getKpiAvatarName(topKurirTerbaik?.nama || '')}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="rounded-3xl p-5 bg-gradient-to-br from-pink-100 to-rose-300 dark:from-pink-900/40 dark:to-rose-800/20 border border-pink-200 dark:border-pink-900 shadow-xl">
-                                <div class="text-[10px] uppercase tracking-wider text-pink-700 dark:text-pink-200 font-black">💬 Kurir Testimoni Terbaik</div>
-                                <div class="flex items-center justify-between mt-2">
-                                    <div>
-                                        <div class="text-2xl font-black">${testimoniTerbaik?.nama || '-'}</div>
-                                        <div class="text-xs font-bold mt-1">
-                                            ${testimoniTerbaik ? `⭐ ${testimoniTerbaik.avgRating.toFixed(1)} / 5 dari ${testimoniTerbaik.jumlah} testimoni` : '-'}
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[9px] font-black uppercase tracking-widest text-amber-900/70">🏆 Kurir Terbaik Bulan Ini</div>
+                                        <div class="text-xl font-black text-amber-950 truncate mt-0.5">${topKurirTerbaik?.nama || '-'}</div>
+                                        <div class="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 rounded-full bg-white/45 text-[10px] font-black text-amber-900">
+                                            ${topKurirTerbaik ? `${getRatingBadge(topKurirTerbaik.rating).emoji} ${Number(topKurirTerbaik.rating).toFixed(1)}% • ${getRatingBadge(topKurirTerbaik.rating).label}` : 'Belum ada data'}
                                         </div>
                                     </div>
-                                    <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-pink-900 shadow-lg">
-                                        ${getKpiAvatarName(testimoniTerbaik?.nama || '')}
-                                    </div>
                                 </div>
                             </div>
 
-                            <div class="rounded-3xl p-5 bg-gradient-to-br from-slate-200 to-slate-400 dark:from-slate-700 dark:to-slate-800 border shadow-xl">
-                                <div class="text-[10px] uppercase tracking-wider text-slate-700 dark:text-slate-200 font-black">🥇 Trx Mitra Terbanyak</div>
-                                <div class="flex items-center justify-between mt-2">
-                                    <div>
-                                        <div class="text-2xl font-black text-slate-900 dark:text-white">${topTrxMitra?.nama || '-'}</div>
-                                        <div class="text-xs font-bold mt-1 text-slate-700 dark:text-slate-200">${topTrxMitra?.trxMitra || 0} trx</div>
-                                    </div>
-                                    <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-slate-900 shadow-lg">
-                                        ${getKpiAvatarName(topTrxMitra?.nama || '')}
-                                    </div>
+                            <!-- PODIUM TOP 3 -->
+                            <div class="rounded-3xl p-4 bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><i data-lucide="award" class="w-3.5 h-3.5 text-amber-500"></i> Podium Ranking</h4>
+                                    <span class="text-[9px] font-bold text-slate-400">${namaBulanLabel}</span>
                                 </div>
-                            </div>
-
-                            <div class="rounded-3xl p-5 bg-gradient-to-br from-orange-100 to-orange-300 dark:from-orange-900/40 dark:to-orange-800/20 border border-orange-200 dark:border-orange-900 shadow-xl">
-                                <div class="text-[10px] uppercase tracking-wider text-orange-700 dark:text-orange-200 font-black">🔥 Kurir Paling Aktif</div>
-                                <div class="flex items-center justify-between mt-2">
-                                    <div>
-                                        <div class="text-2xl font-black">${topAktif?.nama || '-'}</div>
-                                        <div class="text-xs font-bold mt-1 text-orange-700 dark:text-orange-200">Rating ${topAktif?.rating || 0}%</div>
-                                    </div>
-                                    <div class="w-16 h-16 rounded-full bg-white/70 flex items-center justify-center font-black text-xl text-orange-900 shadow-lg">
-                                        ${getKpiAvatarName(topAktif?.nama || '')}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-3 gap-2">
-                                ${[top1, top2, top3].map((x, idx) => {
-                                    if (!x) return `<div class="rounded-2xl bg-slate-100 dark:bg-slate-800 p-3 text-center text-xs">-</div>`;
-                                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
-                                    const bg = idx === 0 ? 'from-yellow-300 to-yellow-500' : idx === 1 ? 'from-slate-300 to-slate-500' : 'from-orange-300 to-orange-500';
-                                    return `
-                                        <div class="rounded-2xl bg-gradient-to-br ${bg} p-3 text-center shadow-lg">
-                                            <div class="text-2xl">${medal}</div>
-                                            <div class="font-black text-sm mt-1">${x.nama}</div>
-                                            <div class="text-[10px] font-bold">${Number(x.rating).toFixed(1)}%</div>
+                                <div class="flex items-end justify-center gap-2.5">
+                                    ${podiumOrder.map(p => `
+                                        <div class="flex flex-col items-center flex-1 min-w-0">
+                                            <div class="text-xl leading-none">${p.medal}</div>
+                                            <div class="w-11 h-11 -mt-1 rounded-full bg-gradient-to-br ${p.grad} flex items-center justify-center text-sm font-black text-white shadow-md ring-2 ring-white dark:ring-darkCard">
+                                                ${p.d ? getKpiAvatarName(p.d.nama) : '-'}
+                                            </div>
+                                            <div class="text-[10px] font-bold mt-1.5 text-center truncate w-full px-0.5">${p.d?.nama || '-'}</div>
+                                            <div class="text-[9px] font-black text-slate-400">${p.d ? Number(p.d.rating).toFixed(1) + '%' : '-'}</div>
+                                            <div class="w-full ${p.barH} rounded-t-2xl bg-gradient-to-b ${p.grad} mt-2 flex items-start justify-center pt-1.5 shadow-inner">
+                                                <span class="text-white font-black text-base drop-shadow-sm">${p.rank}</span>
+                                            </div>
                                         </div>
-                                    `;
-                                }).join('')}
+                                    `).join('')}
+                                </div>
+                            </div>
+
+                            <!-- GRID PENGHARGAAN LAIN -->
+                            <div>
+                                <h4 class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5"><i data-lucide="sparkles" class="w-3.5 h-3.5 text-violet-500"></i> Penghargaan Lainnya</h4>
+                                <div class="grid grid-cols-1 gap-2.5">
+                                    ${awardCards.map(a => `
+                                        <div class="rounded-2xl p-3.5 bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
+                                            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br ${a.tone} flex items-center justify-center text-lg shrink-0 shadow-md">
+                                                ${a.icon}
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="text-[9px] font-bold uppercase tracking-wider text-slate-400">${a.label}</div>
+                                                <div class="text-sm font-black truncate">${a.nama || '-'}</div>
+                                            </div>
+                                            <div class="text-[10px] font-black shrink-0 ${a.metricClass}">${a.metric}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
                         </div>
                     `;
@@ -5736,9 +6342,149 @@
                     </div>
                 `;
             } finally {
+                if (window.lucide) lucide.createIcons();
                 isRenderKpiRunning = false;
             }
         };
+
+        // ===================================================================
+        // STATISTIK & PERINGKAT KURIR — khusus untuk akun kurir yang sedang login.
+        // Menampilkan posisi ranking bulan ini, naik/turun dibanding bulan lalu,
+        // rincian skor, dan mini leaderboard di sekitar posisinya.
+        // ===================================================================
+        function getPrevMonthStr(ym) {
+            let [y, m] = (ym || '').split('-').map(Number);
+            if (!y || !m) return ym;
+            m -= 1;
+            if (m === 0) { m = 12; y -= 1; }
+            return `${y}-${String(m).padStart(2, '0')}`;
+        }
+
+        window.renderStatistikKurir = function() {
+            if (!userSession || userSession.role !== 'kurir') return;
+
+            const bulan = getWibRawDate().slice(0, 7);
+            const bulanPrev = getPrevMonthStr(bulan);
+            const norm = (v) => (v || '').toString().trim().toLowerCase();
+            const myUsername = norm(userSession.username);
+            const myId = norm(userSession.id);
+            const myNama = norm(userSession.nama);
+
+            const dataNow = buildKPIData(bulan);
+            const dataPrev = buildKPIData(bulanPrev);
+
+            const matchMe = (row) => norm(row.id) === myId || norm(row.username) === myUsername || norm(row.nama) === myNama;
+
+            const idxNow = dataNow.findIndex(matchMe);
+            const idxPrev = dataPrev.findIndex(matchMe);
+
+            const bulanLabelEl = document.getElementById('statistik-bulan-label');
+            if (bulanLabelEl) {
+                const namaBulan = new Date(bulan + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                bulanLabelEl.innerText = 'Periode ' + namaBulan;
+            }
+
+            const rankNumberEl = document.getElementById('statistik-rank-number');
+            const rankTotalEl = document.getElementById('statistik-rank-total');
+            const deltaBadgeEl = document.getElementById('statistik-delta-badge');
+
+            if (idxNow === -1) {
+                if (rankNumberEl) rankNumberEl.innerText = '-';
+                if (rankTotalEl) rankTotalEl.innerText = 'Belum ada data KPI bulan ini';
+                if (deltaBadgeEl) deltaBadgeEl.innerHTML = '';
+                const breakdownEl = document.getElementById('statistik-breakdown');
+                if (breakdownEl) breakdownEl.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada aktivitas yang tercatat bulan ini.</div>';
+                const boardEl = document.getElementById('statistik-leaderboard');
+                if (boardEl) boardEl.innerHTML = '';
+                return;
+            }
+
+            const me = dataNow[idxNow];
+            const rankNow = idxNow + 1;
+            const total = dataNow.length;
+
+            if (rankNumberEl) rankNumberEl.innerText = rankNow;
+            if (rankTotalEl) rankTotalEl.innerText = `dari ${total} kurir aktif`;
+
+            if (deltaBadgeEl) {
+                if (idxPrev === -1) {
+                    deltaBadgeEl.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold mx-auto bg-slate-100 dark:bg-slate-800 text-slate-500';
+                    deltaBadgeEl.innerHTML = '<i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Belum ada data bulan lalu';
+                } else {
+                    const rankPrev = idxPrev + 1;
+                    const delta = rankPrev - rankNow; // positif = naik peringkat
+                    if (delta > 0) {
+                        deltaBadgeEl.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold mx-auto bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600';
+                        deltaBadgeEl.innerHTML = `<i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> Naik ${delta} peringkat`;
+                    } else if (delta < 0) {
+                        deltaBadgeEl.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold mx-auto bg-rose-50 dark:bg-rose-950/40 text-rose-500';
+                        deltaBadgeEl.innerHTML = `<i data-lucide="arrow-down-right" class="w-3.5 h-3.5"></i> Turun ${Math.abs(delta)} peringkat`;
+                    } else {
+                        deltaBadgeEl.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold mx-auto bg-slate-100 dark:bg-slate-800 text-slate-500';
+                        deltaBadgeEl.innerHTML = '<i data-lucide="minus" class="w-3.5 h-3.5"></i> Tetap dari bulan lalu';
+                    }
+                }
+            }
+
+            const badge = getRatingBadge(me.rating || 0);
+            const badgeEmojiEl = document.getElementById('statistik-badge-emoji');
+            const badgeLabelEl = document.getElementById('statistik-badge-label');
+            const ratingNumberEl = document.getElementById('statistik-rating-number');
+            const ratingBarEl = document.getElementById('statistik-rating-bar');
+
+            if (badgeEmojiEl) badgeEmojiEl.innerText = badge.emoji;
+            if (badgeLabelEl) { badgeLabelEl.innerText = badge.label; badgeLabelEl.className = 'text-sm font-black ' + badge.color; }
+            if (ratingNumberEl) ratingNumberEl.innerText = (me.rating || 0) + ' / 100';
+            if (ratingBarEl) {
+                ratingBarEl.style.width = Math.min(100, me.rating || 0) + '%';
+                ratingBarEl.className = 'h-full rounded-full transition-all duration-500 ' + progressColor(me.rating || 0);
+            }
+
+            const breakdownEl = document.getElementById('statistik-breakdown');
+            if (breakdownEl) {
+                const rows = [
+                    { label: 'Kehadiran', icon: 'calendar-check', score: me.kehadiranScore || 0, color: 'bg-blue-500' },
+                    { label: 'Total Penghasilan', icon: 'wallet', score: me.totalPenghasilanScore || 0, color: 'bg-emerald-500', extra: 'Rp ' + (me.totalPenghasilan || 0).toLocaleString('id-ID') },
+                    { label: 'Total Nota', icon: 'file-text', score: me.totalNotaScore || 0, color: 'bg-indigo-500', extra: (me.totalNota || 0) + ' nota' },
+                    { label: 'Transaksi Mitra', icon: 'store', score: me.trxMitraScore || 0, color: 'bg-amber-500', extra: (me.trxMitra || 0) + ' trx' },
+                    { label: 'Kedisiplinan (Off/Izin/Sakit)', icon: 'shield-check', score: me.offScore || 0, color: 'bg-purple-500' }
+                ];
+                breakdownEl.innerHTML = rows.map(r => `
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300"><i data-lucide="${r.icon}" class="w-3.5 h-3.5 text-slate-400"></i> ${r.label}${r.extra ? ` <span class="text-slate-400">(${r.extra})</span>` : ''}</span>
+                            <span class="font-bold text-slate-700 dark:text-slate-200">${r.score.toFixed(1)}/20</span>
+                        </div>
+                        <div class="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div class="h-full rounded-full ${r.color}" style="width:${Math.min(100, (r.score / 20) * 100)}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            const boardEl = document.getElementById('statistik-leaderboard');
+            if (boardEl) {
+                const startIdx = Math.max(0, idxNow - 1);
+                const endIdx = Math.min(dataNow.length, idxNow + 2);
+                const slice = dataNow.slice(startIdx, endIdx);
+                boardEl.innerHTML = slice.map((row, i) => {
+                    const rank = startIdx + i + 1;
+                    const isMe = (startIdx + i) === idxNow;
+                    return `
+                        <div class="flex items-center gap-2.5 p-2.5 rounded-xl ${isMe ? 'bg-blue-50 dark:bg-blue-950/30 ring-1 ring-primary/30' : 'bg-slate-50 dark:bg-slate-800/50'}">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${isMe ? 'bg-primary text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}">${rank}</div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[11px] font-bold truncate ${isMe ? 'text-primary' : 'text-slate-700 dark:text-slate-200'}">${row.nama || '-'}${isMe ? ' (Kamu)' : ''}</p>
+                            </div>
+                            <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">${(row.rating || 0).toFixed(1)}</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            if (window.lucide) lucide.createIcons();
+        };
+
         window.saveDataManajemen = function() {
             const idEdit = document.getElementById('manajemen-id-edit').value;
             const kategori = document.getElementById('manajemen-kategori').value;
@@ -5748,7 +6494,7 @@
             const status = document.getElementById('manajemen-status').value;
         
             if (!kategori || !nama || !username || !password) {
-                alert('Lengkapi semua data!');
+                toast('Lengkapi semua data!');
                 return;
             }
         
@@ -5757,23 +6503,23 @@
             if (idEdit) {
                 update(ref(db, `manajemen_sahabatku/${idEdit}`), payload)
                     .then(() => {
-                        alert('Data berhasil diperbarui!');
+                        toast('Data berhasil diperbarui!');
                         resetFormManajemen();
                         setTimeout(() => {
                             if (typeof renderAdminManajemen === 'function') renderAdminManajemen();
                         }, 300);
                     })
-                    .catch(err => alert('Gagal update: ' + err.message));
+                    .catch(err => toast('Gagal update: ' + err.message));
             } else {
                 push(ref(db, 'manajemen_sahabatku'), payload)
                     .then(() => {
-                        alert('Data berhasil disimpan!');
+                        toast('Data berhasil disimpan!');
                         resetFormManajemen();
                         setTimeout(() => {
                             if (typeof renderAdminManajemen === 'function') renderAdminManajemen();
                         }, 300);
                     })
-                    .catch(err => alert('Gagal simpan: ' + err.message));
+                    .catch(err => toast('Gagal simpan: ' + err.message));
             }
 
         };
@@ -5799,8 +6545,8 @@
             const password = document.getElementById('edit-manajemen-password').value.trim();
             const status = document.getElementById('edit-manajemen-status').value;
         
-            if (!id) return alert('Data manajemen tidak ditemukan!');
-            if (!kategori || !nama || !username || !password) return alert('Lengkapi semua data!');
+            if (!id) return toast('Data manajemen tidak ditemukan!');
+            if (!kategori || !nama || !username || !password) return toast('Lengkapi semua data!');
         
             update(ref(db, `manajemen_sahabatku/${id}`), {
                 kategori,
@@ -5809,10 +6555,10 @@
                 password,
                 status
             }).then(() => {
-                alert('Data manajemen berhasil diperbarui!');
+                toast('Data manajemen berhasil diperbarui!');
                 closeEditManajemenModal();
             }).catch(err => {
-                alert('Gagal update: ' + err.message);
+                toast('Gagal update: ' + err.message);
             });
         };
         window.closeEditManajemenModal = function() {
@@ -5834,38 +6580,64 @@
             document.getElementById('manajemen-status').value = 'aktif';
             document.getElementById('title-form-manajemen').innerText = 'Tambah / Edit Data Manajemen';
         };
-        function populateNotifKurirList() {
-        const tbody = document.getElementById('notif-kurir-table-body');
-        if (!tbody) return;
+        window.toggleNotifKurirChip = function(nama) {
+            const checkbox = document.querySelector(`.notif-kurir-check[value="${CSS.escape(nama)}"]`);
+            if (checkbox) checkbox.checked = !checkbox.checked;
+            populateNotifKurirList();
+        };
 
-        tbody.innerHTML = '';
-        
+        function populateNotifKurirList() {
+        const container = document.getElementById('notif-kurir-picker');
+        const counter = document.getElementById('notif-kurir-selected-count');
+        if (!container) return;
+
+        // Simpan status centang yang sudah ada sebelum di-render ulang
+        const previouslyChecked = new Set(
+            Array.from(document.querySelectorAll('.notif-kurir-check:checked')).map(el => el.value)
+        );
+
+        const keyword = (document.getElementById('notif-kurir-search')?.value || '').toLowerCase().trim();
+
         const kurirList = Object.entries(cloudKurirList || {})
             .filter(([_, u]) => u && u.role === 'kurir' && u.status === 'aktif')
-            .map(([id, u]) => ({ id, nama: u.nama || u.username || id, leader: u.leader || '-' }));
+            .map(([id, u]) => ({ id, nama: u.nama || u.username || id, leader: u.leader || '-' }))
+            .filter(k => !keyword || k.nama.toLowerCase().includes(keyword))
+            .sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
 
-        kurirList.forEach((kurir, idx) => {
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer';
-            tr.innerHTML = `
-            <td class="p-2.5 text-slate-700 dark:text-slate-300 font-semibold">${idx + 1}</td>
-            <td class="p-2.5">
-                <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" class="notif-kurir-check accent-primary" value="${kurir.nama}">
-                <span class="text-slate-800 dark:text-white font-medium">${kurir.nama}</span>
-                </label>
-            </td>
-            <td class="p-2.5 text-slate-500 dark:text-slate-400">${kurir.leader}</td>
-            `;
-            tbody.appendChild(tr);
-        });
+        if (!kurirList.length) {
+            container.innerHTML = '<div class="text-center text-[10px] text-slate-400 py-4">Tidak ada kurir yang cocok.</div>';
+        } else {
+            container.innerHTML = kurirList.map(kurir => {
+                const isChecked = previouslyChecked.has(kurir.nama);
+                const initial = (kurir.nama || '?').trim().charAt(0).toUpperCase();
+                return `
+                    <div class="notif-kurir-chip-item ${isChecked ? 'is-checked' : ''}" onclick="toggleNotifKurirChip('${kurir.nama.replace(/'/g, "\\'")}')">
+                        <input type="checkbox" class="notif-kurir-check hidden" value="${kurir.nama}" ${isChecked ? 'checked' : ''}>
+                        <div class="nci-check">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <div class="nci-avatar">${initial}</div>
+                        <div class="min-w-0 flex-1">
+                            <div class="nci-name truncate">${kurir.nama}</div>
+                            <div class="nci-sub truncate">Leader: ${kurir.leader}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        if (counter) {
+            const totalChecked = document.querySelectorAll('.notif-kurir-check:checked').length;
+            counter.innerHTML = `<i data-lucide="users" class="w-3 h-3"></i> ${totalChecked} dipilih`;
+        }
+        if (window.lucide) lucide.createIcons();
         }
         window.saveNotification = function() {
         const target = document.getElementById('notif-target').value;
         const message = document.getElementById('notif-message').value.trim();
 
         if (!message) {
-            alert('Isi pesan notifikasi wajib diisi!');
+            toast('Isi pesan notifikasi wajib diisi!');
             return;
         }
 
@@ -5874,10 +6646,12 @@
             const checkboxes = document.querySelectorAll('.notif-kurir-check:checked');
             targetList = Array.from(checkboxes).map(checkbox => checkbox.value);
             if (!targetList.length) {
-            alert('Pilih minimal 1 kurir!');
+            toast('Pilih minimal 1 kurir!');
             return;
             }
         }
+
+        const sender = getSenderInfo();
 
         const payload = {
             target,
@@ -5885,22 +6659,26 @@
             message,
             type: 'warning',
             active: true,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            senderRole: sender.senderRole,
+            senderLabel: sender.senderLabel,
+            senderNama: sender.senderNama
         };
 
         push(ref(db, 'notifications_admin'), payload)
             .then(() => {
-            alert('Notifikasi berhasil dikirim!');
+            toast('Notifikasi berhasil dikirim!');
             resetNotifForm();
             })
-            .catch(err => alert('Gagal kirim notifikasi: ' + err.message));
+            .catch(err => toast('Gagal kirim notifikasi: ' + err.message));
         };
                 
-        window.hapusDataManajemen = function(key) {
-            if (confirm('Hapus data ini?')) {
+        window.hapusDataManajemen = async function(key) {
+            const ok = await showConfirm('Hapus data ini?');
+            if (ok) {
                 remove(ref(db, `manajemen_sahabatku/${key}`))
-                    .then(() => alert('Data berhasil dihapus!'))
-                    .catch(err => alert('Gagal hapus: ' + err.message));
+                    .then(() => toast('Data berhasil dihapus!'))
+                    .catch(err => toast('Gagal hapus: ' + err.message));
             }
         };
         window.renderAdminManajemen = function() {
@@ -5956,7 +6734,9 @@
             const badge = document.getElementById('badge-admin-role');
             const kurirForm = document.querySelector('#screen-admin-kurir > .bg-white');
             const manajemenScreen = document.getElementById('screen-admin-manajemen');
+            const leaderScreen = document.getElementById('screen-admin-leader');
             const manajemenCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-manajemen"]');
+            const leaderCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-leader"]');
             const ongkirCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-ongkir"]');
             const orderDepositCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-order-deposit"]');
 
@@ -5971,7 +6751,7 @@
 
             if (kategoriFixed === 'Owner' || kategoriFixed === 'Head Operasional') {
                 const allScreenIds = [
-                    'screen-admin-kurir', 'screen-admin-manajemen', 'screen-admin-nota',
+                    'screen-admin-kurir', 'screen-admin-manajemen', 'screen-admin-leader', 'screen-admin-nota',
                     'screen-admin-mitra', 'screen-admin-laporan', 'screen-admin-tracking',
                     'screen-admin-kpi', 'screen-admin-testimonial', 'screen-admin-notifikasi',
                     'screen-admin-absensi', 'screen-admin-ongkir', 'screen-admin-order-deposit', 'screen-pengaturan'
@@ -5989,6 +6769,7 @@
                 if (kurirForm) kurirForm.classList.remove('hidden');
                 if (mitraForm) mitraForm.classList.remove('hidden');
                 if (manajemenCardBtn) manajemenCardBtn.classList.remove('hidden');
+                if (leaderCardBtn) leaderCardBtn.classList.remove('hidden');
                 if (ongkirCardBtn) ongkirCardBtn.classList.remove('hidden');
                 if (orderDepositCardBtn) orderDepositCardBtn.classList.remove('hidden');
 
@@ -5999,7 +6780,14 @@
                             btn.classList.add('hidden', 'opacity-0', 'pointer-events-none');
                         });
                     }
+                    if (leaderScreen) {
+                        leaderScreen.classList.add('hidden');
+                        leaderScreen.querySelectorAll('button').forEach(btn => {
+                            btn.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+                        });
+                    }
                     if (manajemenCardBtn) manajemenCardBtn.classList.add('hidden');
+                    if (leaderCardBtn) leaderCardBtn.classList.add('hidden');
                     if (ongkirCardBtn) ongkirCardBtn.classList.add('hidden');
 
                     const orderDepositCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-order-deposit"]');
@@ -6059,6 +6847,7 @@
 
                 const hiddenForHRD = [
                     'screen-admin-manajemen',
+                    'screen-admin-leader',
                     'screen-admin-nota',
                     'screen-admin-mitra',
                     'screen-admin-laporan',
@@ -6077,10 +6866,12 @@
                 });
 
                 const manajemenCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-manajemen"]');
+                const leaderCardBtnHRD = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-leader"]');
                 const ongkirCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-ongkir"]');
                 const orderDepositCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-order-deposit"]');
 
                 if (manajemenCardBtn) manajemenCardBtn.classList.add('hidden');
+                if (leaderCardBtnHRD) leaderCardBtnHRD.classList.add('hidden');
                 if (ongkirCardBtn) ongkirCardBtn.classList.add('hidden');
                 if (orderDepositCardBtn) orderDepositCardBtn.classList.add('hidden');
 
@@ -6090,18 +6881,46 @@
             console.log('Kategori manajemen tidak dikenali:', kategoriFixed);
         };
         window.openPopupPenilaianLeader = function() {
-            const modal = document.getElementById('modal-penilaian-leader');
-            const bulan = document.getElementById('leader-penilaian-bulan');
-            if (!modal || !bulan) return;
-        
-            bulan.value = getWibRawDate().substring(0, 7);
-            modal.classList.remove('hidden');
-            renderPenilaianLeader();
+            navigateTo('screen-admin-leader');
+            switchLeaderTab('penilaian');
         };
 
         window.closePopupPenilaianLeader = function() {
-            const modal = document.getElementById('modal-penilaian-leader');
-            if (modal) modal.classList.add('hidden');
+            navigateBack();
+        };
+
+        window.switchLeaderTab = function(tab) {
+            const panelDaftar = document.getElementById('panel-leader-daftar');
+            const panelPenilaian = document.getElementById('panel-leader-penilaian');
+            const tabDaftar = document.getElementById('tab-leader-daftar');
+            const tabPenilaian = document.getElementById('tab-leader-penilaian');
+            if (!panelDaftar || !panelPenilaian || !tabDaftar || !tabPenilaian) return;
+
+            const activeClasses = ['bg-primary', 'text-white', 'shadow-sm'];
+            const inactiveClasses = ['text-slate-500', 'dark:text-slate-400'];
+
+            if (tab === 'penilaian') {
+                panelDaftar.classList.add('hidden');
+                panelPenilaian.classList.remove('hidden');
+                tabPenilaian.classList.add(...activeClasses);
+                tabPenilaian.classList.remove(...inactiveClasses);
+                tabDaftar.classList.remove(...activeClasses);
+                tabDaftar.classList.add(...inactiveClasses);
+
+                const bulan = document.getElementById('leader-penilaian-bulan');
+                if (bulan && !bulan.value) bulan.value = getWibRawDate().substring(0, 7);
+                if (typeof renderPenilaianLeader === 'function') renderPenilaianLeader();
+            } else {
+                panelPenilaian.classList.add('hidden');
+                panelDaftar.classList.remove('hidden');
+                tabDaftar.classList.add(...activeClasses);
+                tabDaftar.classList.remove(...inactiveClasses);
+                tabPenilaian.classList.remove(...activeClasses);
+                tabPenilaian.classList.add(...inactiveClasses);
+
+                if (typeof populateAnggotaDropdownLeader === 'function') populateAnggotaDropdownLeader();
+                if (typeof renderLeaderList === 'function') renderLeaderList();
+            }
         };
         function getLeaderScore(namaLeader, bulan) {
             const leaderName = (namaLeader || '').trim();
@@ -6228,87 +7047,99 @@
             container.innerHTML = data.map((d, i) => {
                 const badge = getRatingBadge(d.skorAkhir);
                 const anggotaList = d.anggotaRanking || [];
+                const rank = i + 1;
+                const crownClass = rank === 1 ? 'rank-crown-1' : rank === 2 ? 'rank-crown-2' : rank === 3 ? 'rank-crown-3' : 'rank-crown-default';
+                const cardRankClass = rank <= 3 ? `is-rank-${rank}` : '';
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                const initial = (d.namaLeader || '?').trim().charAt(0).toUpperCase();
         
                 return `
-                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
+                    <div class="leader-score-card ${cardRankClass} bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
                         <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-violet-600 dark:text-violet-300 font-black text-xs">
-                                        ${i + 1}
-                                    </div>
-                                    <div class="min-w-0">
-                                        <div class="font-bold text-sm truncate">${d.namaLeader}</div>
-                                        <div class="text-[10px] text-slate-400 truncate">Username: ${d.leaderUsername}</div>
-                                    </div>
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="relative w-11 h-11 rounded-2xl ${crownClass} flex items-center justify-center text-white font-black text-sm shrink-0">
+                                    ${initial}
+                                    <span class="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-700 flex items-center justify-center text-[10px] shadow-sm">${rank <= 3 ? medal : rank}</span>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-sm truncate">${d.namaLeader}</div>
+                                    <div class="text-[10px] text-slate-400 truncate flex items-center gap-1"><i data-lucide="at-sign" class="w-2.5 h-2.5"></i>${d.leaderUsername}</div>
                                 </div>
                             </div>
         
                             <div class="text-right shrink-0">
-                                <div class="text-lg font-black text-primary">${d.skorAkhir}%</div>
-                                <div class="text-[10px] font-bold ${badge.color || 'text-slate-500'}">
+                                <div class="text-xl font-black text-primary leading-none">${d.skorAkhir}%</div>
+                                <div class="text-[10px] font-bold mt-1 ${badge.color || 'text-slate-500'}">
                                     ${badge.emoji} ${badge.label}
                                 </div>
                             </div>
                         </div>
-        
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                <div class="text-[10px] text-slate-400 uppercase">Skor Dasar Leader</div>
-                                <div class="font-black mt-1">${d.leaderRating}</div>
+
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-[9px] font-bold uppercase text-slate-400 tracking-wide">
+                                <span>Progress Skor</span>
+                                <span>${d.skorAkhir}%</span>
                             </div>
-                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                <div class="text-[10px] text-slate-400 uppercase">Bonus Top Ranking</div>
-                                <div class="font-black mt-1">+${d.bonusTopRanking}</div>
-                            </div>
-                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 col-span-2">
-                                <div class="text-[10px] text-slate-400 uppercase">Total Anggota Aktif</div>
-                                <div class="font-black mt-1">${d.anggotaCount}</div>
+                            <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div class="h-full ${crownClass} rounded-full transition-all" style="width:${d.skorAkhir}%"></div>
                             </div>
                         </div>
         
-                        <div class="grid grid-cols-4 gap-2 text-xs">
-                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                <div class="text-[10px] text-slate-400 uppercase">Kehadiran</div>
-                                <div class="font-black mt-1">${d.totalKehadiranAnggota}</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="leader-stat-tile">
+                                <div class="lst-label">Skor Dasar</div>
+                                <div class="lst-value">${d.leaderRating}</div>
                             </div>
-                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                <div class="text-[10px] text-slate-400 uppercase">Penghasilan</div>
-                                <div class="font-black mt-1 text-emerald-600 dark:text-emerald-400">
-                                    Rp ${d.totalPenghasilanAnggota.toLocaleString('id-ID')}
-                                </div>
+                            <div class="leader-stat-tile">
+                                <div class="lst-label">Bonus Top</div>
+                                <div class="lst-value text-emerald-500">+${d.bonusTopRanking}</div>
                             </div>
-                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                <div class="text-[10px] text-slate-400 uppercase">Total Nota</div>
-                                <div class="font-black mt-1">${d.totalNotaAnggota}</div>
-                            </div>
-                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                <div class="text-[10px] text-slate-400 uppercase">Trx Mitra</div>
-                                <div class="font-black mt-1">${d.totalTrxMitraAnggota}</div>
+                            <div class="leader-stat-tile">
+                                <div class="lst-label">Anggota</div>
+                                <div class="lst-value">${d.anggotaCount}</div>
                             </div>
                         </div>
         
-                        <div class="grid grid-cols-1 gap-2 text-xs">
-                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                <div class="text-[10px] text-slate-400 uppercase">Total OFF / Izin / Sakit</div>
-                                <div class="font-black mt-1">${d.totalOffAnggota}</div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div class="leader-stat-tile">
+                                <div class="lst-label flex items-center gap-1"><i data-lucide="calendar-check" class="w-2.5 h-2.5"></i>Hadir</div>
+                                <div class="lst-value">${d.totalKehadiranAnggota}</div>
+                            </div>
+                            <div class="leader-stat-tile">
+                                <div class="lst-label flex items-center gap-1"><i data-lucide="wallet" class="w-2.5 h-2.5"></i>Penghasilan</div>
+                                <div class="lst-value text-emerald-600 dark:text-emerald-400 truncate">Rp ${d.totalPenghasilanAnggota.toLocaleString('id-ID')}</div>
+                            </div>
+                            <div class="leader-stat-tile">
+                                <div class="lst-label flex items-center gap-1"><i data-lucide="receipt" class="w-2.5 h-2.5"></i>Nota</div>
+                                <div class="lst-value">${d.totalNotaAnggota}</div>
+                            </div>
+                            <div class="leader-stat-tile">
+                                <div class="lst-label flex items-center gap-1"><i data-lucide="store" class="w-2.5 h-2.5"></i>Trx Mitra</div>
+                                <div class="lst-value">${d.totalTrxMitraAnggota}</div>
                             </div>
                         </div>
+
+                        <div class="leader-stat-tile">
+                            <div class="lst-label flex items-center gap-1"><i data-lucide="calendar-x" class="w-2.5 h-2.5"></i>Total OFF / Izin / Sakit</div>
+                            <div class="lst-value">${d.totalOffAnggota}</div>
+                        </div>
+
                         <div>
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                            Anggota & Badge
+                            <div class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1">
+                                <i data-lucide="users-round" class="w-3 h-3"></i> Anggota &amp; Badge
                             </div>
-                            <div class="flex flex-wrap gap-1">
+                            <div class="flex flex-wrap gap-1.5">
                             ${anggotaList.length
                                 ? anggotaList.map(a => {
                                     const badgeA = getRatingBadge(a.rating);
+                                    const initA = (a.nama || '?').trim().charAt(0).toUpperCase();
                                     return `
-                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border text-[9px] font-semibold whitespace-nowrap leading-none">
+                                    <span class="anggota-chip">
+                                        <span class="ac-avatar">${initA}</span>
                                         <span>${a.nama}</span>
                                         <span class="text-slate-400">•</span>
                                         <span>${a.rating}%</span>
-                                        <span class="text-slate-400">•</span>
-                                        <span>${badgeA.emoji} ${badgeA.label}</span>
+                                        <span>${badgeA.emoji}</span>
                                     </span>
                                     `;
                                 }).join('')
@@ -6316,40 +7147,99 @@
                             }
                             </div>
                         </div>
-
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-[10px] font-bold uppercase text-slate-400">
-                                <span>Progress Leader</span>
-                                <span>${d.skorAkhir}%</span>
-                            </div>
-                            <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                                <div class="h-full bg-primary rounded-full" style="width:${d.skorAkhir}%"></div>
-                            </div>
-                        </div>
         
-                        <div class="text-[11px] text-slate-600 dark:text-slate-300 space-y-1 leading-relaxed">
-                            <p><b>Leader Score</b> diambil dari total rating seluruh anggota + bonus Top 3 anggota.</p>
-                            <p>Badge tiap anggota tetap mengikuti KPI kurir masing-masing.</p>
-                            <p>Anggota nonaktif/blokir tidak dihitung.</p>
+                        <div class="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed border-t border-dashed border-slate-100 dark:border-slate-800 pt-2.5 space-y-0.5">
+                            <p class="flex items-start gap-1"><i data-lucide="info" class="w-3 h-3 mt-0.5 shrink-0"></i><span><b class="text-slate-600 dark:text-slate-300">Leader Score</b> = total rating anggota + bonus Top 3 anggota. Anggota nonaktif/blokir tidak dihitung.</span></p>
                         </div>
                     </div>
                 `;
             }).join('');
+            if (window.lucide) lucide.createIcons();
         };
+        // Set nama anggota yang sedang dicentang di form Tambah/Edit Leader (menggantikan <select multiple>)
+        let leaderAnggotaSelected = new Set();
+
         window.resetLeaderForm = function() {
             document.getElementById('leader-id-edit').value = '';
             document.getElementById('leader-nama').value = '';
-            const select = document.getElementById('leader-anggota');
-            if (select) Array.from(select.options).forEach(o => o.selected = false);
+            const searchEl = document.getElementById('leader-anggota-search');
+            if (searchEl) searchEl.value = '';
+            leaderAnggotaSelected = new Set();
+            const modeEl = document.getElementById('leader-form-mode');
+            if (modeEl) modeEl.innerText = 'Mode: Tambah leader baru';
+            renderLeaderAnggotaOptions();
+        };
+
+        window.toggleLeaderAnggota = function(nama, lockedTo) {
+            if (lockedTo) {
+                toast(`${nama} sudah menjadi anggota leader "${lockedTo}". Hapus dari leader itu dulu.`);
+                return;
+            }
+            if (leaderAnggotaSelected.has(nama)) {
+                leaderAnggotaSelected.delete(nama);
+            } else {
+                leaderAnggotaSelected.add(nama);
+            }
+            renderLeaderAnggotaOptions();
+        };
+
+        window.renderLeaderAnggotaOptions = function() {
+            const list = document.getElementById('leader-anggota-list');
+            const counter = document.getElementById('leader-anggota-counter');
+            if (!list) return;
+
+            const keyword = (document.getElementById('leader-anggota-search')?.value || '').toLowerCase().trim();
+            const idEdit = document.getElementById('leader-id-edit')?.value || '';
+            const namaLeaderSaatIni = (cloudLeaderList?.[idEdit]?.nama || '').trim();
+
+            const kurirs = Object.values(cloudKurirList || {})
+                .filter(u => u && u.role === 'kurir' && u.status === 'aktif')
+                .filter(u => !keyword || u.nama.toLowerCase().includes(keyword))
+                .sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+
+            if (!kurirs.length) {
+                list.innerHTML = '<div class="text-center text-[10px] text-slate-400 py-4">Tidak ada kurir yang cocok.</div>';
+            } else {
+                list.innerHTML = kurirs.map(u => {
+                    const leaderLain = (u.leader || '').trim();
+                    const isLockedByOther = leaderLain && leaderLain !== namaLeaderSaatIni;
+                    const isChecked = leaderAnggotaSelected.has(u.nama);
+                    const initial = (u.nama || '?').trim().charAt(0).toUpperCase();
+                    const sub = isLockedByOther ? `Sudah di leader: ${leaderLain}` : (leaderLain ? 'Anggota leader ini' : 'Belum punya leader');
+                    return `
+                        <div class="leader-anggota-item ${isChecked ? 'is-checked' : ''} ${isLockedByOther ? 'is-locked' : ''}"
+                            onclick="toggleLeaderAnggota('${u.nama.replace(/'/g, "\\'")}', ${isLockedByOther ? `'${leaderLain.replace(/'/g, "\\'")}'` : 'null'})">
+                            <div class="lap-check">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            </div>
+                            <div class="leader-avatar" style="width:26px;height:26px;font-size:10px;border-radius:8px;">${initial}</div>
+                            <div class="min-w-0 flex-1">
+                                <div class="lap-name truncate">${u.nama}</div>
+                                <div class="lap-sub truncate">${sub}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            if (counter) counter.innerHTML = `<i data-lucide="users" class="w-3 h-3"></i> ${leaderAnggotaSelected.size} dipilih`;
+            if (window.lucide) lucide.createIcons();
         };
 
         window.renderLeaderList = function() {
             const container = document.getElementById('container-leader-list');
+            const countEl = document.getElementById('leader-list-count');
             if (!container) return;
         
             const keys = Object.keys(cloudLeaderList || {});
+            if (countEl) countEl.innerText = keys.length ? `${keys.length} leader` : '';
             if (!keys.length) {
-                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-3">Belum ada leader tersimpan.</div>';
+                container.innerHTML = `
+                    <div class="text-center py-6 space-y-1">
+                        <div class="w-11 h-11 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto"><i data-lucide="users-round" class="w-5 h-5"></i></div>
+                        <p class="text-xs text-slate-400">Belum ada leader tersimpan.</p>
+                    </div>`;
+                if (window.lucide) lucide.createIcons();
                 return;
             }
         
@@ -6367,47 +7257,54 @@
                 const terbaik = hasilAnggota[0] || null;
                 const sedang = hasilAnggota.length ? hasilAnggota[Math.floor(hasilAnggota.length / 2)] : null;
                 const beban = hasilAnggota[hasilAnggota.length - 1] || null;
+                const initial = (item.nama || '?').trim().charAt(0).toUpperCase();
         
                 return `
-                    <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border text-xs space-y-2">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <div class="font-bold text-sm">${item.nama || '-'}</div>
-                                <div class="text-[10px] text-slate-400">Anggota: ${anggota.length}</div>
+                    <div class="leader-list-card bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 shadow-sm text-xs">
+                        <div class="llc-header flex justify-between items-start gap-2 p-3.5">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="leader-avatar is-lg">${initial}</div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-[13px] truncate">${item.nama || '-'}</div>
+                                    <div class="text-[10px] text-slate-400 flex items-center gap-1"><i data-lucide="users" class="w-3 h-3"></i> ${anggota.length} anggota aktif</div>
+                                </div>
                             </div>
-                            <div class="flex gap-2">
-                                <button onclick="editLeaderData('${key}')" class="px-2 py-1 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold">Edit</button>
-                                <button onclick="hapusLeaderData('${key}')" class="px-2 py-1 rounded-md bg-rose-50 text-rose-600 text-[10px] font-bold">Hapus</button>
-                            </div>
-                        </div>
-        
-                        <div class="space-y-1 text-[10px]">
-                            <div class="font-semibold text-slate-500">Daftar Anggota:</div>
-                            <div class="flex flex-wrap gap-1">
-                                ${anggota.map(a => `<span class="px-2 py-1 rounded-full bg-white dark:bg-darkBg border">${a}</span>`).join('') || '-'}
+                            <div class="flex gap-1.5 shrink-0">
+                                <button onclick="editLeaderData('${key}')" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 text-[10px] font-bold active:scale-95 transition-transform"><i data-lucide="pencil" class="w-3 h-3"></i> Edit</button>
+                                <button onclick="hapusLeaderData('${key}')" class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/40 text-[10px] font-bold active:scale-95 transition-transform"><i data-lucide="trash-2" class="w-3 h-3"></i> Hapus</button>
                             </div>
                         </div>
-        
-                        <div class="grid grid-cols-3 gap-2 text-[10px]">
-                            <div class="p-2 rounded-lg bg-emerald-50 text-emerald-700">
-                                <div class="font-bold">Terbaik</div>
-                                <div>${terbaik ? terbaik.nama : '-'}</div>
-                                <div>Rating: ${terbaik ? terbaik.rating : 0}%</div>
+
+                        <div class="p-3.5 space-y-3">
+                            <div class="space-y-1.5">
+                                <div class="font-semibold text-slate-400 text-[9px] uppercase tracking-wide flex items-center gap-1"><i data-lucide="user-round" class="w-3 h-3"></i> Daftar Anggota</div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${anggota.map(a => `<span class="anggota-chip"><span class="ac-avatar">${(a||'?').trim().charAt(0).toUpperCase()}</span>${a}</span>`).join('') || '<span class="text-[10px] text-slate-400">Belum ada anggota.</span>'}
+                                </div>
                             </div>
-                            <div class="p-2 rounded-lg bg-amber-50 text-amber-700">
-                                <div class="font-bold">Sedang</div>
-                                <div>${sedang ? sedang.nama : '-'}</div>
-                                <div>Rating: ${sedang ? sedang.rating : 0}%</div>
-                            </div>
-                            <div class="p-2 rounded-lg bg-rose-50 text-rose-700">
-                                <div class="font-bold">Beban</div>
-                                <div>${beban ? beban.nama : '-'}</div>
-                                <div>Rating: ${beban ? beban.rating : 0}%</div>
+
+                            <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+                                <div class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300">
+                                    <div class="font-bold flex items-center gap-1"><i data-lucide="trophy" class="w-3 h-3"></i> Terbaik</div>
+                                    <div class="truncate mt-0.5">${terbaik ? terbaik.nama : '-'}</div>
+                                    <div class="font-bold">${terbaik ? terbaik.rating : 0}%</div>
+                                </div>
+                                <div class="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300">
+                                    <div class="font-bold flex items-center gap-1"><i data-lucide="minus" class="w-3 h-3"></i> Sedang</div>
+                                    <div class="truncate mt-0.5">${sedang ? sedang.nama : '-'}</div>
+                                    <div class="font-bold">${sedang ? sedang.rating : 0}%</div>
+                                </div>
+                                <div class="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300">
+                                    <div class="font-bold flex items-center gap-1"><i data-lucide="trending-down" class="w-3 h-3"></i> Beban</div>
+                                    <div class="truncate mt-0.5">${beban ? beban.nama : '-'}</div>
+                                    <div class="font-bold">${beban ? beban.rating : 0}%</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
+            if (window.lucide) lucide.createIcons();
         };
         window.editLeaderData = function(key) {
             const d = cloudLeaderList[key];
@@ -6415,36 +7312,39 @@
         
             document.getElementById('leader-id-edit').value = key;
             document.getElementById('leader-nama').value = d.nama || '';
+            const modeEl = document.getElementById('leader-form-mode');
+            if (modeEl) modeEl.innerText = `Mode: Edit leader "${d.nama || '-'}"`;
         
-            populateAnggotaDropdownLeader();
-            const select = document.getElementById('leader-anggota');
-            if (select && Array.isArray(d.anggota)) {
-                Array.from(select.options).forEach(opt => {
-                    opt.selected = d.anggota.includes(opt.value);
-                });
-            }
+            leaderAnggotaSelected = new Set(Array.isArray(d.anggota) ? d.anggota : []);
+            const searchEl = document.getElementById('leader-anggota-search');
+            if (searchEl) searchEl.value = '';
+            renderLeaderAnggotaOptions();
+
+            // scroll ke form biar user langsung lihat form yang sedang diedit
+            document.getElementById('leader-nama')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
-        window.hapusLeaderData = function(key) {
-            if (confirm('Hapus data leader ini?')) {
+        window.hapusLeaderData = async function(key) {
+            const ok = await showConfirm('Hapus data leader ini?');
+            if (ok) {
                 remove(ref(db, `leader_list/${key}`))
-                    .then(() => alert('Leader berhasil dihapus!'))
-                    .catch(err => alert('Gagal hapus leader: ' + err.message));
+                    .then(() => toast('Leader berhasil dihapus!'))
+                    .catch(err => toast('Gagal hapus leader: ' + err.message));
             }
         };
 
         window.closeLeaderModal = function() {
-            document.getElementById('modal-leader').classList.add('hidden');
+            resetLeaderForm();
+            if (typeof renderLeaderList === 'function') renderLeaderList();
         };
         
         window.saveLeaderData = function() {
             const idEdit = document.getElementById('leader-id-edit').value;
             const nama = document.getElementById('leader-nama').value.trim();
-            const select = document.getElementById('leader-anggota');
-            const anggota = Array.from(select.selectedOptions).map(opt => opt.value.trim()).filter(Boolean);
+            const anggota = Array.from(leaderAnggotaSelected).map(a => (a || '').trim()).filter(Boolean);
         
-            if (!nama) return alert('Nama leader wajib diisi!');
-            if (!anggota.length) return alert('Pilih minimal 1 anggota!');
+            if (!nama) return toast('Nama leader wajib diisi!');
+            if (!anggota.length) return toast('Pilih minimal 1 anggota!');
         
             const payload = { nama, anggota };
         
@@ -6463,18 +7363,18 @@
                 update(ref(db, `leader_list/${idEdit}`), payload)
                     .then(async () => {
                         await syncKeKurir();
-                        alert('Data leader berhasil disimpan!');
+                        toast('Data leader berhasil disimpan!');
                         closeLeaderModal();
                     })
-                    .catch(err => alert('Gagal update leader: ' + err.message));
+                    .catch(err => toast('Gagal update leader: ' + err.message));
             } else {
                 push(ref(db, 'leader_list'), payload)
                     .then(async () => {
                         await syncKeKurir();
-                        alert('Data leader berhasil disimpan!');
+                        toast('Data leader berhasil disimpan!');
                         closeLeaderModal();
                     })
-                    .catch(err => alert('Gagal simpan leader: ' + err.message));
+                    .catch(err => toast('Gagal simpan leader: ' + err.message));
             }
         };
 
@@ -6496,28 +7396,16 @@
             if (dropdownEdit) dropdownEdit.innerHTML = html;
         }
         
+        // Catatan: dropdown lama <select multiple> sudah diganti dengan checklist
+        // interaktif (lihat renderLeaderAnggotaOptions). Fungsi ini dipertahankan
+        // sebagai alias supaya kalau ada pemanggilan lama tidak error.
         function populateAnggotaDropdownLeader() {
-            const select = document.getElementById('leader-anggota');
-            if (!select) return;
-        
-            select.innerHTML = '';
-        
-            Object.values(cloudKurirList || {}).forEach(user => {
-                if (user && user.role === 'kurir' && user.status === 'aktif') {
-                    const leaderName = (user.leader || '').trim();
-                    const label = leaderName
-                        ? `🔒 ${user.nama} — Leader: ${leaderName}`
-                        : `✅ ${user.nama} — Belum punya leader`;
-        
-                    select.innerHTML += `<option value="${user.nama}">${label}</option>`;
-                }
-            });
+            if (typeof renderLeaderAnggotaOptions === 'function') renderLeaderAnggotaOptions();
         }
         window.openLeaderModal = function() {
             resetLeaderForm();
-            document.getElementById('modal-leader').classList.remove('hidden');
-            populateAnggotaDropdownLeader();
-            renderLeaderList();
+            navigateTo('screen-admin-leader');
+            switchLeaderTab('daftar');
         };
         function isLeaderExist(namaLeader) {
             const target = (namaLeader || '').trim().toLowerCase();
@@ -6542,13 +7430,55 @@
             });
         }
         let cloudNotificationList = {};
-        
-        window.toggleNotifTarget = function() {
-            const target = document.getElementById('notif-target').value;
+
+        // Menentukan identitas pengirim notifikasi berdasarkan siapa yang sedang login.
+        // Dipakai untuk menandai setiap notifikasi: dari Head Ops, Owner/Admin, atau Manajemen lain.
+        function getSenderInfo() {
+            if (!userSession) {
+                return { senderRole: 'owner', senderLabel: 'Admin', senderNama: 'Admin' };
+            }
+            if (userSession.role === 'owner') {
+                return { senderRole: 'owner', senderLabel: 'Owner / Admin', senderNama: userSession.nama || 'Owner' };
+            }
+            if (userSession.role === 'manajemen') {
+                const kategori = (userSession.kategori || '').trim();
+                if (kategori === 'Head Operasional') {
+                    return { senderRole: 'head_ops', senderLabel: 'Head Operasional', senderNama: userSession.nama || 'Head Operasional' };
+                }
+                if (kategori === 'Owner') {
+                    return { senderRole: 'owner', senderLabel: 'Owner / Admin', senderNama: userSession.nama || 'Owner' };
+                }
+                return { senderRole: 'manajemen', senderLabel: kategori || 'Manajemen', senderNama: userSession.nama || (kategori || 'Manajemen') };
+            }
+            return { senderRole: 'owner', senderLabel: 'Admin', senderNama: userSession.nama || 'Admin' };
+        }
+
+        window.setNotifTarget = function(target) {
+            const hidden = document.getElementById('notif-target');
+            if (hidden) hidden.value = target;
+
             const box = document.getElementById('notif-selected-box');
-            if (!box) return;
-            if (target === 'selected') box.classList.remove('hidden');
-            else box.classList.add('hidden');
+            if (box) {
+                if (target === 'selected') {
+                    box.classList.remove('hidden');
+                    populateNotifKurirList();
+                } else {
+                    box.classList.add('hidden');
+                }
+            }
+
+            const btnAll = document.getElementById('notif-target-btn-all');
+            const btnSelected = document.getElementById('notif-target-btn-selected');
+            if (btnAll && btnSelected) {
+                btnAll.classList.toggle('active', target === 'all');
+                btnSelected.classList.toggle('active', target === 'selected');
+            }
+        };
+
+        // Dipertahankan untuk kompatibilitas jika ada pemanggilan lama
+        window.toggleNotifTarget = function() {
+            const target = document.getElementById('notif-target')?.value || 'all';
+            setNotifTarget(target);
         };
         
         
@@ -6575,17 +7505,18 @@
         };
         
         window.resetNotifForm = function() {
-            document.getElementById('notif-target').value = 'all';
             document.getElementById('notif-template').value = '';
             document.getElementById('notif-message').value = '';
-            const box = document.getElementById('notif-selected-box');
-            if (box) box.classList.add('hidden');
-            const select = document.getElementById('notif-target-list');
-            if (select) Array.from(select.options).forEach(o => o.selected = false);
+            const searchEl = document.getElementById('notif-kurir-search');
+            if (searchEl) searchEl.value = '';
+            setNotifTarget('all');
         };
 
         function renderKurirNotifications() {
             if (!userSession || userSession.role !== 'kurir') return;
+
+            // Sinkronkan indikator titik merah + isi panel lonceng notifikasi
+            if (typeof renderKurirNotifPanel === 'function') renderKurirNotifPanel();
         
             const box = document.getElementById('kurir-notif-box');
             const text = document.getElementById('kurir-notif-text');
@@ -6615,6 +7546,7 @@
             const [notifId, notif] = found;
             text.innerHTML = `
                 <div class="relative pr-7 leading-snug text-[10px]">
+                    <span class="sender-badge mb-1" data-role="${notif.senderRole || 'owner'}">${notif.senderLabel || 'Admin'}</span><br>
                     ${notif.message || ''}
                     <button onclick="dismissKurirNotification('${notifId}')"
                         class="absolute top-0 right-0 w-5 h-5 flex items-center justify-center rounded-full bg-white/90 text-rose-500 text-[10px] font-bold shadow-sm">
@@ -6632,19 +7564,163 @@
         window.dismissKurirNotification = function(notifId) {
             hideNotifForCurrentUser(notifId);
             renderKurirNotifications();
+            renderKurirNotifPanel();
+        };
+
+        // Ambil semua notifikasi aktif yang ditujukan untuk kurir yang sedang login
+        function getActiveNotifsForCurrentKurir() {
+            if (!userSession || userSession.role !== 'kurir') return [];
+            const username = userSession.username;
+            const hiddenIds = getHiddenNotifIds();
+            return Object.entries(cloudNotificationList || {})
+                .filter(([id, n]) => {
+                    if (!n || !n.active) return false;
+                    if (hiddenIds.includes(id)) return false;
+                    if (n.target === 'all') return true;
+                    if (n.target === 'selected' && Array.isArray(n.targetList)) {
+                        return n.targetList.includes(username);
+                    }
+                    return false;
+                })
+                .sort((a, b) => (b[1]?.createdAt || '').localeCompare(a[1]?.createdAt || ''));
+        }
+
+        function renderKurirNotifPanel() {
+            const list = document.getElementById('kurir-notif-list');
+            const dot = document.getElementById('kurir-notif-dot');
+            if (!list) return;
+
+            const firebaseItems = getActiveNotifsForCurrentKurir().map(([id, n]) => ({
+                id, message: n.message || '', createdAt: n.createdAt, isLocal: false,
+                senderRole: n.senderRole || 'owner', senderLabel: n.senderLabel || 'Admin'
+            }));
+            const localItems = (localKurirReminders || []).map(r => ({
+                id: r.id, message: r.message, createdAt: r.createdAt, isLocal: true
+            }));
+
+            const items = [...localItems, ...firebaseItems].sort((a, b) =>
+                (b.createdAt || '').localeCompare(a.createdAt || '')
+            );
+
+            if (dot) dot.classList.toggle('hidden', items.length === 0);
+
+            if (items.length === 0) {
+                list.innerHTML = '<div class="p-4 text-center text-[11px] text-slate-400">Belum ada notifikasi.</div>';
+                return;
+            }
+
+            list.innerHTML = items.map(n => {
+                let waktu = '-';
+                try { waktu = n.createdAt ? new Date(n.createdAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'; } catch (e) {}
+                const typeColor = n.isLocal
+                    ? 'text-orange-500 bg-orange-50 dark:bg-orange-950/30'
+                    : 'text-amber-500 bg-amber-50 dark:bg-amber-950/30';
+                const dismissFn = n.isLocal ? `dismissLocalReminder('${n.id}')` : `dismissKurirNotification('${n.id}')`;
+                const senderBadge = n.isLocal
+                    ? `<span class="sender-badge" data-role="manajemen">Sistem</span>`
+                    : `<span class="sender-badge" data-role="${n.senderRole || 'owner'}">${n.senderLabel || 'Admin'}</span>`;
+                return `
+                    <div class="p-3 flex gap-2.5 items-start hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${typeColor}">
+                            <i data-lucide="${n.isLocal ? 'store' : 'bell'}" class="w-4 h-4"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5 flex-wrap mb-0.5">${senderBadge}</div>
+                            <p class="text-[11px] leading-snug text-slate-700 dark:text-slate-200">${n.message || ''}</p>
+                            <p class="text-[10px] text-slate-400 mt-1">${waktu}</p>
+                        </div>
+                        <button onclick="${dismissFn}" class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] shrink-0">✕</button>
+                    </div>
+                `;
+            }).join('');
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // ===================================================================
+        // REMINDER OTOMATIS "BELUM INPUT MITRA" — 100% client-side, tanpa Firebase.
+        // Muncul setiap 30 menit sekali selama kurir yang login belum input
+        // transaksi mitra pada hari berjalan. Berhenti otomatis begitu terdeteksi
+        // sudah ada input mitra hari ini.
+        // ===================================================================
+        let localKurirReminders = [];
+        let mitraReminderTimer = null;
+        let __reminderSeq = 0;
+
+        function hasInputMitraToday() {
+            if (!userSession || userSession.role !== 'kurir') return true;
+            const today = getWibRawDate();
+            return Object.values(cloudLogMitra || {}).some(log => {
+                if (!log || !log.tglRaw) return false;
+                if (log.tglRaw.toString().slice(0, 10) !== today) return false;
+                return log.kurirUsername === userSession.username || log.kurirId === userSession.id;
+            });
+        }
+
+        function pushLocalReminder(message) {
+            const id = 'local-' + Date.now() + '-' + (++__reminderSeq);
+            localKurirReminders.unshift({ id, message, createdAt: new Date().toISOString() });
+            if (localKurirReminders.length > 5) localKurirReminders = localKurirReminders.slice(0, 5);
+            toast(message, 'warning');
+            renderKurirNotifPanel();
+        }
+
+        window.dismissLocalReminder = function(id) {
+            localKurirReminders = localKurirReminders.filter(r => r.id !== id);
+            renderKurirNotifPanel();
+        };
+
+        function checkMitraReminderNow() {
+            if (!userSession || userSession.role !== 'kurir') return;
+            if (hasInputMitraToday()) {
+                if (localKurirReminders.length) {
+                    localKurirReminders = [];
+                    renderKurirNotifPanel();
+                }
+                return;
+            }
+            pushLocalReminder('Anda belum input transaksi mitra hari ini. Yuk segera input agar data harian lengkap! 🏪');
+        }
+
+        window.startMitraReminderWatcher = function() {
+            stopMitraReminderWatcher();
+            setTimeout(checkMitraReminderNow, 10000);
+            mitraReminderTimer = setInterval(checkMitraReminderNow, 30 * 60 * 1000);
+        };
+
+        window.stopMitraReminderWatcher = function() {
+            if (mitraReminderTimer) { clearInterval(mitraReminderTimer); mitraReminderTimer = null; }
+            localKurirReminders = [];
+        };
+
+        window.toggleKurirNotifPanel = function() {
+            const panel = document.getElementById('kurir-notif-panel');
+            if (!panel) return;
+            const willShow = panel.classList.contains('hidden');
+            if (willShow) {
+                renderKurirNotifPanel();
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
         };
 
         window.resendNotification = function(key) {
             const n = cloudNotificationList[key];
             if (!n) return;
         
+            const sender = getSenderInfo();
+
             const payload = {
                 target: n.target || 'all',
                 targetList: Array.isArray(n.targetList) ? n.targetList : [],
                 message: n.message || '',
                 type: n.type || 'warning',
                 active: true,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                senderRole: n.senderRole || sender.senderRole,
+                senderLabel: n.senderLabel || sender.senderLabel,
+                senderNama: n.senderNama || sender.senderNama
             };
         
             set(ref(db, `notifications_admin/${key}`), payload)
@@ -6652,17 +7728,17 @@
                     const hiddenIds = getHiddenNotifIds().filter(id => id !== key);
                     localStorage.setItem('hidden_notif_ids', JSON.stringify(hiddenIds));
         
-                    alert('Notifikasi berhasil dikirim ulang!');
+                    toast('Notifikasi berhasil dikirim ulang!');
                     renderAdminNotificationHistory();
                     renderKurirNotifications();
                 })
-                .catch(err => alert('Gagal kirim ulang notifikasi: ' + err.message));
+                .catch(err => toast('Gagal kirim ulang notifikasi: ' + err.message));
         };
-        window.deleteNotification = function(key) {
-            if (!confirm('Hapus notifikasi ini?')) return;
+        window.deleteNotification = async function(key) {
+            if (!(await showConfirm('Hapus notifikasi ini?'))) return;
             remove(ref(db, `notifications_admin/${key}`))
-                .then(() => alert('Notifikasi berhasil dihapus!'))
-                .catch(err => alert('Gagal menghapus notifikasi: ' + err.message));
+                .then(() => toast('Notifikasi berhasil dihapus!'))
+                .catch(err => toast('Gagal menghapus notifikasi: ' + err.message));
         };
         function getHiddenNotifIds() {
             try {
@@ -6680,10 +7756,12 @@
         window.toggleAdminKurirOpen = function() {
             const container = document.getElementById('container-admin-kurir');
             const btn = document.getElementById('btn-toggle-kurir-text');
+            const icon = document.getElementById('btn-toggle-kurir-icon');
             const isOpen = container.dataset.open === '1';
             
             container.dataset.open = isOpen ? '0' : '1';
             btn.innerText = isOpen ? 'Buka' : 'Tutup';
+            if (icon) icon.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
             
             if (!isOpen) {
                 renderAdminKurirList();
@@ -6739,17 +7817,10 @@
 
         window.toggleAdminNotifHistoryOpen = function() {
             const container = document.getElementById('container-admin-notification-history');
-            const btn = document.getElementById('btn-toggle-notif-text');
+            if (!container) return;
             const isOpen = container.dataset.open === '1';
-            
             container.dataset.open = isOpen ? '0' : '1';
-            btn.innerText = isOpen ? 'Buka' : 'Tutup';
-            
-            if (!isOpen) {
-                renderAdminNotificationHistory();
-            } else {
-                container.innerHTML = '';
-            }
+            renderAdminNotificationHistory();
         };
         window.depositKurirSelected = [];
         window.depositKurirAmounts = {};
@@ -6931,7 +8002,7 @@
             })).filter(x => x.amount > 0);
 
             if (!date || !items.length) {
-                alert('Lengkapi data deposit.');
+                toast('Lengkapi data deposit.');
                 return;
             }
 
@@ -6945,14 +8016,14 @@
                 });
 
                 if (result.success) {
-                    alert(result.message || 'Deposit berhasil dikirim.');
+                    toast(result.message || 'Deposit berhasil dikirim.');
                     resetDepositForm();
                     initOrderDepositModule();
                 } else {
-                    alert(result.message || 'Gagal kirim deposit.');
+                    toast(result.message || 'Gagal kirim deposit.');
                 }
             } catch (err) {
-                alert('Gagal kirim deposit: ' + err.message);
+                toast('Gagal kirim deposit: ' + err.message);
             } finally {
                 setOrderDepositLoading('deposit', false);
             }
@@ -6994,7 +8065,7 @@
             const amount = parseInt(document.getElementById('order-amount')?.value) || 0;
 
             if (!date || amount <= 0) {
-                alert('Lengkapi data orderan.');
+                toast('Lengkapi data orderan.');
                 return;
             }
 
@@ -7003,14 +8074,14 @@
                 const result = await sendToSpreadsheet('saveOrder', { date, amount });
 
                 if (result.success) {
-                    alert(result.message || 'Orderan berhasil dikirim.');
+                    toast(result.message || 'Orderan berhasil dikirim.');
                     if (document.getElementById('order-date')) document.getElementById('order-date').value = getWibTodayRawDate();
                     if (document.getElementById('order-amount')) document.getElementById('order-amount').value = '';
                 } else {
-                    alert(result.message || 'Gagal kirim orderan.');
+                    toast(result.message || 'Gagal kirim orderan.');
                 }
             } catch (err) {
-                alert('Gagal kirim orderan: ' + err.message);
+                toast('Gagal kirim orderan: ' + err.message);
             } finally {
                 setOrderDepositLoading('order', false);
             }
