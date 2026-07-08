@@ -1872,12 +1872,12 @@
 
             modalCanvas.innerHTML = `
                 <div class="receipt-head">
-                    <h3 class="font-extrabold text-sm tracking-wide">SAHABATKU DELIVERY</h3>
-                    <p class="text-[9px] text-white/80 mt-0.5">Jatibarang, Indramayu</p>
+                    <h3 class="font-extrabold text-base tracking-wide">SAHABATKU DELIVERY</h3>
+                    <p class="text-[10px] text-white/80 mt-0.5">Jatibarang, Indramayu</p>
                 </div>
 
                 <div class="receipt-body">
-                    <div class="receipt-info-grid text-[10px]">
+                    <div class="receipt-info-grid text-[11px]">
                         <div><span class="ri-label">Nomor Nota</span><span class="ri-value">${n.id || '-'}</span></div>
                         <div><span class="ri-label">Tanggal</span><span class="ri-value">${n.tanggal || '-'}</span></div>
                         <div><span class="ri-label">Kurir</span><span class="ri-value">${n.kurirNama || '-'}</span></div>
@@ -1888,7 +1888,7 @@
                         <span class="rst-label">Rincian Pesanan</span>
                         <span class="rst-count">${jumlahItemAdmin} item</span>
                     </div>
-                    <table class="receipt-item-table text-[11px] text-left">
+                    <table class="receipt-item-table text-[12px] text-left">
                         <thead>
                             <tr>
                                 <th class="text-left">Item</th>
@@ -1903,21 +1903,21 @@
                     </table>
 
                     <div class="receipt-divider"></div>
-                    <div class="text-[11px] space-y-1">
+                    <div class="text-[12px] space-y-1.5">
                         <div class="flex justify-between text-slate-500"><span>Subtotal Item</span><span>${(n.subtotal || 0).toLocaleString('id-ID')}</span></div>
                         <div class="flex justify-between text-slate-500"><span>Ongkir</span><span>${(n.ongkir || 0).toLocaleString('id-ID')}</span></div>
                         <div class="flex justify-between text-slate-500"><span>Tambahan Biaya</span><span>${totalBiaya.toLocaleString('id-ID')}</span></div>
-                        ${rincianBiaya ? `<div id="p-rincian-biaya-list" class="pl-2 space-y-0.5 text-[10px] text-slate-400">${rincianBiaya}</div>` : ''}
+                        ${rincianBiaya ? `<div id="p-rincian-biaya-list" class="pl-2 space-y-0.5 text-[10.5px] text-slate-400">${rincianBiaya}</div>` : ''}
                     </div>
 
-                    <div class="receipt-total-box mt-2.5">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-white/70">Total</span>
-                        <span class="text-base font-black">${(n.total || 0).toLocaleString('id-ID')}</span>
+                    <div class="receipt-total-box mt-3">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Total</span>
+                        <span class="text-lg font-black">${(n.total || 0).toLocaleString('id-ID')}</span>
                     </div>
 
                     <!-- Ongkir History -->
                     <div class="receipt-divider"></div>
-                    <div class="text-[10px] space-y-2">
+                    <div class="text-[11px] space-y-2">
                         <div class="flex items-center justify-between">
                             <span class="text-slate-400 font-bold uppercase">Ongkir History</span>
                             <span id="p-ongkir-history-count" class="text-slate-400">-</span>
@@ -1927,10 +1927,10 @@
 
                     <div class="receipt-divider"></div>
                     <div class="text-center space-y-1">
-                        <p class="text-[10px] text-slate-400 italic">Terima kasih telah menggunakan jasa Sahabatku Delivery.</p>
-                        <p class="text-[10px] font-medium text-slate-600">
+                        <p class="text-[10.5px] text-slate-400 italic">Terima kasih telah menggunakan jasa Sahabatku Delivery.</p>
+                        <p class="text-[10.5px] font-medium text-slate-600">
                             Pastikan Selalu Order Melalui WhatsApp Resmi Kami:<br>
-                            <span class="text-primary font-bold text-xs">0821-1845-415</span>
+                            <span class="text-primary font-bold text-sm">0821-1845-415</span>
                         </p>
                     </div>
                 </div>
@@ -1990,10 +1990,10 @@
                     <div class="bg-slate-50 dark:bg-darkBg p-2 rounded-lg border border-slate-200/70">
                         <div class="flex justify-between gap-2">
                             <div class="min-w-0">
-                                <div class="font-bold text-[10px] text-slate-700 truncate">${asal} → ${tujuan}</div>
-                                <div class="text-[9px] text-slate-400">${tgl}</div>
+                                <div class="font-bold text-[11px] text-slate-700 truncate">${asal} → ${tujuan}</div>
+                                <div class="text-[10px] text-slate-400">${tgl}</div>
                             </div>
-                            <div class="font-extrabold text-[10px] text-primary shrink-0">Rp ${val.toLocaleString('id-ID')}</div>
+                            <div class="font-extrabold text-[11px] text-primary shrink-0">Rp ${val.toLocaleString('id-ID')}</div>
                         </div>
                     </div>
                 `;
@@ -2841,6 +2841,63 @@
             const t = opts.maxWidth ? notaTruncateText(ctx, text, opts.maxWidth) : String(text == null ? '' : text);
             ctx.fillText(t, x, y);
         }
+        // Canvas 2D "diam" khusus buat MENGUKUR teks (tidak pernah ditampilkan) —
+        // dipakai supaya buildNotaLayout() bisa tahu berapa baris nama item akan
+        // wrap SEBELUM canvas asli digambar, jadi tinggi tiap baris tabel bisa
+        // menyesuaikan (bukan lagi dipotong "...").
+        const notaMeasureCtx = document.createElement('canvas').getContext('2d');
+        // Pecah teks jadi beberapa baris (word-wrap) supaya nama item panjang
+        // turun ke bawah dengan rapi, bukan dipotong "...". Kalau satu KATA saja
+        // sudah lebih lebar dari maxWidth (jarang, misal teks tanpa spasi),
+        // baru dipatahkan per-karakter. Dibatasi maxLines biar tidak melebar
+        // tak terkendali kalau nama item benar-benar sangat panjang.
+        function notaWrapLines(ctx, text, font, maxWidth, maxLines) {
+            maxLines = maxLines || 3;
+            ctx.font = font;
+            text = String(text == null ? '' : text).trim();
+            if (!text) return [''];
+            const words = text.split(/\s+/);
+            const lines = [];
+            let line = '';
+            let wi = 0;
+            const pushLine = (l) => { if (lines.length < maxLines) lines.push(l); };
+            for (; wi < words.length; wi++) {
+                const word = words[wi];
+                if (lines.length >= maxLines) break;
+                if (ctx.measureText(word).width > maxWidth) {
+                    if (line) { pushLine(line); line = ''; }
+                    let chunk = '';
+                    for (const ch of word) {
+                        if (lines.length >= maxLines) break;
+                        const test = chunk + ch;
+                        if (ctx.measureText(test).width > maxWidth && chunk) {
+                            pushLine(chunk);
+                            chunk = ch;
+                        } else {
+                            chunk = test;
+                        }
+                    }
+                    line = chunk;
+                    continue;
+                }
+                const test = line ? line + ' ' + word : word;
+                if (ctx.measureText(test).width > maxWidth && line) {
+                    pushLine(line);
+                    line = word;
+                } else {
+                    line = test;
+                }
+            }
+            const overflowed = lines.length >= maxLines && (line || wi < words.length);
+            if (line && lines.length < maxLines) lines.push(line);
+            // Kalau nama item benar-benar sangat panjang sampai melebihi maxLines,
+            // tandai baris terakhir dengan "…" biar jelas masih ada lanjutannya.
+            if (overflowed && lines.length) {
+                const last = lines[lines.length - 1].replace(/…$/, '');
+                lines[lines.length - 1] = notaTruncateText(ctx, last + '…', maxWidth);
+            }
+            return lines.length ? lines : [''];
+        }
         // Font "Inter" sudah dimuat sejak awal halaman (dipakai di seluruh UI),
         // jadi biasanya sudah siap sebelum layar nota dibuka. Kalau ternyata
         // belum, tunggu MAKSIMAL 250ms saja lalu tetap lanjut (fallback ke font
@@ -2862,19 +2919,52 @@
             const biayaList = data.biayaList || [];
             const history = data.history; // null/undefined = nota kurir (tanpa section history)
 
+            // Proporsi kartu ini SENGAJA dibuat "portrait" (lebih sempit & setiap baris
+            // lebih tinggi) supaya hasil gambar download/share match dengan tampilan
+            // preview di layar (kartu nota ramping, bukan melebar ke samping) dan
+            // teksnya cukup besar/jelas dibaca waktu dibuka di HP. Sebelumnya CARD_W
+            // terlalu lebar dibanding tinggi tiap baris, jadi nota dengan item sedikit
+            // hasil gambarnya malah landscape (lebih lebar dari tinggi) — itu yang
+            // bikin kelihatan "kelebaran" & tulisan kecil. Sekarang dibalik: lebih
+            // sempit & padat vertikal supaya selalu portrait seperti struk asli.
             const L = {
                 u, S,
-                MARGIN: u(14), CARD_W: u(692), HEADER_H: u(116),
-                INFO_OVERLAP: u(30), INFO_PAD: u(16), INFO_ROW_H: u(38), INFO_ROW_GAP: u(12),
-                SECTION_GAP: u(18), SECTION_TITLE_H: u(22),
-                TABLE_HEAD_H: u(26), TABLE_ROW_H: u(30),
-                DIV_GAP: u(13), TOTALS_ROW_H: u(20), BIAYA_ROW_H: u(16),
-                TOTALBOX_MARGIN_TOP: u(10), TOTALBOX_H: u(46), FOOTER_H: u(66),
-                CARD_PAD_X: u(16), BOTTOM_PAD: u(16),
-                HIST_ROW_H: u(40), HIST_ROW_GAP: u(6), HIST_HEAD_H: u(26),
+                MARGIN: u(14), CARD_W: u(380), HEADER_H: u(150),
+                INFO_OVERLAP: u(30), INFO_PAD: u(18), INFO_ROW_H: u(46), INFO_ROW_GAP: u(14),
+                SECTION_GAP: u(20), SECTION_TITLE_H: u(26),
+                TABLE_HEAD_H: u(32), TABLE_ROW_H: u(42),
+                DIV_GAP: u(14), TOTALS_ROW_H: u(26), BIAYA_ROW_H: u(20),
+                TOTALBOX_MARGIN_TOP: u(12), TOTALBOX_H: u(58), FOOTER_H: u(90),
+                CARD_PAD_X: u(18), BOTTOM_PAD: u(20),
+                HIST_ROW_H: u(50), HIST_ROW_GAP: u(8), HIST_HEAD_H: u(30),
                 items, biayaList, history
             };
             L.INFO_GRID_H = L.INFO_PAD * 2 + L.INFO_ROW_H * 2 + L.INFO_ROW_GAP;
+
+            // Kolom tabel rincian pesanan — didefinisikan sebagai persentase lebar
+            // tabel (tW) dengan JARAK yang jelas antar kolom, supaya QTY dan HARGA
+            // tidak pernah nempel/tabrakan biar bagaimanapun sempit kartunya.
+            L.tX = L.MARGIN + L.CARD_PAD_X;
+            L.tW = L.CARD_W - L.CARD_PAD_X * 2;
+            L.colItemW = L.tW * 0.34;       // lebar maksimal nama item (boleh wrap beberapa baris)
+            L.colQtyX = L.tX + L.tW * 0.46;  // qty rata-tengah
+            L.colHargaX = L.tX + L.tW * 0.74; // harga rata-kanan
+            L.colTotalX = L.tX + L.tW;        // total rata-kanan (ujung kanan tabel)
+
+            // Hitung wrap nama item lebih dulu supaya tinggi tiap baris tabel bisa
+            // menyesuaikan jumlah baris teksnya (bukan dipotong "...").
+            const ITEM_LINE_H = u(15);
+            const ITEM_ROW_PAD = u(16); // total padding atas+bawah dalam 1 baris tabel
+            L.itemLines = [];
+            L.itemRowHeights = [];
+            if (items) {
+                items.forEach((it) => {
+                    const lines = notaWrapLines(notaMeasureCtx, it.nama, `700 ${u(12)}px ${NOTA_FONT}`, L.colItemW, 3);
+                    L.itemLines.push(lines);
+                    L.itemRowHeights.push(Math.max(L.TABLE_ROW_H, lines.length * ITEM_LINE_H + ITEM_ROW_PAD));
+                });
+            }
+            L.itemsTotalH = items ? L.itemRowHeights.reduce((a, b) => a + b, 0) : L.TABLE_ROW_H;
 
             let y = L.MARGIN;
             L.cardTop = y;
@@ -2888,7 +2978,7 @@
             L.tableTop = y;
             y += L.TABLE_HEAD_H;
             L.tableRowsTop = y;
-            y += L.TABLE_ROW_H * (items ? items.length : 1);
+            y += L.itemsTotalH;
             y += L.DIV_GAP; L.divider1Y = y; y += L.DIV_GAP;
             L.totalsTop = y;
             y += L.TOTALS_ROW_H * 3;
@@ -2947,8 +3037,8 @@
             grad.addColorStop(1, '#14A0FF');
             ctx.fillStyle = grad;
             ctx.fillRect(cardX, L.headerTop, cardW, L.HEADER_H);
-            notaText(ctx, 'SAHABATKU DELIVERY', cardX + cardW / 2, L.headerTop + u(40), { font: `800 ${u(19)}px ${NOTA_FONT}`, color: '#ffffff', align: 'center' });
-            notaText(ctx, 'Jatibarang, Indramayu', cardX + cardW / 2, L.headerTop + u(64), { font: `500 ${u(12)}px ${NOTA_FONT}`, color: 'rgba(255,255,255,0.85)', align: 'center' });
+            notaText(ctx, 'SAHABATKU DELIVERY', cardX + cardW / 2, L.headerTop + u(48), { font: `800 ${u(22)}px ${NOTA_FONT}`, color: '#ffffff', align: 'center' });
+            notaText(ctx, 'Jatibarang, Indramayu', cardX + cardW / 2, L.headerTop + u(76), { font: `500 ${u(13)}px ${NOTA_FONT}`, color: 'rgba(255,255,255,0.85)', align: 'center' });
 
             // Info grid (overlap header, seperti desain aslinya)
             const gx = cardX + u(16), gw = cardW - u(32);
@@ -2961,15 +3051,15 @@
                 const cx = gx + L.INFO_PAD + col * (colW + u(12));
                 const cyLabel = L.infoGridTop + L.INFO_PAD + row * (L.INFO_ROW_H + L.INFO_ROW_GAP) + u(10);
                 const cyValue = cyLabel + u(15);
-                notaText(ctx, String(label).toUpperCase(), cx, cyLabel, { font: `800 ${u(8.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
+                notaText(ctx, String(label).toUpperCase(), cx, cyLabel, { font: `800 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
                 if (isPill) {
-                    const pillText = String(value || '-').toUpperCase();
-                    ctx.font = `800 ${u(9.5)}px ${NOTA_FONT}`;
-                    const pillW = ctx.measureText(pillText).width + u(18), pillH = u(18);
+                    ctx.font = `800 ${u(10.5)}px ${NOTA_FONT}`;
+                    const pillText = notaTruncateText(ctx, String(value || '-').toUpperCase(), colW - u(18));
+                    const pillW = Math.min(ctx.measureText(pillText).width + u(18), colW), pillH = u(20);
                     notaFillRoundRect(ctx, cx, cyValue - pillH / 2, pillW, pillH, pillH / 2, 'rgba(0,102,255,0.12)');
-                    notaText(ctx, pillText, cx + pillW / 2, cyValue + u(1), { font: `800 ${u(9.5)}px ${NOTA_FONT}`, color: '#0066FF', align: 'center' });
+                    notaText(ctx, pillText, cx + pillW / 2, cyValue + u(1), { font: `800 ${u(10.5)}px ${NOTA_FONT}`, color: '#0066FF', align: 'center' });
                 } else {
-                    notaText(ctx, value || '-', cx, cyValue, { font: `800 ${u(11)}px ${NOTA_FONT}`, color: '#1e293b', align: 'left', maxWidth: colW });
+                    notaText(ctx, value || '-', cx, cyValue, { font: `800 ${u(12.5)}px ${NOTA_FONT}`, color: '#1e293b', align: 'left', maxWidth: colW });
                 }
             };
             cell(0, 0, 'Nomor Nota', data.notaNum);
@@ -2978,44 +3068,55 @@
             cell(1, 1, 'Status', data.status, true);
 
             // Judul section + badge jumlah item
-            notaText(ctx, 'RINCIAN PESANAN', cardX + L.CARD_PAD_X, L.sectionTitleTop + L.SECTION_TITLE_H / 2, { font: `800 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
+            notaText(ctx, 'RINCIAN PESANAN', cardX + L.CARD_PAD_X, L.sectionTitleTop + L.SECTION_TITLE_H / 2, { font: `800 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
             const countText = `${L.items ? L.items.length : 0} ITEM`;
-            ctx.font = `800 ${u(9)}px ${NOTA_FONT}`;
-            const countW = ctx.measureText(countText).width + u(14);
-            notaFillRoundRect(ctx, cardX + cardW - L.CARD_PAD_X - countW, L.sectionTitleTop, countW, u(17), u(9), 'rgba(0,102,255,0.1)');
-            notaText(ctx, countText, cardX + cardW - L.CARD_PAD_X - countW / 2, L.sectionTitleTop + u(9), { font: `800 ${u(9)}px ${NOTA_FONT}`, color: '#0066FF', align: 'center' });
+            ctx.font = `800 ${u(10)}px ${NOTA_FONT}`;
+            const countW = ctx.measureText(countText).width + u(16);
+            notaFillRoundRect(ctx, cardX + cardW - L.CARD_PAD_X - countW, L.sectionTitleTop, countW, u(19), u(9.5), 'rgba(0,102,255,0.1)');
+            notaText(ctx, countText, cardX + cardW - L.CARD_PAD_X - countW / 2, L.sectionTitleTop + u(10), { font: `800 ${u(10)}px ${NOTA_FONT}`, color: '#0066FF', align: 'center' });
 
-            // Tabel rincian
-            const tX = cardX + L.CARD_PAD_X, tW = cardW - L.CARD_PAD_X * 2;
-            const col1 = tX, col2 = tX + tW * 0.42, col3 = tX + tW * 0.68, col4 = tX + tW;
+            // Tabel rincian — posisi kolom diambil dari L (dihitung di buildNotaLayout)
+            // supaya QTY/HARGA/TOTAL selalu punya jarak yang jelas, tidak nempel.
+            const tX = L.tX, tW = L.tW;
+            const col1 = tX, colQty = L.colQtyX, colHarga = L.colHargaX, col4 = L.colTotalX;
             const headY = L.tableTop + L.TABLE_HEAD_H / 2;
-            notaText(ctx, 'ITEM', col1, headY, { font: `800 ${u(8.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
-            notaText(ctx, 'QTY', (col2 + col3) / 2, headY, { font: `800 ${u(8.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center' });
-            notaText(ctx, 'HARGA', col3, headY, { font: `800 ${u(8.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'right' });
-            notaText(ctx, 'TOTAL', col4, headY, { font: `800 ${u(8.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'right' });
+            notaText(ctx, 'ITEM', col1, headY, { font: `800 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
+            notaText(ctx, 'QTY', colQty, headY, { font: `800 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center' });
+            notaText(ctx, 'HARGA', colHarga, headY, { font: `800 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'right' });
+            notaText(ctx, 'TOTAL', col4, headY, { font: `800 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'right' });
             ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = u(1);
             ctx.beginPath(); ctx.moveTo(tX, L.tableTop + L.TABLE_HEAD_H); ctx.lineTo(tX + tW, L.tableTop + L.TABLE_HEAD_H); ctx.stroke();
 
             if (L.items) {
+                const ITEM_LINE_H = u(15);
+                let rowY = L.tableRowsTop;
                 L.items.forEach((it, i) => {
-                    const rowY = L.tableRowsTop + i * L.TABLE_ROW_H;
-                    if (i % 2 === 0) notaFillRoundRect(ctx, tX, rowY + u(2), tW, L.TABLE_ROW_H - u(4), u(6), '#f8fafc');
-                    const midY = rowY + L.TABLE_ROW_H / 2;
-                    notaText(ctx, it.nama, col1, midY, { font: `700 ${u(10.5)}px ${NOTA_FONT}`, color: '#334155', align: 'left', maxWidth: tW * 0.4 });
-                    notaText(ctx, String(it.qty), (col2 + col3) / 2, midY, { font: `500 ${u(10.5)}px ${NOTA_FONT}`, color: '#334155', align: 'center' });
-                    notaText(ctx, notaFmtRp(it.harga), col3, midY, { font: `500 ${u(10.5)}px ${NOTA_FONT}`, color: '#334155', align: 'right' });
-                    notaText(ctx, notaFmtRp(it.subtotal), col4, midY, { font: `800 ${u(10.5)}px ${NOTA_FONT}`, color: '#0066FF', align: 'right' });
+                    const rowH = L.itemRowHeights[i];
+                    if (i % 2 === 0) notaFillRoundRect(ctx, tX, rowY + u(2), tW, rowH - u(4), u(6), '#f8fafc');
+                    const midY = rowY + rowH / 2;
+                    // Nama item bisa turun ke beberapa baris (word-wrap), diposisikan
+                    // rata-tengah vertikal terhadap tinggi barisnya.
+                    const lines = L.itemLines[i];
+                    let lineY = midY - ((lines.length - 1) * ITEM_LINE_H) / 2;
+                    lines.forEach((ln) => {
+                        notaText(ctx, ln, col1, lineY, { font: `700 ${u(12)}px ${NOTA_FONT}`, color: '#334155', align: 'left' });
+                        lineY += ITEM_LINE_H;
+                    });
+                    notaText(ctx, String(it.qty), colQty, midY, { font: `500 ${u(12)}px ${NOTA_FONT}`, color: '#334155', align: 'center' });
+                    notaText(ctx, notaFmtRp(it.harga), colHarga, midY, { font: `500 ${u(12)}px ${NOTA_FONT}`, color: '#334155', align: 'right' });
+                    notaText(ctx, notaFmtRp(it.subtotal), col4, midY, { font: `800 ${u(12)}px ${NOTA_FONT}`, color: '#0066FF', align: 'right' });
+                    rowY += rowH;
                 });
             } else {
-                notaText(ctx, '- Tidak ada rincian -', tX + tW / 2, L.tableRowsTop + L.TABLE_ROW_H / 2, { font: `italic 500 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center' });
+                notaText(ctx, '- Tidak ada rincian -', tX + tW / 2, L.tableRowsTop + L.TABLE_ROW_H / 2, { font: `italic 500 ${u(12)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center' });
             }
 
             ctx.beginPath(); ctx.moveTo(tX, L.divider1Y); ctx.lineTo(tX + tW, L.divider1Y); ctx.stroke();
 
             const totalsRow = (i, label, value) => {
                 const rowY = L.totalsTop + i * L.TOTALS_ROW_H + L.TOTALS_ROW_H / 2;
-                notaText(ctx, label, tX, rowY, { font: `500 ${u(11)}px ${NOTA_FONT}`, color: '#64748b', align: 'left' });
-                notaText(ctx, notaFmtRp(value), tX + tW, rowY, { font: `500 ${u(11)}px ${NOTA_FONT}`, color: '#64748b', align: 'right' });
+                notaText(ctx, label, tX, rowY, { font: `500 ${u(12)}px ${NOTA_FONT}`, color: '#64748b', align: 'left' });
+                notaText(ctx, notaFmtRp(value), tX + tW, rowY, { font: `500 ${u(12)}px ${NOTA_FONT}`, color: '#64748b', align: 'right' });
             };
             totalsRow(0, 'Subtotal Item', data.subtotal);
             totalsRow(1, 'Ongkir', data.ongkir);
@@ -3023,34 +3124,34 @@
             totalsRow(2, 'Tambahan Biaya', totalBiaya);
             L.biayaList.forEach((b, i) => {
                 const rowY = L.totalsTop + L.TOTALS_ROW_H * 3 + i * L.BIAYA_ROW_H + L.BIAYA_ROW_H / 2;
-                notaText(ctx, `+ ${b.nama}`, tX + u(8), rowY, { font: `italic 500 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left', maxWidth: tW * 0.6 });
-                notaText(ctx, notaFmtRp(b.nominal), tX + tW, rowY, { font: `italic 500 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'right' });
+                notaText(ctx, `+ ${b.nama}`, tX + u(8), rowY, { font: `italic 500 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left', maxWidth: tW * 0.6 });
+                notaText(ctx, notaFmtRp(b.nominal), tX + tW, rowY, { font: `italic 500 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'right' });
             });
 
             notaFillRoundRect(ctx, tX, L.totalBoxTop, tW, L.TOTALBOX_H, u(14), '#10192e');
-            notaText(ctx, 'TOTAL', tX + u(14), L.totalBoxTop + L.TOTALBOX_H / 2, { font: `800 ${u(10)}px ${NOTA_FONT}`, color: 'rgba(255,255,255,0.7)', align: 'left' });
-            notaText(ctx, notaFmtRp(data.total), tX + tW - u(14), L.totalBoxTop + L.TOTALBOX_H / 2, { font: `900 ${u(16)}px ${NOTA_FONT}`, color: '#ffffff', align: 'right' });
+            notaText(ctx, 'TOTAL', tX + u(14), L.totalBoxTop + L.TOTALBOX_H / 2, { font: `800 ${u(11)}px ${NOTA_FONT}`, color: 'rgba(255,255,255,0.7)', align: 'left' });
+            notaText(ctx, notaFmtRp(data.total), tX + tW - u(14), L.totalBoxTop + L.TOTALBOX_H / 2, { font: `900 ${u(18)}px ${NOTA_FONT}`, color: '#ffffff', align: 'right' });
 
             ctx.beginPath(); ctx.moveTo(tX, L.divider2Y); ctx.lineTo(tX + tW, L.divider2Y); ctx.stroke();
 
-            notaText(ctx, 'Terima kasih telah menggunakan jasa Sahabatku Delivery.', cardX + cardW / 2, L.footerTop + u(10), { font: `italic 500 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center', maxWidth: tW });
-            notaText(ctx, 'Pastikan Selalu Order Melalui WhatsApp Resmi Kami:', cardX + cardW / 2, L.footerTop + u(28), { font: `600 ${u(9.5)}px ${NOTA_FONT}`, color: '#475569', align: 'center', maxWidth: tW });
-            notaText(ctx, '0821-1845-415', cardX + cardW / 2, L.footerTop + u(46), { font: `800 ${u(12)}px ${NOTA_FONT}`, color: '#0066FF', align: 'center' });
+            notaText(ctx, 'Terima kasih telah menggunakan jasa Sahabatku Delivery.', cardX + cardW / 2, L.footerTop + u(14), { font: `italic 500 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center', maxWidth: tW });
+            notaText(ctx, 'Pastikan Selalu Order Melalui WhatsApp Resmi Kami:', cardX + cardW / 2, L.footerTop + u(38), { font: `600 ${u(10.5)}px ${NOTA_FONT}`, color: '#475569', align: 'center', maxWidth: tW });
+            notaText(ctx, '0821-1845-415', cardX + cardW / 2, L.footerTop + u(60), { font: `800 ${u(13)}px ${NOTA_FONT}`, color: '#0066FF', align: 'center' });
 
             if (L.history) {
                 ctx.beginPath(); ctx.moveTo(tX, L.divider3Y); ctx.lineTo(tX + tW, L.divider3Y); ctx.stroke();
-                notaText(ctx, 'ONGKIR HISTORY', tX, L.historyTop + u(9), { font: `800 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
-                notaText(ctx, `${L.history.length} item`, tX + tW, L.historyTop + u(9), { font: `500 ${u(9.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'right' });
+                notaText(ctx, 'ONGKIR HISTORY', tX, L.historyTop + u(10), { font: `800 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
+                notaText(ctx, `${L.history.length} item`, tX + tW, L.historyTop + u(10), { font: `500 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'right' });
                 if (L.history.length) {
                     L.history.forEach((h, i) => {
                         const rowY = L.historyRowsTop + i * (L.HIST_ROW_H + L.HIST_ROW_GAP);
                         notaFillRoundRect(ctx, tX, rowY, tW, L.HIST_ROW_H, u(10), '#f8fafc');
-                        notaText(ctx, `${h.asal} → ${h.tujuan}`, tX + u(10), rowY + u(15), { font: `800 ${u(10)}px ${NOTA_FONT}`, color: '#334155', align: 'left', maxWidth: tW * 0.55 });
-                        notaText(ctx, h.tgl, tX + u(10), rowY + u(29), { font: `500 ${u(9)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
-                        notaText(ctx, `Rp ${notaFmtRp(h.val)}`, tX + tW - u(10), rowY + L.HIST_ROW_H / 2, { font: `800 ${u(10)}px ${NOTA_FONT}`, color: '#0066FF', align: 'right' });
+                        notaText(ctx, `${h.asal} → ${h.tujuan}`, tX + u(10), rowY + u(18), { font: `800 ${u(11)}px ${NOTA_FONT}`, color: '#334155', align: 'left', maxWidth: tW * 0.55 });
+                        notaText(ctx, h.tgl, tX + u(10), rowY + u(35), { font: `500 ${u(10)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
+                        notaText(ctx, `Rp ${notaFmtRp(h.val)}`, tX + tW - u(10), rowY + L.HIST_ROW_H / 2, { font: `800 ${u(11)}px ${NOTA_FONT}`, color: '#0066FF', align: 'right' });
                     });
                 } else {
-                    notaText(ctx, 'Belum ada history ongkir.', tX + tW / 2, L.historyRowsTop + L.HIST_ROW_H / 2, { font: `italic 500 ${u(10)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center' });
+                    notaText(ctx, 'Belum ada history ongkir.', tX + tW / 2, L.historyRowsTop + L.HIST_ROW_H / 2, { font: `italic 500 ${u(11)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center' });
                 }
             }
 
@@ -3073,10 +3174,24 @@
             !!(NOTA_MEM && NOTA_MEM <= 2) ||
             (!NOTA_MEM && !!(NOTA_CORES && NOTA_CORES <= 4));
         // Lebar canvas (bukan lagi "scale" DOM) — makin kecil RAM, makin kecil
-        // jumlah piksel yang perlu digambar & di-encode ke JPEG.
-        const NOTA_CANVAS_WIDTH = NOTA_VERY_LOW_RAM_DEVICE ? 540 : (NOTA_LOW_RAM_DEVICE ? 620 : 720);
-        const NOTA_SCALE = NOTA_CANVAS_WIDTH / 720;
-        const NOTA_JPEG_QUALITY = NOTA_VERY_LOW_RAM_DEVICE ? 0.75 : (NOTA_LOW_RAM_DEVICE ? 0.82 : 0.88);
+        // jumlah piksel yang perlu digambar & di-encode.
+        // Catatan: sebelumnya nilai-nilai ini terlalu kecil (540-720px) dan
+        // di-encode sebagai JPEG, sehingga hasil gambar nota kelihatan buram/
+        // pecah-pecah & bergaris (artefak kompresi JPEG) saat dibuka di HP atau
+        // dibagikan ke WhatsApp. Sekarang resolusinya dinaikkan dan formatnya
+        // diganti ke PNG (lihat processNotaImage) supaya teks & garis tetap
+        // tajam — konten nota (warna solid + teks) membuat ukuran file PNG
+        // tetap kecil, jadi tidak ada alasan untuk mengorbankan ketajaman.
+        const NOTA_CANVAS_WIDTH = NOTA_VERY_LOW_RAM_DEVICE ? 760 : (NOTA_LOW_RAM_DEVICE ? 900 : 1080);
+        // Basis lebar desain kartu = CARD_W(380) + MARGIN(14)*2 = 408 (lihat buildNotaLayout).
+        // 380 dipilih supaya SAMA PERSIS dengan lebar kartu nota asli di preview HTML
+        // (class "max-w-[380px]" pada #modal-preview-nota / .receipt-card), sehingga
+        // rasio lebar:tinggi hasil gambar unduhan konsisten dengan yang terlihat di
+        // layar. Sebelumnya basisnya 648 (CARD_W 620) — jauh lebih lebar dari kartu
+        // aslinya, padahal tinggi tiap baris (padding, tinggi baris tabel, dst) tetap
+        // dalam satuan px yang sama seperti kartu asli, jadi hasil gambarnya jadi
+        // kelihatan "gepeng"/kotak dibanding preview yang ramping memanjang ke bawah.
+        const NOTA_SCALE = NOTA_CANVAS_WIDTH / 408;
 
         // key -> <canvas> hasil generate. Di-invalidate manual tiap kali isi nota
         // berganti (lihat invalidateNotaCanvasCache di prosesPratinjauNota & viewAdminNota).
@@ -3133,12 +3248,12 @@
             setNotaImageBusy(true, btn);
             try {
                 const canvas = await getNotaCanvas(cacheKey, data);
-                const fileName = `${data.notaNum}_${data.kurir}.jpg`.replace(/\s+/g, '_').replace(/[\/\\:*?"<>|]/g, '');
+                const fileName = `${data.notaNum}_${data.kurir}.png`.replace(/\s+/g, '_').replace(/[\/\\:*?"<>|]/g, '');
 
                 if (mode === 'download') {
                     const link = document.createElement('a');
                     link.download = fileName;
-                    link.href = canvas.toDataURL('image/jpeg', NOTA_JPEG_QUALITY);
+                    link.href = canvas.toDataURL('image/png');
                     link.click();
                     toast(successMsg || 'Gambar nota berhasil disimpan!');
                     return;
@@ -3153,7 +3268,7 @@
                             resolve();
                             return;
                         }
-                        const file = new File([blob], fileName, { type: 'image/jpeg' });
+                        const file = new File([blob], fileName, { type: 'image/png' });
                         if (navigator.canShare && navigator.canShare({ files: [file] })) {
                             navigator.share({ files: [file], title: `Nota ${data.notaNum}`, text: captionText })
                                 .catch(() => {})
@@ -3161,12 +3276,12 @@
                         } else {
                             const link = document.createElement('a');
                             link.download = fileName;
-                            link.href = canvas.toDataURL('image/jpeg', NOTA_JPEG_QUALITY);
+                            link.href = canvas.toDataURL('image/png');
                             link.click();
                             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(captionText)}`, '_blank');
                             resolve();
                         }
-                    }, 'image/jpeg', NOTA_JPEG_QUALITY);
+                    }, 'image/png');
                 });
             } catch (err) {
                 toast('Terjadi kesalahan gambar: ' + (err?.message || err));
