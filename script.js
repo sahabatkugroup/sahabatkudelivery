@@ -1,4 +1,4 @@
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, remove, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         const firebaseConfig = {
         apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
@@ -127,6 +127,7 @@
         let cloudTestimonialList = {};
         let cloudManajemenList = {}
         let cloudLeaderList = {};
+        let cloudProfilKurirList = {};
         let liveLocations = {};
         let liveMap = null;
         let liveMarkers = {};
@@ -217,6 +218,8 @@
             return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
         }
         const API_URL = 'https://script.google.com/macros/s/AKfycbxfMHYjmhM5IB683WgeQBh5FeuRunezfqxVNFWhxIIwW5F1_x4VFIaYLkne1FfcBhYNZQ/exec';
+        const PROFIL_KURIR_API_URL = 'https://script.google.com/macros/s/AKfycbxq7RsXZiQQZUQ1YFIet9YEjU1lAFnPEnJA_-irMgEFNmBxx08dkyuSlhnPnhbu4-SMpg/exec';
+
         function getWibTodayRawDate() {
             const now = new Date();
             return new Intl.DateTimeFormat('en-CA', {
@@ -709,6 +712,12 @@
             });
             onValue(ref(db, 'jadwal_off'), (snapshot) => {
                 cloudJadwalOff = snapshot.val() || {};
+            });
+            onValue(ref(db, 'profil_kurir'), (snapshot) => {
+                cloudProfilKurirList = snapshot.val() || {};
+                if (currentScreen === 'screen-admin-dashboard' && typeof renderAdminKurirList === 'function') {
+                    // data profil dipakai saat admin membuka modal Lihat Profil, tidak perlu render ulang list kurir
+                }
             });
 
             window.calcRekapJadwalKurir = function() {
@@ -4043,11 +4052,12 @@
                                 </button>
                             </div>
                         </div>
-                        ${isHeadOperasional ? '' : `
                         <div class="flex justify-end gap-2 pt-1">
+                            <button onclick="lihatProfilKurirAdmin('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Lihat Profil</button>
+                            ${isHeadOperasional ? '' : `
                             <button onclick="editAkunKurir('${key}')" class="px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-md font-semibold">Edit</button>
-                            <button onclick="hapusAkunKurir('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Hapus</button>
-                        </div>`}
+                            <button onclick="hapusAkunKurir('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Hapus</button>`}
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -4207,6 +4217,140 @@
         window.openSOP = function() {
             const modal = document.getElementById('modal-sop');
             if (modal) modal.classList.remove('hidden');
+        };
+
+        // ===================================================================
+        // PROFIL KURIR (SOP -> Profil)
+        // Data tersimpan di Firebase: profil_kurir/{userId}
+        // dan dikirim ke Google Spreadsheet lewat sendToSpreadsheet('saveProfilKurir', ...)
+        // ===================================================================
+        window.openProfilKurir = function() {
+            if (!userSession || userSession.role !== 'kurir') return;
+
+            const akun = cloudKurirList[userSession.id] || {};
+            const profil = cloudProfilKurirList[userSession.id] || {};
+
+            document.getElementById('pk-user-id').value = userSession.id;
+            document.getElementById('pk-nama').innerText = akun.nama || userSession.nama || '-';
+            document.getElementById('pk-tgl-gabung').innerText = akun.tglGabung || '-';
+
+            const statusEl = document.getElementById('pk-status');
+            const statusAktif = akun.status === 'aktif';
+            statusEl.innerText = statusAktif ? 'AKTIF' : 'BLOKIR / NONAKTIF';
+            statusEl.className = 'font-bold truncate ' + (statusAktif ? 'text-emerald-500' : 'text-rose-500');
+
+            document.getElementById('pk-nik').value = profil.nik || '';
+            document.getElementById('pk-ttl').value = profil.ttl || '';
+            document.getElementById('pk-id-card').value = profil.idCard || '';
+            document.getElementById('pk-hp-wa').value = profil.hpWa || '';
+            document.getElementById('pk-hp-kurir').value = profil.hpKurir || '';
+            document.getElementById('pk-alamat').value = profil.alamatDomisili || '';
+            document.getElementById('pk-pekerjaan-lain').value = profil.pekerjaanLain || '';
+            document.getElementById('pk-bpjs').value = profil.bpjs || '';
+            document.getElementById('pk-kelas-biaya').value = profil.kelasBiaya || '';
+            document.getElementById('pk-kontak-darurat').value = profil.kontakDarurat || '';
+
+            const modal = document.getElementById('modal-profil-kurir');
+            if (modal) modal.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.saveProfilKurir = async function() {
+            const userId = document.getElementById('pk-user-id').value;
+            if (!userId || !userSession || userSession.role !== 'kurir') return;
+
+            const akun = cloudKurirList[userId] || {};
+
+            const payload = {
+                userId,
+                username: userSession.username || akun.username || '',
+                nama: akun.nama || userSession.nama || '',
+                tglGabung: akun.tglGabung || '',
+                status: akun.status || '',
+                nik: document.getElementById('pk-nik').value.trim(),
+                ttl: document.getElementById('pk-ttl').value.trim(),
+                idCard: document.getElementById('pk-id-card').value.trim(),
+                hpWa: document.getElementById('pk-hp-wa').value.trim(),
+                hpKurir: document.getElementById('pk-hp-kurir').value.trim(),
+                alamatDomisili: document.getElementById('pk-alamat').value.trim(),
+                pekerjaanLain: document.getElementById('pk-pekerjaan-lain').value.trim(),
+                bpjs: document.getElementById('pk-bpjs').value.trim(),
+                kelasBiaya: document.getElementById('pk-kelas-biaya').value.trim(),
+                kontakDarurat: document.getElementById('pk-kontak-darurat').value.trim(),
+                updatedAt: new Date().toISOString()
+            };
+
+            if (!payload.nik || !payload.hpWa || !payload.alamatDomisili) {
+                toast('Lengkapi minimal NIK KTP, No HP Aktif/WA, dan Alamat Domisili.');
+                return;
+            }
+
+            const btn = document.getElementById('btn-simpan-profil-kurir');
+            if (btn) { btn.disabled = true; btn.innerText = 'MENYIMPAN...'; }
+
+            try {
+                await set(ref(db, 'profil_kurir/' + userId), payload);
+
+                await fetch(`${PROFIL_KURIR_API_URL}?action=saveProfilKurir`, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                toast('Profil berhasil disimpan.');
+                closeModal('modal-profil-kurir');
+            } catch (err) {
+                toast('Gagal menyimpan profil: ' + err.message);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerText = 'Simpan Profil'; }
+            }
+        };
+
+        window.lihatProfilKurirAdmin = function(key) {
+            const akun = cloudKurirList[key] || {};
+            const profil = cloudProfilKurirList[key] || {};
+
+            document.getElementById('pka-nama-header').innerText = akun.nama || '-';
+
+            const statusAktif = akun.status === 'aktif';
+            const rows = [
+                ['Nama', akun.nama || '-'],
+                ['NIK KTP', profil.nik || '-'],
+                ['Tempat, Tanggal Lahir', profil.ttl || '-'],
+                ['No. ID Card', profil.idCard || '-'],
+                ['Tanggal Bergabung', akun.tglGabung || '-'],
+                ['No. HP Aktif/WA', profil.hpWa || '-'],
+                ['No. HP Kurir', profil.hpKurir || '-'],
+                ['Alamat Domisili', profil.alamatDomisili || '-'],
+                ['Pekerjaan Lainnya', profil.pekerjaanLain || '-'],
+                ['No. BPJS Kesehatan', profil.bpjs || '-'],
+                ['Kelas & Biaya Perbulan', profil.kelasBiaya || '-'],
+                ['Kontak Darurat (Keluarga)', profil.kontakDarurat || '-'],
+            ];
+
+            const container = document.getElementById('container-profil-kurir-admin');
+            container.innerHTML = rows.map(([label, val]) => `
+                <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg">
+                    <div class="text-[9px] text-slate-400 uppercase tracking-wide">${label}</div>
+                    <div class="font-semibold text-slate-700 dark:text-slate-200 break-words">${val}</div>
+                </div>
+            `).join('') + `
+                <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg">
+                    <div class="text-[9px] text-slate-400 uppercase tracking-wide">Status Keaktifan</div>
+                    <div class="font-bold ${statusAktif ? 'text-emerald-500' : 'text-rose-500'}">${statusAktif ? 'AKTIF' : 'BLOKIR / NONAKTIF'}</div>
+                </div>
+            `;
+
+            if (!profil.nik) {
+                container.innerHTML = `
+                    <div class="text-center py-4 text-slate-400 text-[11px]">Kurir ini belum mengisi data profil.</div>
+                ` + container.innerHTML;
+            }
+
+            const modal = document.getElementById('modal-profil-kurir-admin');
+            if (modal) modal.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
         };
         window.renderAdminNotificationHistory = function() {
             const container = document.getElementById('container-admin-notification-history');
