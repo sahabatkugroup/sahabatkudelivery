@@ -22,6 +22,10 @@
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js\x22\x3E\x3C/script\x3E')"></script>
 
     <script>
+        // === Penjaga tampilan icon (auto-heal) ===
+        // Kalau lucide gagal ke-load dari CDN utama, otomatis pindah ke CDN cadangan (di atas).
+        // Kalau berhasil load, pastikan SEMUA icon (termasuk yang muncul belakangan lewat JS)
+        // selalu ter-render dengan memantau perubahan DOM secara otomatis.
         (function () {
             function renderIconsSafely() {
                 if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -296,10 +300,6 @@
                     <button onclick="openSOP()" class="menu-card-sm active:scale-95 transition-transform">
                         <div class="icon-tile" data-tone="orange"><i data-lucide="book-marked" class="w-3.5 h-3.5"></i></div>
                         <span class="label">SOP</span>
-                    </button>
-                    <button onclick="openProfilKurir()" class="menu-card-sm active:scale-95 transition-transform">
-                        <div class="icon-tile" data-tone="rose"><i data-lucide="id-card" class="w-3.5 h-3.5"></i></div>
-                        <span class="label">Profil</span>
                     </button>
                 </div>
             </div>
@@ -1985,106 +1985,6 @@
             </div>
         </div>
     </div>
-
-    <div id="modal-profil-kurir" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-white dark:bg-darkCard w-full max-w-[380px] sm:max-w-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-3 relative max-h-[92vh] overflow-y-auto">
-            <button onclick="closeModal('modal-profil-kurir')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
-                ✕
-            </button>
-
-            <div class="flex items-center gap-2">
-                <div class="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0"><i data-lucide="id-card" class="w-4 h-4"></i></div>
-                <div>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Profil Kurir</h3>
-                    <p class="text-[10px] text-slate-400">Lengkapi data diri Anda</p>
-                </div>
-            </div>
-
-            <div class="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl grid grid-cols-2 gap-2 text-[11px]">
-                <div>
-                    <label class="block text-[9px] text-slate-400 mb-0.5">Nama</label>
-                    <div id="pk-nama" class="font-bold text-slate-700 dark:text-slate-200 truncate">-</div>
-                </div>
-                <div>
-                    <label class="block text-[9px] text-slate-400 mb-0.5">Tanggal Bergabung</label>
-                    <div id="pk-tgl-gabung" class="font-bold text-slate-700 dark:text-slate-200 truncate">-</div>
-                </div>
-                <div class="col-span-2">
-                    <label class="block text-[9px] text-slate-400 mb-0.5">Status Keaktifan</label>
-                    <div id="pk-status" class="font-bold truncate">-</div>
-                </div>
-            </div>
-
-            <input type="hidden" id="pk-user-id">
-
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">NIK KTP</label>
-                <input type="text" id="pk-nik" inputmode="numeric" placeholder="Nomor Induk Kependudukan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">Tempat, Tanggal Lahir</label>
-                <input type="text" id="pk-ttl" placeholder="Contoh: Indramayu, 17 Agustus 1998" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">No. ID Card</label>
-                <input type="text" id="pk-id-card" placeholder="Nomor ID Card kurir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">No. HP Aktif / WA</label>
-                <input type="text" id="pk-hp-wa" inputmode="tel" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">No. HP Kurir</label>
-                <input type="text" id="pk-hp-kurir" inputmode="tel" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">Alamat Domisili</label>
-                <textarea id="pk-alamat" rows="2" placeholder="Alamat domisili lengkap" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700"></textarea>
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">Pekerjaan Lainnya</label>
-                <input type="text" id="pk-pekerjaan-lain" placeholder="Jika ada pekerjaan/usaha lain" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">No. BPJS Kesehatan</label>
-                <input type="text" id="pk-bpjs" inputmode="numeric" placeholder="Nomor BPJS Kesehatan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">Kelas & Biaya Perbulan (BPJS)</label>
-                <input type="text" id="pk-kelas-biaya" placeholder="Contoh: Kelas 2 - Rp 100.000/bulan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div>
-                <label class="block text-[10px] text-slate-400 mb-1">Kontak Darurat (Keluarga)</label>
-                <input type="text" id="pk-kontak-darurat" placeholder="Nama - Hubungan - No. HP" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-
-            <div class="flex gap-2 pt-1">
-                <button onclick="saveProfilKurir()" id="btn-simpan-profil-kurir" class="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl uppercase">
-                    Simpan Profil
-                </button>
-                <button onclick="closeModal('modal-profil-kurir')" class="px-3 py-2 bg-slate-100 text-slate-500 dark:bg-slate-800 text-xs rounded-xl">
-                    Tutup
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-profil-kurir-admin" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-white dark:bg-darkCard w-full max-w-[380px] sm:max-w-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-3 relative max-h-[92vh] overflow-y-auto">
-            <button onclick="closeModal('modal-profil-kurir-admin')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
-                ✕
-            </button>
-            <div class="flex items-center gap-2">
-                <div class="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0"><i data-lucide="id-card" class="w-4 h-4"></i></div>
-                <div>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Profil Kurir</h3>
-                    <p class="text-[10px] text-slate-400" id="pka-nama-header">-</p>
-                </div>
-            </div>
-            <div id="container-profil-kurir-admin" class="space-y-2 text-[11px]"></div>
-        </div>
-    </div>
-
     <div id="modal-input-trx-mitra" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-darkCard w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-4 relative">
             <button onclick="closeInputTrxMitraModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
