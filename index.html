@@ -7,7 +7,11 @@
     <title>Sahabatku Delivery App</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Sahabatku">
     <meta name="theme-color" content="#0066FF">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png">
+    <link rel="icon" href="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2092,5 +2096,15 @@
     </div>
 
     <script type="module" src="script.js"></script>
+    <script>
+      // Daftarkan service worker supaya aplikasi bisa di-install & tetap bisa dibuka walau sinyal lemah
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('service-worker.js').catch(err => {
+            console.warn('Gagal mendaftarkan service worker:', err);
+          });
+        });
+      }
+    </script>
 </body>
 </html>
