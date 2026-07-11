@@ -241,7 +241,7 @@
     const RADIUS_MAKS_METER = 80; 
 
     let streamKamera = null, adaWajah = false, gpsValid = false;
-    let tglOperasionalStr = "", jenisAbsen = "MASUK", fileBlobFinal = null;
+    let tglOperasionalStr = "", jenisAbsen = "MASUK", fileBlobFinal = null, fotoBase64Final = null;
     let infoKurir = {}, listUserKurir = {};
 
     async function autoLoginKurirDariSession() {
@@ -558,8 +558,8 @@
       ctx.drawImage(video, 0, 0, canv.width, canv.height);
       
       const miniCanvas = document.createElement('canvas');
-      miniCanvas.width = 240;
-      miniCanvas.height = 320;
+      miniCanvas.width = 960;
+      miniCanvas.height = 1280;
       const miniCtx = miniCanvas.getContext('2d');
       const ratio = Math.min(miniCanvas.width / canv.width, miniCanvas.height / canv.height);
       const drawWidth = canv.width * ratio;
@@ -570,10 +570,12 @@
       miniCtx.fillRect(0, 0, miniCanvas.width, miniCanvas.height);
       miniCtx.drawImage(canv, x, y, drawWidth, drawHeight);
     
-      const dataUrl = miniCanvas.toDataURL('image/jpeg', 1);
+      const dataUrl = miniCanvas.toDataURL('image/jpeg', 0.95);
       document.getElementById('img-preview').src = dataUrl;
       
-      fetch(dataUrl).then(res => res.blob()).then(blob => { fileBlobFinal = blob; });
+      // Simpan base64 murni (tanpa prefix "data:image/jpeg;base64,") untuk dikirim ke Apps Script
+      fotoBase64Final = dataUrl.split(',')[1];
+      fileBlobFinal = true; // penanda bahwa foto sudah siap dikirim
       if(streamKamera) { streamKamera.getTracks().forEach(t => t.stop()); streamKamera = null; }
       alihkanView('preview');
       document.getElementById('p-nama').innerText = infoKurir.nama;
@@ -586,6 +588,8 @@
     });
 
     document.getElementById('btn-ulang-foto').addEventListener('click', async () => {
+      fileBlobFinal = null;
+      fotoBase64Final = null;
       alihkanView('kamera'); await startCameraEngine();
     });
     document.getElementById('btn-back-absen').addEventListener('click', () => {
@@ -708,18 +712,26 @@
       let fotoUrl = "";
     
       try {
-        if(fileBlobFinal) {
-          const formData = new FormData();
-          formData.append("folderId", FOLDER_DRIVE_ID);
-          formData.append("file", fileBlobFinal, `${nodeKey}_${jenisAbsen}.jpg`);
+        if(fotoBase64Final) {
+          const payload = {
+            folderId: FOLDER_DRIVE_ID,
+            fileName: `${nodeKey}_${jenisAbsen}.jpg`,
+            mimeType: "image/jpeg",
+            base64: fotoBase64Final
+          };
     
-          const uploadRes = await fetch("https://script.google.com/macros/s/AKfycbx02xWVJbdLJbS8v4gf_kqBHeVepxuA1HkN3xUCut4rht8Hd3RHlekQASz7AkOvTKc/exec", {
+          const uploadRes = await fetch("https://script.google.com/macros/s/AKfycby5NRakPHf3jhcbzc35y06MOe36bkdLBFxm00Kd56a4vMtxaraKi8HzMOsvnN8Nqnkj/exec", {
             method: "POST",
-            body: formData
+            headers: { "Content-Type": "text/plain;charset=utf-8" }, // wajib text/plain agar tidak kena CORS preflight
+            body: JSON.stringify(payload)
           });
     
           const uploadData = await uploadRes.json();
-          fotoUrl = uploadData.url || "";
+          if (uploadData.success) {
+            fotoUrl = uploadData.url || "";
+          } else {
+            console.error("Upload foto gagal:", uploadData.error);
+          }
         }
     
         const refDB = database.ref('absensi_sahabatku').child(nodeKey);
