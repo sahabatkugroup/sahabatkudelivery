@@ -464,18 +464,18 @@
                             <span class="menu-card-sub">Ke semua / kurir tertentu</span>
                         </div>
                     </button>
-                    <button onclick="navigateTo('screen-admin-sop')" class="menu-card active:scale-95 transition-transform">
-                        <div class="icon-tile" data-tone="orange"><i data-lucide="book-marked" class="w-4 h-4"></i></div>
-                        <div>
-                            <span class="menu-card-title block">Peraturan & SOP Kerja</span>
-                            <span class="menu-card-sub">Kelola panduan untuk kurir</span>
-                        </div>
-                    </button>                    
                     <button onclick="navigateTo('screen-pengaturan')" class="menu-card active:scale-95 transition-transform">
                         <div class="icon-tile" data-tone="slate"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></div>
                         <div>
                             <span class="menu-card-title block">Sistem Global</span>
                             <span class="menu-card-sub">Setting & logout</span>
+                        </div>
+                    </button>
+                    <button onclick="navigateTo('screen-admin-sop')" class="menu-card active:scale-95 transition-transform">
+                        <div class="icon-tile" data-tone="orange"><i data-lucide="book-marked" class="w-4 h-4"></i></div>
+                        <div>
+                            <span class="menu-card-title block">Peraturan & SOP Kerja</span>
+                            <span class="menu-card-sub">Kelola panduan untuk kurir</span>
                         </div>
                     </button>
                 </div>
@@ -2051,26 +2051,32 @@
         </div>
     </div>
 
-    <div id="modal-sop-preview" class="fixed inset-0 z-[60] hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-2xl h-[90vh] sm:h-[85vh] shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between gap-2 p-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
-                <div class="min-w-0">
-                    <h3 id="sop-preview-title" class="text-sm font-black text-slate-800 dark:text-white truncate">Pratinjau</h3>
-                    <p id="sop-preview-desc" class="text-[10px] text-slate-400 truncate"></p>
+    <div id="modal-sop-preview" class="fixed inset-0 z-[60] hidden flex flex-col sm:items-center sm:justify-center sm:p-4 bg-white dark:bg-slate-950 sm:bg-black/60 sm:backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 w-full h-[100dvh] sm:h-[85vh] sm:max-w-2xl sm:rounded-2xl shadow-2xl sm:border sm:border-slate-200 sm:dark:border-slate-700 flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between gap-2 px-3.5 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-8 h-8 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-500 flex items-center justify-center shrink-0">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 id="sop-preview-title" class="text-sm font-black text-slate-800 dark:text-white truncate">Pratinjau</h3>
+                        <p id="sop-preview-desc" class="text-[10px] text-slate-400 truncate"></p>
+                    </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <a id="sop-preview-open-link" href="#" target="_blank" rel="noopener" class="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center">
+                    <a id="sop-preview-open-link" href="#" target="_blank" rel="noopener" class="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center">
                         <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
                     </a>
-                    <button onclick="closeSOPPreview()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">✕</button>
+                    <button onclick="closeSOPPreview()" class="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">✕</button>
                 </div>
             </div>
-            <div class="flex-1 bg-slate-100 dark:bg-slate-950 relative">
-                <div id="sop-preview-loading" class="absolute inset-0 flex items-center justify-center text-slate-400 text-xs gap-2">
-                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat pratinjau...
+            <div class="flex-1 bg-white dark:bg-slate-950 relative overflow-hidden">
+                <div id="sop-preview-loading" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 text-xs gap-2 z-20 bg-white dark:bg-slate-950">
+                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Memuat dokumen...
                 </div>
                 <iframe id="sop-preview-iframe" src="about:blank" class="w-full h-full border-0 relative z-10" loading="lazy"></iframe>
             </div>
+            <div class="shrink-0 sm:hidden" style="padding-bottom: env(safe-area-inset-bottom); background: inherit;"></div>
         </div>
     </div>
 
