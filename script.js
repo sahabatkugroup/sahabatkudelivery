@@ -8756,5 +8756,3 @@
                 container.innerHTML = '';
             }
         };
-
-
