@@ -127,6 +127,7 @@
         let cloudTestimonialList = {};
         let cloudManajemenList = {}
         let cloudLeaderList = {};
+        let cloudSopList = {};
         let liveLocations = {};
         let liveMap = null;
         let liveMarkers = {};
@@ -707,6 +708,12 @@
                 populateLeaderDropdown();
                 queueUiRefresh();
             });
+
+            onValue(ref(db, 'sop_rules'), (snapshot) => {
+                cloudSopList = snapshot.val() || {};
+                queueUiRefresh();
+            });
+
             onValue(ref(db, 'jadwal_off'), (snapshot) => {
                 cloudJadwalOff = snapshot.val() || {};
             });
@@ -1401,6 +1408,11 @@
                 setTimeout(() => {
                     if (typeof renderStatistikKurir === 'function') renderStatistikKurir();
                 }, 100);
+            }
+            if (screenId === 'screen-sop-kurir') {
+                setTimeout(() => {
+                    if (typeof renderSopKurirList === 'function') renderSopKurirList();
+                }, 50);
             }
             if (screenId === currentScreen) return;
             
@@ -4203,11 +4215,136 @@
         window.openJadwal = function() {
             window.location.href = "absensi-kurir-sahabatku.html";
         };
-        
         window.openSOP = function() {
-            const modal = document.getElementById('modal-sop');
+            navigateTo('screen-admin-sop');
+            const container = document.getElementById('container-admin-sop');
+            if (!container) return;
+
+            const items = Object.entries(cloudSopList || {})
+                .sort((a, b) => (b[1]?.createdAt || '').localeCompare(a[1]?.createdAt || ''));
+
+            if (!items.length) {
+                container.innerHTML = '<div class="text-sm text-slate-400">Belum ada SOP / peraturan.</div>';
+            } else {
+                container.innerHTML = items.map(([key, item]) => `
+                    <button onclick="openSopPreview('${key}')" class="w-full text-left p-3 rounded-xl border bg-slate-50 dark:bg-slate-800 active:scale-95 transition-transform">
+                        <div class="font-bold text-sm">${item.judul || '-'}</div>
+                        <div class="text-[10px] text-slate-400 mt-1">${item.deskripsi || 'Klik untuk lihat'}</div>
+                    </button>
+                `).join('');
+            }
+
+            document.getElementById('screen-admin-sop')?.classList.remove('hidden');
+        };
+        window.openSOPKurir = function() {
+            navigateTo('screen-sop-kurir');
+
+            const container = document.getElementById('container-sop-kurir');
+            if (!container) return;
+
+            const items = Object.entries(cloudSopList || {})
+                .sort((a, b) => (b[1]?.createdAt || '').localeCompare(a[1]?.createdAt || ''));
+
+            if (!items.length) {
+                container.innerHTML = '<div class="text-sm text-slate-400">Belum ada SOP / peraturan.</div>';
+                return;
+            }
+
+            container.innerHTML = items.map(([key, item]) => `
+                <button onclick="openSopPreviewKurir('${key}')" class="w-full text-left p-3 rounded-xl border bg-slate-50 dark:bg-slate-800 active:scale-95 transition-transform">
+                    <div class="font-bold text-sm">${item.judul || '-'}</div>
+                    <div class="text-[10px] text-slate-400 mt-1">${item.deskripsi || 'Klik untuk lihat'}</div>
+                </button>
+            `).join('');
+        };
+        window.openSopPreviewKurir = function(key) {
+            const item = cloudSopList[key];
+            if (!item || !item.link) return;
+
+            let url = item.link.trim();
+            if (url.includes('/edit?usp=sharing')) {
+                url = url.replace('/edit?usp=sharing', '/preview');
+            } else if (url.includes('/edit')) {
+                url = url.replace('/edit', '/preview');
+            }
+
+            const title = document.getElementById('sop-preview-title');
+            const desc = document.getElementById('sop-preview-desc');
+            const frame = document.getElementById('sop-preview-frame');
+            const modal = document.getElementById('modal-preview-sop-kurir');
+
+            if (title) title.innerText = item.judul || '-';
+            if (desc) desc.innerText = item.deskripsi || '';
+            if (frame) frame.src = url;
             if (modal) modal.classList.remove('hidden');
         };
+        window.closeSopPreviewKurir = function() {
+            const modal = document.getElementById('modal-preview-sop-kurir');
+            const frame = document.getElementById('sop-preview-frame');
+            if (frame) frame.src = '';
+            if (modal) modal.classList.add('hidden');
+        };
+        window.renderSopKurirList = function() {
+            const container = document.getElementById('container-sop-kurir');
+            if (!container) return;
+
+            const items = Object.entries(cloudSopList || {})
+                .sort((a, b) => (b[1]?.createdAt || '').localeCompare(a[1]?.createdAt || ''));
+
+            if (!items.length) {
+                container.innerHTML = `
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm text-center">
+                        <div class="w-11 h-11 mx-auto rounded-2xl bg-orange-50 dark:bg-orange-950/30 text-orange-500 flex items-center justify-center mb-2">
+                            <i data-lucide="book-marked" class="w-5 h-5"></i>
+                        </div>
+                        <div class="font-bold text-sm">Belum ada SOP</div>
+                        <div class="text-xs text-slate-400 mt-1">Panduan SOP / peraturan belum diinput admin.</div>
+                    </div>
+                `;
+                if (window.lucide) lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = items.map(([key, item], index) => {
+                const title = item.judul || '-';
+                const desc = item.deskripsi || 'Klik untuk lihat';
+                const created = item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                }) : '-';
+
+                return `
+                    <button onclick="openSopPreviewKurir('${key}')" class="w-full text-left bg-white dark:bg-darkCard rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 active:scale-[0.98] transition-transform list-card-hover">
+                        <div class="flex items-start gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
+                                <i data-lucide="file-text" class="w-5 h-5"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-2">
+                                    <h4 class="font-black text-sm text-slate-800 dark:text-white truncate">${title}</h4>
+                                    <span class="text-[9px] font-bold px-2 py-1 rounded-full bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300 shrink-0">
+                                        SOP ${index + 1}
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">${desc}</p>
+                                <div class="flex items-center gap-2 mt-3 text-[10px] text-slate-400">
+                                    <span class="inline-flex items-center gap-1">
+                                        <i data-lucide="calendar-days" class="w-3 h-3"></i> ${created}
+                                    </span>
+                                    <span class="inline-flex items-center gap-1 text-primary font-bold">
+                                        <i data-lucide="eye" class="w-3 h-3"></i> Lihat Preview
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                `;
+            }).join('');
+
+            if (window.lucide) lucide.createIcons();
+        };
+
         window.renderAdminNotificationHistory = function() {
             const container = document.getElementById('container-admin-notification-history');
             if (!container) return;
@@ -4268,8 +4405,10 @@
         };        
         window.closeModal = function(id) {
             const modal = document.getElementById(id);
-            if (modal) modal.classList.add('hidden');
+            if (!modal) return;
+            modal.classList.add('hidden');
         };
+
         function ensureSectionToggleState(id, defaultOpen = false) {
             const el = document.getElementById(id);
             if (!el) return false;
@@ -8433,3 +8572,166 @@
                 setOrderDepositLoading('order', false);
             }
         };
+        window.saveSopRule = function() {
+            const idEdit = document.getElementById('sop-id-edit').value;
+            const judul = document.getElementById('sop-judul').value.trim();
+            const link = document.getElementById('sop-link').value.trim();
+            const deskripsi = document.getElementById('sop-deskripsi').value.trim();
+
+            if (!judul || !link) {
+                toast('Judul dan link wajib diisi.');
+                return;
+            }
+
+            const payload = {
+                judul,
+                link,
+                deskripsi,
+                createdAt: new Date().toISOString()
+            };
+
+            if (idEdit) {
+                update(ref(db, `sop_rules/${idEdit}`), payload).then(() => {
+                    toast('SOP berhasil diperbarui.');
+                    resetSopForm();
+                });
+            } else {
+                push(ref(db, 'sop_rules'), payload).then(() => {
+                    toast('SOP berhasil disimpan.');
+                    resetSopForm();
+                });
+            }
+        };
+
+        window.resetSopForm = function() {
+            document.getElementById('sop-id-edit').value = '';
+            document.getElementById('sop-judul').value = '';
+            document.getElementById('sop-link').value = '';
+            document.getElementById('sop-deskripsi').value = '';
+        };
+        window.renderAdminSopList = function() {
+            const container = document.getElementById('container-admin-sop');
+            if (!container) return;
+
+            const isOpen = container.dataset.open === '1';
+            if (!isOpen) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const items = Object.entries(cloudSopList || {})
+                .sort((a, b) => (b[1]?.createdAt || '').localeCompare(a[1]?.createdAt || ''));
+
+            if (!items.length) {
+                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Belum ada SOP tersimpan.</div>';
+                return;
+            }
+
+            container.innerHTML = items.map(([key, item]) => `
+                <div class="bg-white dark:bg-darkCard p-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                    <div class="font-bold text-sm">${item.judul || '-'}</div>
+                    <div class="text-[10px] text-slate-400 mt-1">${item.deskripsi || '-'}</div>
+                    <div class="mt-2 flex gap-2">
+                        <button onclick="previewSopAdmin('${key}')" class="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase">Preview</button>
+                        <button onclick="openEditSopAdmin('${key}')" class="px-3 py-2 rounded-xl bg-blue-50 text-blue-600 text-[10px] font-bold uppercase">Edit</button>
+                        <button onclick="hapusSopRule('${key}')" class="px-3 py-2 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-bold uppercase">Hapus</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+        window.previewSopAdmin = function(key) {
+            const item = cloudSopList[key];
+            if (!item || !item.link) return;
+
+            let url = item.link.trim();
+            if (url.includes('/edit?usp=sharing')) {
+                url = url.replace('/edit?usp=sharing', '/preview');
+            } else if (url.includes('/edit')) {
+                url = url.replace('/edit', '/preview');
+            }
+
+            const title = document.getElementById('admin-sop-preview-title');
+            const desc = document.getElementById('admin-sop-preview-desc');
+            const frame = document.getElementById('admin-sop-preview-frame');
+            const modal = document.getElementById('modal-preview-sop-admin');
+
+            if (title) title.innerText = item.judul || '-';
+            if (desc) desc.innerText = item.deskripsi || '';
+            if (frame) frame.src = url;
+            if (modal) modal.classList.remove('hidden');
+        };
+        window.openEditSopAdmin = function(key) {
+            const item = cloudSopList[key];
+            if (!item) return;
+
+            const id = document.getElementById('edit-sop-id');
+            const judul = document.getElementById('edit-sop-judul');
+            const link = document.getElementById('edit-sop-link');
+            const desc = document.getElementById('edit-sop-deskripsi');
+            const modal = document.getElementById('modal-edit-sop-admin');
+
+            if (id) id.value = key;
+            if (judul) judul.value = item.judul || '';
+            if (link) link.value = item.link || '';
+            if (desc) desc.value = item.deskripsi || '';
+            if (modal) modal.classList.remove('hidden');
+        };
+        window.saveEditSopAdmin = function() {
+            const id = document.getElementById('edit-sop-id').value;
+            const judul = document.getElementById('edit-sop-judul').value.trim();
+            const link = document.getElementById('edit-sop-link').value.trim();
+            const deskripsi = document.getElementById('edit-sop-deskripsi').value.trim();
+
+            if (!id) return toast('Data SOP tidak ditemukan!');
+            if (!judul || !link) return toast('Judul dan link wajib diisi.');
+
+            update(ref(db, `sop_rules/${id}`), {
+                judul,
+                link,
+                deskripsi,
+                createdAt: new Date().toISOString()
+            }).then(() => {
+                toast('SOP berhasil diperbarui.');
+                closeEditSopAdmin();
+            }).catch(err => {
+                toast('Gagal update SOP: ' + err.message);
+            });
+        };
+        window.closeEditSopAdmin = function() {
+            const modal = document.getElementById('modal-edit-sop-admin');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.closeSopPreviewAdmin = function() {
+            const modal = document.getElementById('modal-preview-sop-admin');
+            const frame = document.getElementById('admin-sop-preview-frame');
+            if (frame) frame.src = '';
+            if (modal) modal.classList.add('hidden');
+        };
+        window.editSopRule = function(key) {
+            const item = cloudSopList[key];
+            if (!item) return;
+
+            document.getElementById('sop-id-edit').value = key;
+            document.getElementById('sop-judul').value = item.judul || '';
+            document.getElementById('sop-link').value = item.link || '';
+            document.getElementById('sop-deskripsi').value = item.deskripsi || '';
+            navigateTo('screen-admin-sop');
+        };
+        window.hapusSopRule = async function(key) {
+            const ok = await showConfirm('Hapus SOP ini?');
+            if (ok) remove(ref(db, `sop_rules/${key}`));
+        };
+        window.toggleAdminSopOpen = function() {
+            const container = document.getElementById('container-admin-sop');
+            const btn = document.getElementById('btn-toggle-sop-text');
+            if (!container) return;
+
+            const isOpen = container.dataset.open === '1';
+            container.dataset.open = isOpen ? '0' : '1';
+            if (btn) btn.innerText = isOpen ? 'Buka' : 'Tutup';
+
+            if (!isOpen) renderAdminSopList();
+            else container.innerHTML = '';
+        };
+
