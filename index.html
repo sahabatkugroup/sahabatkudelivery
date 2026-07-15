@@ -301,11 +301,10 @@
                         <div class="icon-tile" data-tone="sky"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i></div>
                         <span class="label">Statistik</span>
                     </button>
-                    <button onclick="openSOPKurir()" class="menu-card-sm active:scale-95 transition-transform">
+                    <button onclick="openSOP()" class="menu-card-sm active:scale-95 transition-transform">
                         <div class="icon-tile" data-tone="orange"><i data-lucide="book-marked" class="w-3.5 h-3.5"></i></div>
                         <span class="label">SOP</span>
                     </button>
-
                 </div>
             </div>
 
@@ -465,18 +464,18 @@
                             <span class="menu-card-sub">Ke semua / kurir tertentu</span>
                         </div>
                     </button>
-                    <button onclick="openSOP()" class="menu-card active:scale-95 transition-transform">
-                        <div class="icon-tile" data-tone="orange"><i data-lucide="book-open" class="w-4 h-4"></i></div>
-                        <div>
-                            <span class="menu-card-title block">Peraturan & SOP Kerja</span>
-                            <span class="menu-card-sub">Tambah link SOP / peraturan</span>
-                        </div>
-                    </button>                    
                     <button onclick="navigateTo('screen-pengaturan')" class="menu-card active:scale-95 transition-transform">
                         <div class="icon-tile" data-tone="slate"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></div>
                         <div>
                             <span class="menu-card-title block">Sistem Global</span>
                             <span class="menu-card-sub">Setting & logout</span>
+                        </div>
+                    </button>
+                    <button onclick="navigateTo('screen-admin-sop')" class="menu-card active:scale-95 transition-transform">
+                        <div class="icon-tile" data-tone="orange"><i data-lucide="book-marked" class="w-4 h-4"></i></div>
+                        <div>
+                            <span class="menu-card-title block">Peraturan & SOP Kerja</span>
+                            <span class="menu-card-sub">Kelola panduan untuk kurir</span>
                         </div>
                     </button>
                 </div>
@@ -1368,34 +1367,47 @@
             </div>
 
             <div id="screen-admin-sop" class="screen p-4 space-y-4">
-                <div class="kurir-screen-header bg-gradient-to-br from-orange-600 via-amber-600 to-orange-700 flex items-center gap-3 shadow-orange-500/20">
-                    <div class="header-icon-chip"><i data-lucide="book-open" class="w-4 h-4"></i></div>
+                <div class="kurir-screen-header bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 flex items-center gap-3 shadow-orange-500/20">
+                    <div class="header-icon-chip"><i data-lucide="book-marked" class="w-4 h-4"></i></div>
                     <div class="min-w-0">
                         <h3 class="text-sm font-black">Peraturan & SOP Kerja</h3>
-                        <p class="text-[10px] text-white/75">Tambah link dokumen SOP / aturan kerja</p>
+                        <p class="text-[10px] text-white/75">Kelola panduan yang tampil di menu SOP kurir</p>
                     </div>
                 </div>
 
                 <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="file-plus-2" class="w-3.5 h-3.5 shrink-0"></i> <span id="sop-title-form">Tambah Peraturan / SOP</span>
+                    </h3>
                     <input type="hidden" id="sop-id-edit">
-                    <input type="text" id="sop-judul" placeholder="Judul, contoh: Peraturan Kerja Kurir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-                    <input type="url" id="sop-link" placeholder="Tempel link Google Docs / PDF" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-                    <textarea id="sop-deskripsi" rows="3" placeholder="Deskripsi singkat" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700"></textarea>
-
+                    <div class="space-y-2">
+                        <input type="text" id="sop-judul" placeholder="Judul (e.g. SOP Penanganan Nota Hilang)" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                        <input type="url" id="sop-link" placeholder="Tempel link Google Docs / Drive / PDF" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                        <textarea id="sop-deskripsi" rows="2" placeholder="Deskripsi singkat (opsional)" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700"></textarea>
+                    </div>
                     <div class="flex gap-2">
-                        <button onclick="saveSopRule()" class="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-xl uppercase">Simpan</button>
-                        <button onclick="resetSopForm()" class="px-3 py-2 bg-slate-100 text-slate-500 dark:bg-slate-800 text-xs rounded-xl">Reset</button>
+                        <button onclick="saveSOP()" class="flex-1 py-2 bg-gradient-to-br from-orange-500 to-amber-600 text-white text-xs font-bold rounded-xl uppercase shadow-md shadow-orange-500/25 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                            <i data-lucide="save" class="w-3.5 h-3.5"></i> <span id="sop-btn-save-text">Simpan</span>
+                        </button>
+                        <button onclick="resetSOPForm()" class="px-3 py-2 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300 text-xs rounded-xl">Reset</button>
                     </div>
                 </div>
 
                 <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Daftar SOP / Peraturan</h4>
-                        <button onclick="toggleAdminSopOpen()" class="w-full sm:w-auto py-2 px-4 rounded-xl bg-slate-800 text-white text-[10px] font-bold uppercase">
-                            <span id="btn-toggle-sop-text">Buka</span>
+                    <div class="flex items-center justify-between gap-2">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="list-checks" class="w-3.5 h-3.5"></i> Daftar Peraturan & SOP
+                        </h4>
+                        <button onclick="toggleAdminSOPListOpen()" class="py-2 px-3.5 rounded-xl bg-slate-800 dark:bg-slate-700 text-white text-[10px] font-bold uppercase flex items-center gap-1.5 active:scale-95 transition-transform">
+                            <span id="sop-btn-toggle-text">Buka</span>
+                            <i data-lucide="chevron-down" id="sop-btn-toggle-icon" class="w-3 h-3 transition-transform"></i>
                         </button>
                     </div>
-                    <div id="container-admin-sop" class="space-y-2.5"></div>
+                    <div class="relative">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="sop-admin-search" oninput="renderAdminSOPList()" placeholder="Cari judul atau deskripsi..." class="w-full pl-9 pr-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                    </div>
+                    <div id="container-admin-sop-list" class="space-y-2"></div>
                 </div>
             </div>
 
@@ -1566,30 +1578,6 @@
                     <button id="btn-share-wa" onclick="shareWhatsApp()" class="py-2.5 bg-success text-white font-bold text-[10px] rounded-xl flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform">
                         <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Bagikan WhatsApp
                     </button>
-                </div>
-            </div>
-            <div id="screen-sop-kurir" class="screen p-4 space-y-4">
-                <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 via-amber-600 to-orange-700 text-white p-5 shadow-xl shadow-orange-500/25">
-                    <div class="pointer-events-none absolute inset-0 opacity-[0.09]" style="background-image:radial-gradient(circle,#fff 1px,transparent 1px);background-size:16px 16px;"></div>
-                    <div class="relative flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
-                            <i data-lucide="book-marked" class="w-5 h-5"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <h3 class="text-sm font-black">Panduan Peraturan & SOP Kurir</h3>
-                            <p class="text-[10px] text-white/75 mt-0.5">Pilih SOP untuk melihat preview dokumen</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white dark:bg-darkCard rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-3">
-                    <div class="flex items-center justify-between mb-3">
-                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Daftar Panduan</h4>
-                        <span class="text-[10px] font-bold px-2 py-1 rounded-full bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-300">
-                            Read Only
-                        </span>
-                    </div>
-                    <div id="container-sop-kurir" class="space-y-3"></div>
                 </div>
             </div>
 
@@ -2040,28 +2028,84 @@
             </div>
         </div>
     </div>
-    <div id="modal-sop" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
-        <div class="w-full h-full sm:h-auto sm:max-w-2xl sm:mx-auto sm:my-auto bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
-                <div>
-                    <h3 class="text-sm sm:text-lg font-bold text-slate-800 dark:text-white">Panduan SOP Kurir</h3>
-                    <p class="text-[10px] text-slate-400">Pilih SOP dari daftar</p>
+
+    <div id="modal-sop" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between gap-2 p-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-500 flex items-center justify-center shrink-0"><i data-lucide="book-marked" class="w-4 h-4"></i></div>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-black text-slate-800 dark:text-white">Peraturan & SOP Kurir</h3>
+                        <p class="text-[10px] text-slate-400">Panduan kerja yang wajib dipahami</p>
+                    </div>
                 </div>
-                <button onclick="closeModal('modal-sop')" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">✕</button>
+                <button onclick="closeModal('modal-sop')" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">✕</button>
             </div>
-
-            <div class="flex-1 overflow-y-auto p-4">
-                <div id="kurir-sop-list" class="space-y-2"></div>
+            <div class="p-4 pb-0 shrink-0">
+                <div class="relative">
+                    <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="sop-kurir-search" oninput="renderKurirSOPList()" placeholder="Cari peraturan/SOP..." class="w-full pl-9 pr-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                </div>
             </div>
+            <div id="kurir-sop-list" class="p-4 space-y-2 overflow-y-auto"></div>
+        </div>
+    </div>
 
-            <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                <button onclick="closeModal('modal-sop')" class="w-full px-4 py-3 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl">
-                    Tutup
-                </button>
+    <div id="modal-sop-preview" class="fixed inset-0 z-[60] hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-2xl h-[90vh] sm:h-[85vh] shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between gap-2 p-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <div class="min-w-0">
+                    <h3 id="sop-preview-title" class="text-sm font-black text-slate-800 dark:text-white truncate">Pratinjau</h3>
+                    <p id="sop-preview-desc" class="text-[10px] text-slate-400 truncate"></p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a id="sop-preview-open-link" href="#" target="_blank" rel="noopener" class="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center">
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    </a>
+                    <button onclick="closeSOPPreview()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">✕</button>
+                </div>
+            </div>
+            <div class="flex-1 bg-slate-100 dark:bg-slate-950 relative">
+                <div id="sop-preview-loading" class="absolute inset-0 flex items-center justify-center text-slate-400 text-xs gap-2">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat pratinjau...
+                </div>
+                <iframe id="sop-preview-iframe" src="about:blank" class="w-full h-full border-0 relative z-10" loading="lazy"></iframe>
             </div>
         </div>
     </div>
 
+    <div id="modal-sop-edit" class="fixed inset-0 z-[60] hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between gap-2 p-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-500 flex items-center justify-center shrink-0"><i data-lucide="pencil" class="w-4 h-4"></i></div>
+                    <h3 class="text-sm font-black text-slate-800 dark:text-white">Edit Peraturan / SOP</h3>
+                </div>
+                <button onclick="closeSOPEditModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">✕</button>
+            </div>
+            <div class="p-4 space-y-2 overflow-y-auto">
+                <input type="hidden" id="sop-edit-id">
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">Judul</label>
+                    <input type="text" id="sop-edit-judul" placeholder="Judul peraturan/SOP" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">Link Google Docs / Drive / PDF</label>
+                    <input type="url" id="sop-edit-link" placeholder="https://..." class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">Deskripsi singkat (opsional)</label>
+                    <textarea id="sop-edit-deskripsi" rows="2" placeholder="Deskripsi singkat" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700"></textarea>
+                </div>
+            </div>
+            <div class="flex gap-2 p-4 pt-0 shrink-0">
+                <button onclick="saveSOPEditModal()" class="flex-1 py-2 bg-gradient-to-br from-orange-500 to-amber-600 text-white text-xs font-bold rounded-xl uppercase shadow-md shadow-orange-500/25 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                    <i data-lucide="save" class="w-3.5 h-3.5"></i> <span id="sop-edit-btn-save-text">Simpan</span>
+                </button>
+                <button onclick="closeSOPEditModal()" class="px-4 py-2 bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300 text-xs rounded-xl">Batal</button>
+            </div>
+        </div>
+    </div>
 
     <div id="modal-input-trx-mitra" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-white dark:bg-darkCard w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-4 relative">
@@ -2149,74 +2193,7 @@
             </div>
         </div>
     </div>
-    <div id="modal-preview-sop-kurir" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
-        <div class="w-full h-full sm:h-auto sm:max-w-3xl sm:mx-auto sm:my-auto bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
-                <div class="min-w-0">
-                    <h3 id="sop-preview-title" class="text-sm sm:text-lg font-bold text-slate-800 dark:text-white truncate">Panduan SOP</h3>
-                    <p id="sop-preview-desc" class="text-[10px] text-slate-400 line-clamp-2"></p>
-                </div>
-                <button onclick="closeSopPreviewKurir()" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">✕</button>
-            </div>
-
-            <div class="flex-1 overflow-hidden">
-                <iframe id="sop-preview-frame" class="w-full h-[80vh] sm:h-[75vh] border-0 bg-white" allow="autoplay"></iframe>
-            </div>
-
-            <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                <button onclick="closeSopPreviewKurir()" class="w-full px-4 py-3 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl">
-                    Tutup
-                </button>
-            </div>
-        </div>
-    </div>
-    <div id="modal-preview-sop-admin" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
-        <div class="w-full h-full sm:h-auto sm:max-w-3xl sm:mx-auto sm:my-auto bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
-                <div class="min-w-0">
-                    <h3 id="admin-sop-preview-title" class="text-sm sm:text-lg font-bold text-slate-800 dark:text-white truncate">Preview SOP</h3>
-                    <p id="admin-sop-preview-desc" class="text-[10px] text-slate-400 line-clamp-2"></p>
-                </div>
-                <button onclick="closeSopPreviewAdmin()" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">✕</button>
-            </div>
-
-            <div class="flex-1 overflow-hidden">
-                <iframe id="admin-sop-preview-frame" class="w-full h-[80vh] sm:h-[75vh] border-0 bg-white" allow="autoplay"></iframe>
-            </div>
-
-            <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-                <button onclick="closeSopPreviewAdmin()" class="w-full px-4 py-3 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl">
-                    Tutup
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-edit-sop-admin" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4">
-        <div class="w-full h-full sm:h-auto sm:max-w-2xl sm:mx-auto sm:my-auto bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
-                <div class="min-w-0">
-                    <h3 class="text-sm sm:text-lg font-bold text-slate-800 dark:text-white truncate">Edit SOP</h3>
-                    <p class="text-[10px] text-slate-400">Ubah data SOP yang sudah ada</p>
-                </div>
-                <button onclick="closeEditSopAdmin()" class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">✕</button>
-            </div>
-
-            <div class="p-4 space-y-3">
-                <input type="hidden" id="edit-sop-id">
-                <input type="text" id="edit-sop-judul" placeholder="Judul SOP" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-                <input type="url" id="edit-sop-link" placeholder="Link Google Docs / PDF" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-                <textarea id="edit-sop-deskripsi" rows="3" placeholder="Deskripsi singkat" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700"></textarea>
-
-                <div class="flex gap-2">
-                    <button onclick="saveEditSopAdmin()" class="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-xl uppercase">Simpan Perubahan</button>
-                    <button onclick="closeEditSopAdmin()" class="px-3 py-2 bg-slate-100 text-slate-500 dark:bg-slate-800 text-xs rounded-xl">Batal</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
+    
     <!-- ===== Sistem Notifikasi Toast & Konfirmasi Modern (pengganti alert/confirm bawaan browser) ===== -->
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 w-[92%] max-w-sm pointer-events-none"></div>
 
@@ -2237,6 +2214,7 @@
     </div>
 
     <script type="module" src="script.js"></script>
+    <script type="module" src="sop.js"></script>
     <script>
       // Daftarkan service worker supaya aplikasi bisa di-install & tetap bisa dibuka walau sinyal lemah
       if ('serviceWorker' in navigator) {
