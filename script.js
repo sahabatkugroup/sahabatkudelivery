@@ -714,6 +714,9 @@
                 if (document.getElementById('screen-admin-sop')?.classList.contains('active')) {
                     renderAdminSopList();
                 }
+                if (document.getElementById('screen-sop-kurir')?.classList.contains('active')) {
+                    renderSopKurirList();
+                }
             });
             onValue(ref(db, 'jadwal_off'), (snapshot) => {
                 cloudJadwalOff = snapshot.val() || {};
@@ -1362,6 +1365,16 @@
                     populateLaporanFilter();
                     renderLaporanData();
                 }, 100);
+            }
+            if (screenId === 'screen-admin-sop') {
+                setTimeout(() => {
+                    if (typeof renderAdminSopList === 'function') renderAdminSopList();
+                }, 50);
+            }
+            if (screenId === 'screen-sop-kurir') {
+                setTimeout(() => {
+                    if (typeof renderSopKurirList === 'function') renderSopKurirList();
+                }, 50);
             }
             if (screenId === 'screen-admin-tracking') {
                 setTimeout(() => {
@@ -8756,3 +8769,5 @@
                 container.innerHTML = '';
             }
         };
+
+
