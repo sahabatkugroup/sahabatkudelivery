@@ -1,4 +1,4 @@
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, remove, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         const firebaseConfig = {
         apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
@@ -107,6 +107,10 @@
         let userSession = null; 
         let currentScreen = 'screen-login';
         let navigationHistory = [];
+
+        window.addEventListener('popstate', function () {
+            navigateBack();
+        });
         let notaState = { items: [], biaya: [], subtotal: 0, ongkir: 10000, total: 0 };
         // Data nota terstruktur (bukan HTML) yang dipakai untuk MENGGAMBAR gambar nota
         // langsung ke <canvas> — terpisah dari notaState supaya urutan/isi nota yang
@@ -1424,6 +1428,7 @@
             } else {
                 navigationHistory.push(currentScreen);
             }
+            history.pushState({ screen: screenId }, '', '');
         
             const targetEl = document.getElementById(screenId);
             if (targetEl) targetEl.classList.add('active');
@@ -7221,7 +7226,7 @@
         };
 
         window.closePopupPenilaianLeader = function() {
-            navigateBack();
+            history.back();
         };
 
         window.switchLeaderTab = function(tab) {
@@ -8421,48 +8426,3 @@
                 setOrderDepositLoading('order', false);
             }
         };
-        let swipeStartX = 0;
-        let swipeStartY = 0;
-
-        const swipeBackAllowed = new Set([
-            'screen-nota',
-            'screen-preview',
-            'screen-riwayat',
-            'screen-rekap',
-            'screen-statistik',
-            'screen-mitra',
-            'screen-ongkir',
-            'screen-pengaturan',
-            'screen-admin-kurir',
-            'screen-admin-manajemen',
-            'screen-admin-leader',
-            'screen-admin-nota',
-            'screen-admin-mitra',
-            'screen-admin-laporan',
-            'screen-admin-tracking',
-            'screen-admin-kpi',
-            'screen-admin-absensi',
-            'screen-admin-ongkir',
-            'screen-admin-order-deposit',
-            'screen-admin-testimonial',
-            'screen-admin-notifikasi',
-            'screen-admin-sop'
-        ]);
-
-        document.addEventListener('touchstart', (e) => {
-            const t = e.touches[0];
-            swipeStartX = t.clientX;
-            swipeStartY = t.clientY;
-        }, { passive: true });
-
-        document.addEventListener('touchend', (e) => {
-            const t = e.changedTouches[0];
-            const dx = t.clientX - swipeStartX;
-            const dy = t.clientY - swipeStartY;
-
-            if (Math.abs(dx) > 80 && Math.abs(dy) < 60 && dx < 0) {
-                if (swipeBackAllowed.has(currentScreen) && navigationHistory.length > 0) {
-                    navigateBack();
-                }
-            }
-        }, { passive: true });
