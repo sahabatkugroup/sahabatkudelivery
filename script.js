@@ -8421,3 +8421,23 @@
                 setOrderDepositLoading('order', false);
             }
         };
+        let swipeStartX = 0;
+        let swipeStartY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            const t = e.touches[0];
+            swipeStartX = t.clientX;
+            swipeStartY = t.clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const t = e.changedTouches[0];
+            const dx = t.clientX - swipeStartX;
+            const dy = t.clientY - swipeStartY;
+
+            if (Math.abs(dx) > 80 && Math.abs(dy) < 60 && dx < 0) {
+                if (currentScreen !== 'screen-dashboard' && currentScreen !== 'screen-admin-dashboard') {
+                    navigateBack();
+                }
+            }
+        }, { passive: true });    
