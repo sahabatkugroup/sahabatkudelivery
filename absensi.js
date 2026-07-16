@@ -1,10 +1,3 @@
-// =====================================================================
-// absensi.js — Modul Absensi Harian, Jadwal Off, Pengajuan & Rekap Kurir
-// Menggabungkan logika dari absensi-kurir-sahabatku.html (panel kurir)
-// dan absensi-admin-sahabatku.html (panel admin) menjadi satu modul yang
-// dipasang langsung di index.html (bukan halaman terpisah lagi).
-// =====================================================================
-
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
