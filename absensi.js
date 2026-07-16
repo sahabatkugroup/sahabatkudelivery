@@ -1,10 +1,3 @@
-// =====================================================================
-// absensi.js — Modul Absensi Harian, Jadwal Off, Pengajuan & Rekap Kurir
-// Menggabungkan logika dari absensi-kurir-sahabatku.html (panel kurir)
-// dan absensi-admin-sahabatku.html (panel admin) menjadi satu modul yang
-// dipasang langsung di index.html (bukan halaman terpisah lagi).
-// =====================================================================
-
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -91,13 +84,33 @@ const fmt = (tgl) => {
 
 function hitungDurasiKerja(masuk, pulang) {
     if (!masuk || !pulang) return '-';
-    const [h1, m1] = masuk.split(':').map(Number);
-    const [h2, m2] = pulang.split(':').map(Number);
-    if ([h1, m1, h2, m2].some((n) => Number.isNaN(n))) return '-';
+
+    const normTime = (t) => String(t).trim().replace('.', ':');
+    const a = normTime(masuk).split(':');
+    const b = normTime(pulang).split(':');
+
+    if (a.length < 2 || b.length < 2) return '-';
+
+    const h1 = parseInt(a[0], 10);
+    const m1 = parseInt(a[1], 10);
+    const h2 = parseInt(b[0], 10);
+    const m2 = parseInt(b[1], 10);
+
+    if ([h1, m1, h2, m2].some(Number.isNaN)) return '-';
+
     let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
     if (mins < 0) mins += 24 * 60;
-    return `${Math.floor(mins / 60)}j ${mins % 60}m`;
+
+    const jam = Math.floor(mins / 60);
+    const menit = mins % 60;
+
+    return `${jam}j ${menit}m`;
 }
+function formatJamKerjaText(masuk, pulang) {
+    const hasil = hitungDurasiKerja(masuk, pulang);
+    return hasil === '-' ? '-' : hasil;
+}
+
 
 function getKurirAktif() {
     return Object.entries(DATA_USERS)
@@ -878,6 +891,7 @@ window.renderAdminAbsensi = function () {
     if (tbody) {
         tbody.innerHTML = records.map((a, i) => {
             const durasi = hitungDurasiKerja(a.jamMasuk, a.jamPulang);
+            const jamKerjaText = durasi === '-' ? '-' : durasi;
             let status = 'Belum Masuk', statusCls = 'bg-danger';
             if (a.jamMasuk && a.jamPulang) { status = 'Lengkap'; statusCls = 'bg-success'; }
             else if (a.jamMasuk && !a.jamPulang) { status = 'Belum Pulang'; statusCls = 'bg-amber-500'; }
@@ -888,7 +902,7 @@ window.renderAdminAbsensi = function () {
                     <td class="py-2 text-[10px] text-slate-400">${escapeHtml(a.leader || '-')}</td>
                     <td class="py-2">${a.jamMasuk || '-'}</td>
                     <td class="py-2">${a.jamPulang || '-'}</td>
-                    <td class="py-2">${durasi}</td>
+                    <td class="py-2 font-semibold text-slate-700 dark:text-slate-300">${jamKerjaText}</td>
                     <td class="py-2"><span class="px-2 py-1 rounded-full text-white text-[10px] font-bold ${statusCls}">${status}</span></td>
                     <td class="py-2">
                         <div class="flex gap-1.5">
