@@ -1325,6 +1325,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             'screen-mitra': { title: 'Mitra & Transaksi', icon: 'store' },
             'screen-ongkir': { title: 'Cek Ongkir', icon: 'route' },
             'screen-pengaturan': { title: 'Pengaturan', icon: 'settings-2' },
+            'screen-absensi-kurir': { title: 'Jadwal Off & Absensi', icon: 'calendar-days' },
             'screen-admin-kurir': { title: 'Data Akun Kurir', icon: 'users' },
             'screen-admin-manajemen': { title: 'Manajemen', icon: 'users-round' },
             'screen-admin-leader': { title: 'Leader & Penilaian', icon: 'crown' },
@@ -1444,6 +1445,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 setTimeout(() => { 
                     if (typeof loadRekapKurir === 'function') loadRekapKurir(); 
                 }, 50);
+            }
+            if (screenId === 'screen-absensi-kurir' && typeof initAbsensiKurir === 'function') {
+                setTimeout(() => { initAbsensiKurir(); }, 50);
             }
         };
         window.navigateBack = function() {
