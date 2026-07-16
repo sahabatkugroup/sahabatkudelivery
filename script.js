@@ -4896,19 +4896,7 @@
             document.getElementById('laporan-rata-rata').innerText = 'Rp ' + rataRata.toLocaleString('id-ID');
             document.getElementById('laporan-kurir-aktif').innerText = kurirAktifSet.size;
 
-            let trxMitraEl = document.getElementById('laporan-total-trx-mitra');
-            if (!trxMitraEl) {
-                const parent = document.querySelector('#screen-admin-laporan .grid.grid-cols-2.gap-2');
-                if (parent) {
-                    parent.insertAdjacentHTML('beforeend', `
-                        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800">
-                            <div class="text-[10px] text-slate-400 uppercase">Total Trx Mitra</div>
-                            <div class="text-lg font-black text-indigo-600 dark:text-indigo-400" id="laporan-total-trx-mitra">0</div>
-                        </div>
-                    `);
-                    trxMitraEl = document.getElementById('laporan-total-trx-mitra');
-                }
-            }
+            const trxMitraEl = document.getElementById('laporan-total-trx-mitra');
             if (trxMitraEl) trxMitraEl.innerText = totalTrxMitra + ' Trx';
 
             const urutan = Object.keys(mapHarian).sort((a, b) => b.localeCompare(a));
