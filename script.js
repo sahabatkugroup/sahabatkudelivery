@@ -8424,6 +8424,31 @@
         let swipeStartX = 0;
         let swipeStartY = 0;
 
+        const swipeBackAllowed = new Set([
+            'screen-nota',
+            'screen-preview',
+            'screen-riwayat',
+            'screen-rekap',
+            'screen-statistik',
+            'screen-mitra',
+            'screen-ongkir',
+            'screen-pengaturan',
+            'screen-admin-kurir',
+            'screen-admin-manajemen',
+            'screen-admin-leader',
+            'screen-admin-nota',
+            'screen-admin-mitra',
+            'screen-admin-laporan',
+            'screen-admin-tracking',
+            'screen-admin-kpi',
+            'screen-admin-absensi',
+            'screen-admin-ongkir',
+            'screen-admin-order-deposit',
+            'screen-admin-testimonial',
+            'screen-admin-notifikasi',
+            'screen-admin-sop'
+        ]);
+
         document.addEventListener('touchstart', (e) => {
             const t = e.touches[0];
             swipeStartX = t.clientX;
@@ -8436,8 +8461,8 @@
             const dy = t.clientY - swipeStartY;
 
             if (Math.abs(dx) > 80 && Math.abs(dy) < 60 && dx < 0) {
-                if (currentScreen !== 'screen-dashboard' && currentScreen !== 'screen-admin-dashboard') {
+                if (swipeBackAllowed.has(currentScreen) && navigationHistory.length > 0) {
                     navigateBack();
                 }
             }
-        }, { passive: true });    
+        }, { passive: true });
