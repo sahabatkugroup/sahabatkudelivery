@@ -83,19 +83,15 @@ const fmt = (tgl) => {
 };
 
 function hitungDurasiKerja(masuk, pulang) {
+    const normTime = (t) => String(t || '').trim().replace('.', ':').slice(0, 5);
     if (!masuk || !pulang) return '-';
 
-    const normTime = (t) => String(t).trim().replace('.', ':');
     const a = normTime(masuk).split(':');
     const b = normTime(pulang).split(':');
-
     if (a.length < 2 || b.length < 2) return '-';
 
-    const h1 = parseInt(a[0], 10);
-    const m1 = parseInt(a[1], 10);
-    const h2 = parseInt(b[0], 10);
-    const m2 = parseInt(b[1], 10);
-
+    const h1 = parseInt(a[0], 10), m1 = parseInt(a[1], 10);
+    const h2 = parseInt(b[0], 10), m2 = parseInt(b[1], 10);
     if ([h1, m1, h2, m2].some(Number.isNaN)) return '-';
 
     let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
@@ -104,14 +100,12 @@ function hitungDurasiKerja(masuk, pulang) {
     const jam = Math.floor(mins / 60);
     const menit = mins % 60;
 
-    return `${jam}j ${menit}m`;
+    return `${jam} jam ${menit} menit`;
 }
+
 function formatJamKerjaText(masuk, pulang) {
-    const hasil = hitungDurasiKerja(masuk, pulang);
-    return hasil === '-' ? '-' : hasil;
+    return hitungDurasiKerja(masuk, pulang);
 }
-
-
 function getKurirAktif() {
     return Object.entries(DATA_USERS)
         .filter(([_, u]) => u.role === 'kurir' && u.status === 'aktif')
@@ -862,7 +856,10 @@ window.onAbsensiFilterBulanChange = function () {
     if (bulanEl?.value && tglEl) tglEl.value = '';
     renderAdminAbsensi();
 };
-
+function fixJamFormat(val) {
+    if (!val) return '';
+    return String(val).trim().replace('.', ':').slice(0, 5);
+}
 window.renderAdminAbsensi = function () {
     const tglFilter = document.getElementById('absensi-filter-tgl')?.value || '';
     const bulanFilter = document.getElementById('absensi-filter-bulan')?.value || '';
@@ -890,8 +887,9 @@ window.renderAdminAbsensi = function () {
     const tbody = document.getElementById('container-admin-absensi');
     if (tbody) {
         tbody.innerHTML = records.map((a, i) => {
-            const durasi = hitungDurasiKerja(a.jamMasuk, a.jamPulang);
-            const jamKerjaText = durasi === '-' ? '-' : durasi;
+            const jamMasukFix = String(a.jamMasuk || '').trim().replace('.', ':').slice(0, 5);
+            const jamPulangFix = String(a.jamPulang || '').trim().replace('.', ':').slice(0, 5);
+            const jamKerjaText = hitungDurasiKerja(jamMasukFix, jamPulangFix);
             let status = 'Belum Masuk', statusCls = 'bg-danger';
             if (a.jamMasuk && a.jamPulang) { status = 'Lengkap'; statusCls = 'bg-success'; }
             else if (a.jamMasuk && !a.jamPulang) { status = 'Belum Pulang'; statusCls = 'bg-amber-500'; }
