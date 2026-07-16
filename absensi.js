@@ -1192,7 +1192,7 @@ window.openAdminPopupOffBulanIni = () => {
 // ---------------------------------------------------------------------
 window.switchKurirTab = (tab, btn) => {
     kurirTab = tab;
-    const root = document.getElementById('modal-absensi-kurir');
+    const root = document.getElementById('screen-absensi-kurir');
     if (!root) return;
     ['jadwal', 'pengajuan', 'rekap'].forEach((t) => {
         document.getElementById(`kurir-absensi-panel-${t}`)?.classList.toggle('hidden', t !== tab);
@@ -1214,12 +1214,7 @@ window.switchAdminTab = (tab, btn) => {
     refreshIcons();
 };
 
-window.openAbsensiKurir = function () {
-    const modal = document.getElementById('modal-absensi-kurir');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-
+window.initAbsensiKurir = function () {
     const session = getSession();
     const namaSaya = session?.nama || '';
     const selectNama = document.getElementById('form-pengajuan-nama');
@@ -1228,14 +1223,8 @@ window.openAbsensiKurir = function () {
         updatePengajuanVisibility();
         renderKurirPengajuanList();
     }
-    window.switchKurirTab('jadwal', document.querySelector('#modal-absensi-kurir [data-tab="jadwal"]'));
+    window.switchKurirTab('jadwal', document.querySelector('#screen-absensi-kurir [data-tab="jadwal"]'));
     refreshIcons();
-};
-window.closeAbsensiKurir = function () {
-    const modal = document.getElementById('modal-absensi-kurir');
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
 };
 
 // ---------------------------------------------------------------------
