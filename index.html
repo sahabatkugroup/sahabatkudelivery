@@ -292,9 +292,9 @@
                         <div class="icon-tile" data-tone="purple"><i data-lucide="navigation" class="w-3.5 h-3.5"></i></div>
                         <span class="label">Ongkir</span>
                     </button>
-                    <button onclick="openJadwal()" class="menu-card-sm active:scale-95 transition-transform">
+                    <button onclick="openAbsensiKurir()" class="menu-card-sm active:scale-95 transition-transform">
                         <div class="icon-tile" data-tone="teal"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i></div>
-                        <span class="label">Jadwal</span>
+                        <span class="label">Jadwal Off</span>
                     </button>
                     
                     <button onclick="navigateTo('screen-statistik')" class="menu-card-sm active:scale-95 transition-transform relative">
@@ -429,11 +429,11 @@
                             <span class="menu-card-sub">Wilayah & tarif</span>
                         </div>
                     </button>
-                    <button onclick="window.location.href='absensi-admin-sahabatku.html'" class="menu-card active:scale-95 transition-transform">
+                    <button onclick="navigateTo('screen-admin-absensi')" class="menu-card active:scale-95 transition-transform">
                         <div class="icon-tile" data-tone="teal"><i data-lucide="calendar-days" class="w-4 h-4"></i></div>
                         <div>
                             <span class="menu-card-title block">Absensi Harian Kurir</span>
-                            <span class="menu-card-sub">Rekap jadwal kurir</span>
+                            <span class="menu-card-sub">Kehadiran, jadwal off &amp; pengajuan</span>
                         </div>
                     </button>
                     <button onclick="navigateTo('screen-admin-kpi')" class="menu-card active:scale-95 transition-transform">
@@ -464,6 +464,13 @@
                             <span class="menu-card-sub">Ke semua / kurir tertentu</span>
                         </div>
                     </button>
+                    <button onclick="navigateTo('screen-admin-sop')" class="menu-card active:scale-95 transition-transform">
+                        <div class="icon-tile" data-tone="orange"><i data-lucide="book-marked" class="w-4 h-4"></i></div>
+                        <div>
+                            <span class="menu-card-title block">Peraturan & SOP Kerja</span>
+                            <span class="menu-card-sub">Kelola panduan untuk kurir</span>
+                        </div>
+                    </button>                    
                     <button onclick="navigateTo('screen-pengaturan')" class="menu-card active:scale-95 transition-transform">
                         <div class="icon-tile" data-tone="slate"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></div>
                         <div>
@@ -471,13 +478,7 @@
                             <span class="menu-card-sub">Setting & logout</span>
                         </div>
                     </button>
-                    <button onclick="navigateTo('screen-admin-sop')" class="menu-card active:scale-95 transition-transform">
-                        <div class="icon-tile" data-tone="orange"><i data-lucide="book-marked" class="w-4 h-4"></i></div>
-                        <div>
-                            <span class="menu-card-title block">Peraturan & SOP Kerja</span>
-                            <span class="menu-card-sub">Kelola panduan untuk kurir</span>
-                        </div>
-                    </button>
+
                 </div>
             </div>            
             <div id="screen-admin-kurir" class="screen px-3 py-3 sm:p-4 space-y-3">
@@ -995,70 +996,164 @@
                 <div class="kurir-screen-header bg-gradient-to-br from-teal-600 via-emerald-600 to-teal-700 flex items-center gap-3 shadow-teal-500/20">
                     <div class="header-icon-chip"><i data-lucide="calendar-check" class="w-4 h-4"></i></div>
                     <div class="min-w-0">
-                        <h3 class="text-sm font-black">Absensi Kurir</h3>
-                        <p class="text-[10px] text-white/75">Rekap kehadiran &amp; jam kerja harian</p>
+                        <h3 class="text-sm font-black">Absensi &amp; Jadwal Kurir</h3>
+                        <p class="text-[10px] text-white/75">Kehadiran harian, off/izin/sakit &amp; persetujuan</p>
                     </div>
                 </div>
-                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Rekap Absensi Kurir</h3>
-                        <button onclick="bukaModalAbsensiManual()" class="px-3 py-2 rounded-xl bg-primary text-white text-[10px] font-bold uppercase flex items-center gap-1 active:scale-95 transition-transform">
-                            <i data-lucide="plus" class="w-3 h-3"></i> Absensi Manual
-                        </button>
-                    </div>
-            
-                    <div class="grid grid-cols-1 gap-2">
-                        <input type="date" id="absensi-filter-tgl" onchange="renderAdminAbsensi()" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
-                        <input type="month" id="absensi-filter-bulan" onchange="renderAdminAbsensi()" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+
+                <div class="grid grid-cols-4 gap-2 text-[10px]">
+                    <button onclick="openAdminPopupKurir()" class="absensi-glass p-2.5 rounded-2xl text-center shadow-sm active:scale-95 transition-transform">
+                        <p class="text-slate-400">Kurir</p><p id="admin-total-kurir" class="text-sm font-black mt-0.5">0</p>
+                    </button>
+                    <button onclick="openAdminPopupOffHariIni()" class="absensi-glass p-2.5 rounded-2xl text-center shadow-sm active:scale-95 transition-transform">
+                        <p class="text-slate-400">Off Hari Ini</p><p id="admin-off-hari-ini" class="text-sm font-black mt-0.5">0</p>
+                    </button>
+                    <button onclick="openAdminPopupOffBulanIni()" class="absensi-glass p-2.5 rounded-2xl text-center shadow-sm active:scale-95 transition-transform">
+                        <p class="text-slate-400">Off Bulan Ini</p><p id="admin-off-bulan-ini" class="text-sm font-black mt-0.5">0</p>
+                    </button>
+                    <button onclick="switchAdminTab('pengajuan', document.querySelector('#screen-admin-absensi [data-tab=pengajuan]'))" class="absensi-glass p-2.5 rounded-2xl text-center shadow-sm active:scale-95 transition-transform relative">
+                        <p class="text-slate-400">Pengajuan</p><p id="admin-pending-count" class="text-sm font-black mt-0.5">0</p>
+                    </button>
+                </div>
+
+                <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                    <button onclick="switchAdminTab('harian', this)" data-tab="harian" class="absensi-tab-btn active">
+                        <i data-lucide="clock" class="w-3 h-3"></i> Harian
+                    </button>
+                    <button onclick="switchAdminTab('jadwal', this)" data-tab="jadwal" class="absensi-tab-btn">
+                        <i data-lucide="calendar-days" class="w-3 h-3"></i> Jadwal Off
+                    </button>
+                    <button onclick="switchAdminTab('pengajuan', this)" data-tab="pengajuan" class="absensi-tab-btn">
+                        <i data-lucide="inbox" class="w-3 h-3"></i> Pengajuan
+                    </button>
+                    <button onclick="switchAdminTab('rekap', this)" data-tab="rekap" class="absensi-tab-btn">
+                        <i data-lucide="bar-chart-3" class="w-3 h-3"></i> Rekap
+                    </button>
+                </div>
+
+                <!-- TAB: ABSENSI HARIAN -->
+                <section id="admin-absensi-panel-harian" class="space-y-4">
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Rekap Kehadiran</h3>
+                            <button onclick="bukaModalAbsensiManual()" class="px-3 py-2 rounded-xl bg-gradient-to-br from-primary to-secondary text-white text-[10px] font-bold uppercase flex items-center gap-1 shadow-md shadow-primary/25 active:scale-95 transition-transform shrink-0">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Manual
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="absensi-filter-tgl" onchange="onAbsensiFilterTglChange()" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                            <input type="month" id="absensi-filter-bulan" onchange="onAbsensiFilterBulanChange()" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                        </div>
                         <div class="relative">
                             <input type="text" id="absensi-filter-nama" oninput="updateAbsensiKurirSuggestions()" placeholder="Cari nama kurir..." class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
                             <div id="suggest-absensi-kurir" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-darkCard border rounded-xl shadow-lg max-h-40 overflow-y-auto z-20"></div>
                         </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                                <div class="text-[10px] text-slate-400 uppercase">Total Kurir</div>
+                                <div class="text-lg font-black" id="absensi-total-kurir">0</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
+                                <div class="text-[10px] text-slate-400 uppercase">Hadir Hari Ini</div>
+                                <div class="text-lg font-black text-success" id="absensi-hadir-hari-ini">0</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30">
+                                <div class="text-[10px] text-slate-400 uppercase">Belum Masuk</div>
+                                <div class="text-lg font-black text-rose-500" id="absensi-belum-masuk">0</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30">
+                                <div class="text-[10px] text-slate-400 uppercase">Belum Pulang</div>
+                                <div class="text-lg font-black text-amber-500" id="absensi-belum-pulang">0</div>
+                            </div>
+                        </div>
                     </div>
-            
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                            <div class="text-[10px] text-slate-400 uppercase">Total Kurir</div>
-                            <div class="text-lg font-black" id="absensi-total-kurir">0</div>
-                        </div>
-                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                            <div class="text-[10px] text-slate-400 uppercase">Hadir Hari Ini</div>
-                            <div class="text-lg font-black text-success" id="absensi-hadir-hari-ini">0</div>
-                        </div>
-                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                            <div class="text-[10px] text-slate-400 uppercase">Belum Absen Masuk</div>
-                            <div class="text-lg font-black text-rose-500" id="absensi-belum-masuk">0</div>
-                        </div>
-                        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                            <div class="text-[10px] text-slate-400 uppercase">Belum Absen Pulang</div>
-                            <div class="text-lg font-black text-amber-500" id="absensi-belum-pulang">0</div>
+
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Statistik Bulan Ini</h4>
+                        <div id="container-statistik-absensi" class="space-y-2"></div>
+                    </div>
+
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Daftar Absensi</h4>
+                        <table class="w-full text-[11px] text-left border-collapse min-w-[640px]">
+                            <thead>
+                                <tr class="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-semibold">
+                                    <th class="py-2">No</th>
+                                    <th class="py-2">Nama Kurir</th>
+                                    <th class="py-2">Leader</th>
+                                    <th class="py-2">Jam Masuk</th>
+                                    <th class="py-2">Jam Pulang</th>
+                                    <th class="py-2">Jam Kerja</th>
+                                    <th class="py-2">Status</th>
+                                    <th class="py-2">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="container-admin-absensi" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- TAB: JADWAL OFF -->
+                <section id="admin-absensi-panel-jadwal" class="hidden space-y-4">
+                    <div class="flex items-center justify-between pb-1">
+                        <h3 class="font-bold text-sm">Kalender Monitoring Off</h3>
+                        <div class="flex items-center gap-2">
+                            <button id="admin-prev" class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800"><i data-lucide="chevron-left" class="w-3.5 h-3.5 mx-auto"></i></button>
+                            <span id="admin-bulan-label" class="text-xs font-bold text-primary">...</span>
+                            <button id="admin-next" class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800"><i data-lucide="chevron-right" class="w-3.5 h-3.5 mx-auto"></i></button>
                         </div>
                     </div>
-                </div>
-            
-                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-2">
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Statistik Per Kurir</h4>
-                    <div id="container-statistik-absensi" class="space-y-2"></div>
-                </div>
-            
-                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto">
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Daftar Absensi Kurir</h4>
-                    <table class="w-full text-[11px] text-left border-collapse">
-                        <thead>
-                            <tr class="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-semibold">
-                                <th class="py-2">No</th>
-                                <th class="py-2">Nama Kurir</th>
-                                <th class="py-2">Leader</th>
-                                <th class="py-2">Jam Masuk</th>
-                                <th class="py-2">Jam Pulang</th>
-                                <th class="py-2">Total Jam Kerja</th>
-                                <th class="py-2">Status</th>
-                                <th class="py-2">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="container-admin-absensi" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
-                    </table>
-                </div>
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                        <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 mb-2">
+                            <div>Min</div><div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div>
+                        </div>
+                        <div id="admin-calendar-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <input id="admin-search-jadwal-list" type="text" placeholder="🔍 Cari jadwal off..." class="flex-1 text-xs bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 rounded-xl p-3 focus:ring-2 focus:ring-primary transition">
+                        <button onclick="openJadwalPopup()" class="px-3 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold shadow-md shadow-primary/25 active:scale-95 transition-transform shrink-0">+ Buat</button>
+                    </div>
+                    <div id="admin-jadwal-list-content" class="space-y-3"></div>
+                </section>
+
+                <!-- TAB: PENGAJUAN -->
+                <section id="admin-absensi-panel-pengajuan" class="hidden space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-sm">Persetujuan Pengajuan</h3>
+                        <button id="btn-admin-select-mode" class="text-[10px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">Pilih</button>
+                    </div>
+                    <div id="admin-pengajuan-actions" class="hidden flex gap-2">
+                        <button id="btn-admin-select-all" class="text-[10px] px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">Pilih Semua</button>
+                        <button id="btn-admin-hapus-terpilih" class="text-[10px] px-3 py-2 rounded-xl bg-danger text-white font-bold">Hapus</button>
+                    </div>
+                    <input id="admin-search-pengajuan" type="text" placeholder="🔍 Cari pengajuan..." class="w-full text-xs bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 rounded-xl p-3 focus:ring-2 focus:ring-primary transition">
+                    <div id="admin-pengajuan-list" class="space-y-3"></div>
+
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm">Riwayat Pengajuan</h3>
+                        <div id="admin-riwayat-pengajuan" class="space-y-3"></div>
+                    </div>
+                </section>
+
+                <!-- TAB: REKAP -->
+                <section id="admin-absensi-panel-rekap" class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hidden space-y-4">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <h3 class="font-bold text-sm">Rekap Off / Izin / Sakit</h3>
+                    </div>
+                    <input id="admin-search-rekap" type="text" placeholder="🔍 Cari nama kurir..." class="w-full text-xs bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
+                    <div class="overflow-x-auto no-scrollbar">
+                        <table class="w-full text-xs min-w-[700px]">
+                            <thead id="admin-rekap-head">
+                                <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+                                    <th class="py-2">No</th><th class="py-2">Nama Kurir</th><th class="py-2">Leader</th><th class="py-2">Off</th><th class="py-2">Izin</th><th class="py-2">Sakit</th><th class="py-2">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-rekap-body"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
             <div id="screen-admin-ongkir" class="screen p-4 space-y-4">
@@ -2051,32 +2146,26 @@
         </div>
     </div>
 
-    <div id="modal-sop-preview" class="fixed inset-0 z-[60] hidden flex flex-col sm:items-center sm:justify-center sm:p-4 bg-white dark:bg-slate-950 sm:bg-black/60 sm:backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-900 w-full h-[100dvh] sm:h-[85vh] sm:max-w-2xl sm:rounded-2xl shadow-2xl sm:border sm:border-slate-200 sm:dark:border-slate-700 flex flex-col overflow-hidden">
-            <div class="flex items-center justify-between gap-2 px-3.5 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div class="w-8 h-8 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-500 flex items-center justify-center shrink-0">
-                        <i data-lucide="file-text" class="w-4 h-4"></i>
-                    </div>
-                    <div class="min-w-0">
-                        <h3 id="sop-preview-title" class="text-sm font-black text-slate-800 dark:text-white truncate">Pratinjau</h3>
-                        <p id="sop-preview-desc" class="text-[10px] text-slate-400 truncate"></p>
-                    </div>
+    <div id="modal-sop-preview" class="fixed inset-0 z-[60] hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-2xl h-[90vh] sm:h-[85vh] shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between gap-2 p-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <div class="min-w-0">
+                    <h3 id="sop-preview-title" class="text-sm font-black text-slate-800 dark:text-white truncate">Pratinjau</h3>
+                    <p id="sop-preview-desc" class="text-[10px] text-slate-400 truncate"></p>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <a id="sop-preview-open-link" href="#" target="_blank" rel="noopener" class="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center">
+                    <a id="sop-preview-open-link" href="#" target="_blank" rel="noopener" class="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center">
                         <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
                     </a>
-                    <button onclick="closeSOPPreview()" class="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">✕</button>
+                    <button onclick="closeSOPPreview()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">✕</button>
                 </div>
             </div>
-            <div class="flex-1 bg-white dark:bg-slate-950 relative overflow-hidden">
-                <div id="sop-preview-loading" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 text-xs gap-2 z-20 bg-white dark:bg-slate-950">
-                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> Memuat dokumen...
+            <div class="flex-1 bg-slate-100 dark:bg-slate-950 relative">
+                <div id="sop-preview-loading" class="absolute inset-0 flex items-center justify-center text-slate-400 text-xs gap-2">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat pratinjau...
                 </div>
                 <iframe id="sop-preview-iframe" src="about:blank" class="w-full h-full border-0 relative z-10" loading="lazy"></iframe>
             </div>
-            <div class="shrink-0 sm:hidden" style="padding-bottom: env(safe-area-inset-bottom); background: inherit;"></div>
         </div>
     </div>
 
@@ -2200,6 +2289,211 @@
         </div>
     </div>
     
+    <!-- ===== Absensi & Jadwal Off — Panel Kurir (modal) ===== -->
+    <div id="modal-absensi-kurir" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-50 dark:bg-darkBg w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
+            <div class="kurir-screen-header bg-gradient-to-br from-primary via-secondary to-primary flex items-center gap-3 shadow-primary/25 rounded-none sm:rounded-t-3xl m-3 mb-0 sm:m-4 sm:mb-0">
+                <div class="header-icon-chip"><i data-lucide="calendar-days" class="w-4 h-4"></i></div>
+                <div class="min-w-0 flex-1">
+                    <h3 class="text-sm font-black">Jadwal Off &amp; Absensi</h3>
+                    <p class="text-[10px] text-white/75">Pantau off &amp; ajukan pengajuan ke admin</p>
+                </div>
+                <button onclick="closeAbsensiKurir()" class="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">✕</button>
+            </div>
+
+            <div class="p-3 sm:p-4 space-y-4">
+                <div class="grid grid-cols-3 gap-2 text-[10px]">
+                    <div class="absensi-glass p-3 rounded-2xl shadow-sm text-center">
+                        <p class="text-slate-400">Off Hari Ini</p>
+                        <p id="kurir-stat-hari-ini" class="text-sm font-black mt-0.5">0</p>
+                    </div>
+                    <div class="absensi-glass p-3 rounded-2xl shadow-sm text-center">
+                        <p class="text-slate-400">Off Bulan Ini</p>
+                        <p id="kurir-stat-bulan-ini" class="text-sm font-black mt-0.5">0</p>
+                    </div>
+                    <button onclick="switchKurirTab('pengajuan', document.querySelector('#modal-absensi-kurir [data-tab=pengajuan]'))" class="absensi-glass p-3 rounded-2xl shadow-sm text-center active:scale-95 transition-transform">
+                        <p class="text-slate-400">Pengajuan</p>
+                        <p class="text-sm font-black mt-0.5">Form</p>
+                    </button>
+                </div>
+
+                <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                    <button onclick="switchKurirTab('jadwal', this)" data-tab="jadwal" class="absensi-tab-btn active">
+                        <i data-lucide="calendar-days" class="w-3 h-3"></i> Jadwal
+                    </button>
+                    <button onclick="switchKurirTab('pengajuan', this)" data-tab="pengajuan" class="absensi-tab-btn">
+                        <i data-lucide="send" class="w-3 h-3"></i> Pengajuan
+                    </button>
+                    <button onclick="switchKurirTab('rekap', this)" data-tab="rekap" class="absensi-tab-btn">
+                        <i data-lucide="bar-chart-3" class="w-3 h-3"></i> Rekap
+                    </button>
+                </div>
+
+                <div id="kurir-notifikasi-hari-ini" class="space-y-2"></div>
+
+                <!-- TAB: JADWAL -->
+                <section id="kurir-absensi-panel-jadwal" class="space-y-4">
+                    <div class="flex items-center justify-between pb-1">
+                        <h3 class="font-bold text-sm">Kalender Jadwal Kurir</h3>
+                        <div class="flex items-center gap-2">
+                            <button id="kurir-prev" class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800"><i data-lucide="chevron-left" class="w-3.5 h-3.5 mx-auto"></i></button>
+                            <span id="kurir-bulan-label" class="text-xs font-bold text-primary">...</span>
+                            <button id="kurir-next" class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800"><i data-lucide="chevron-right" class="w-3.5 h-3.5 mx-auto"></i></button>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                        <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-slate-400 mb-2">
+                            <div>Min</div><div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div>
+                        </div>
+                        <div id="kurir-calendar-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+                    </div>
+                    <input id="kurir-search-jadwal" type="text" placeholder="🔍 Cari nama / tanggal..." class="w-full text-xs bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 rounded-xl p-3 focus:ring-2 focus:ring-primary transition">
+                    <div id="kurir-jadwal-list" class="space-y-3"></div>
+                </section>
+
+                <!-- TAB: PENGAJUAN -->
+                <section id="kurir-absensi-panel-pengajuan" class="hidden space-y-4">
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm text-primary flex items-center gap-1.5"><i data-lucide="send" class="w-3.5 h-3.5"></i> Form Pengajuan</h3>
+
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Nama Kurir</label>
+                            <select id="form-pengajuan-nama" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                                <option value="">-- Pilih Nama Anda --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Jenis Pengajuan</label>
+                            <select id="form-pengajuan-jenis" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                                <option value="">-- Pilih jenis --</option>
+                                <option value="Off Reguler">Off</option>
+                                <option value="Tidak Ambil Off">Tidak Ambil Off</option>
+                                <option value="Izin">Izin</option>
+                                <option value="Sakit">Sakit</option>
+                                <option value="Tukar Off">Tukar Off</option>
+                                <option value="Pindah Off">Pindah Off</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Tanggal Pengajuan</label>
+                            <select id="form-pengajuan-tanggal" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                                <option value="">-- Pilih tanggal --</option>
+                            </select>
+                        </div>
+                        <div id="wrap-tanggal-pindah" class="hidden">
+                            <label class="block text-xs font-semibold mb-1">Tanggal Pindah Off</label>
+                            <input id="form-pengajuan-tanggal-pindah" type="date" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                        </div>
+                        <div id="wrap-kurir-tukar" class="hidden">
+                            <label class="block text-xs font-semibold mb-1">Kurir Tukar</label>
+                            <select id="form-pengajuan-kurir-tukar" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                                <option value="">-- Pilih Kurir Tukar --</option>
+                            </select>
+                        </div>
+                        <div id="wrap-tanggal-tukar" class="hidden">
+                            <label class="block text-xs font-semibold mb-1">Tanggal Tukar</label>
+                            <select id="form-pengajuan-tanggal-tukar" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                                <option value="">-- Pilih tanggal tukar --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Alasan / Keterangan</label>
+                            <textarea id="form-pengajuan-ket" rows="3" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3" placeholder="Tulis alasan..."></textarea>
+                        </div>
+                        <button id="btn-submit-pengajuan" class="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-xs font-bold shadow-md shadow-primary/25 active:scale-95 transition-transform">Kirim Pengajuan</button>
+                    </div>
+
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-sm">Status Pengajuan</h3>
+                            <input id="kurir-search-pengajuan" type="text" placeholder="Cari..." class="w-1/2 text-[11px] bg-slate-100 dark:bg-slate-800 rounded-xl p-2">
+                        </div>
+                        <div id="kurir-pengajuan-list" class="space-y-3"></div>
+                    </div>
+                </section>
+
+                <!-- TAB: REKAP -->
+                <section id="kurir-absensi-panel-rekap" class="hidden space-y-4">
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                        <h3 class="font-bold text-sm">Rekap Kurir</h3>
+                        <input id="kurir-search-rekap" type="text" placeholder="🔍 Cari nama kurir..." class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                        <div class="overflow-x-auto no-scrollbar">
+                            <table class="w-full text-xs min-w-[560px]">
+                                <thead id="kurir-rekap-head">
+                                    <tr class="text-left border-b border-slate-200 dark:border-slate-700">
+                                        <th class="py-2">No</th>
+                                        <th class="py-2">Nama Kurir</th>
+                                        <th class="py-2">Leader</th>
+                                        <th class="py-2">Off</th>
+                                        <th class="py-2">Izin</th>
+                                        <th class="py-2">Sakit</th>
+                                        <th class="py-2">Masuk</th>
+                                        <th class="py-2">Pulang</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="kurir-rekap-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Popup detail umum (dipakai oleh kalender jadwal kurir & admin) ===== -->
+    <div id="popup-detail" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[70] px-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-4 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="popup-detail-title" class="font-bold text-sm">Detail</h3>
+                <button onclick="closePopupDetail()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+            <div id="popup-detail-content" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- ===== Popup input / edit jadwal off (admin) ===== -->
+    <div id="popup-jadwal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[70] px-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-4 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-sm">Input Jadwal Off</h3>
+                <button onclick="closeJadwalPopup()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700">Tutup</button>
+            </div>
+            <input id="jadwal-key" type="hidden">
+            <div class="space-y-3">
+                <div><label class="block text-xs font-semibold mb-1">Nama Kurir</label><select id="jadwal-nama" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"><option value="">-- Pilih --</option></select></div>
+                <div><label class="block text-xs font-semibold mb-1">Tanggal Mulai</label><input id="jadwal-mulai" type="date" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"></div>
+                <div><label class="block text-xs font-semibold mb-1">Tanggal Selesai</label><input id="jadwal-selesai" type="date" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"></div>
+                <div><label class="block text-xs font-semibold mb-1">Jenis Off</label>
+                    <select id="jadwal-jenis" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3">
+                        <option value="Off Reguler">Off Reguler</option>
+                        <option value="Tidak Ambil Off">Tidak Ambil Off</option>
+                        <option value="Izin">Izin</option>
+                        <option value="Sakit">Sakit</option>
+                    </select>
+                </div>
+                <div><label class="block text-xs font-semibold mb-1">Keterangan</label><textarea id="jadwal-ket" rows="3" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"></textarea></div>
+                <button id="btn-save-jadwal" class="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-xs font-bold shadow-md shadow-primary/25 active:scale-95 transition-transform">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Popup absensi manual (admin) ===== -->
+    <div id="popup-manual-absensi" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-[70] px-4">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-4 shadow-xl">
+            <h3 class="font-bold text-sm mb-4">Absensi Manual</h3>
+            <div class="space-y-3">
+                <div><label class="block text-xs font-semibold mb-1">Tanggal</label><input id="absensi-tanggal" type="date" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"></div>
+                <div><label class="block text-xs font-semibold mb-1">Nama Kurir</label><select id="absensi-nama" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"><option value="">-- Pilih --</option></select></div>
+                <div><label class="block text-xs font-semibold mb-1">Jam Masuk</label><input id="absensi-masuk" type="time" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"></div>
+                <div><label class="block text-xs font-semibold mb-1">Jam Pulang</label><input id="absensi-pulang" type="time" class="w-full text-xs bg-slate-100 dark:bg-slate-800 rounded-xl p-3"></div>
+                <div class="flex gap-2">
+                    <button onclick="closeAbsensiPopup()" class="w-1/2 py-3 rounded-xl border text-xs font-bold">Batal</button>
+                    <button id="btn-save-absensi" class="w-1/2 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-xs font-bold shadow-md shadow-primary/25">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== Sistem Notifikasi Toast & Konfirmasi Modern (pengganti alert/confirm bawaan browser) ===== -->
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2 w-[92%] max-w-sm pointer-events-none"></div>
 
@@ -2221,6 +2515,7 @@
 
     <script type="module" src="script.js"></script>
     <script type="module" src="sop.js"></script>
+    <script type="module" src="absensi.js"></script>
     <script>
       // Daftarkan service worker supaya aplikasi bisa di-install & tetap bisa dibuka walau sinyal lemah
       if ('serviceWorker' in navigator) {
