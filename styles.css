@@ -163,6 +163,16 @@ body { -webkit-tap-highlight-color: transparent; }
 }
 .absensi-tab-btn:active { transform: scale(0.94); }
 
+/* ===== FIX: tombol "Lanjut Absen Masuk/Pulang" & "Ambil Foto Kehadiran" (aktif) =====
+   Sebelumnya class ini dipakai di kehadiran.js tapi TIDAK PERNAH didefinisikan,
+   jadi tombolnya cuma teks putih tanpa latar — nyaris tak kelihatan di mode terang. */
+.shbt-blue {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.shbt-blue:active { transform: scale(0.97); filter: brightness(0.95); }
+
 /* ===== Modal Scan Wajah (e-absensi) — animasi popup & sukses ===== */
 #modal-scan-wajah.flex { display: flex; }
 @keyframes modalPopIn {
