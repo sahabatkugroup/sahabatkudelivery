@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, remove, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         const firebaseConfig = {
         apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
@@ -1326,6 +1326,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             'screen-ongkir': { title: 'Cek Ongkir', icon: 'route' },
             'screen-pengaturan': { title: 'Pengaturan', icon: 'settings-2' },
             'screen-absensi-kurir': { title: 'Jadwal Off & Absensi', icon: 'calendar-days' },
+            'screen-kehadiran': { title: 'E-Absensi Wajah', icon: 'fingerprint' },
             'screen-admin-kurir': { title: 'Data Akun Kurir', icon: 'users' },
             'screen-admin-manajemen': { title: 'Manajemen', icon: 'users-round' },
             'screen-admin-leader': { title: 'Leader & Penilaian', icon: 'crown' },
@@ -1461,6 +1462,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                         appBar.classList.remove('flex');
                         appBar.classList.add('hidden');
                     } else {
+                        appBar.classList.remove('hidden');
+                        appBar.classList.add('flex');
                         applyAppBarMeta(prev);
                     }
                 }
@@ -8008,6 +8011,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             toast(message, 'warning');
             renderKurirNotifPanel();
         }
+        // Diekspos ke window supaya modul lain (mis. kehadiran.js, yang berjalan sebagai
+        // ES module terpisah) juga bisa menaruh notifikasi sistem ke panel yang sama,
+        // sepenuhnya di cache/localStorage tanpa menyentuh Firebase.
+        window.pushLocalReminder = pushLocalReminder;
 
         window.dismissLocalReminder = function(id) {
             localKurirReminders = localKurirReminders.filter(r => r.id !== id);
