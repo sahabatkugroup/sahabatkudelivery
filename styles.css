@@ -163,6 +163,20 @@ body { -webkit-tap-highlight-color: transparent; }
 }
 .absensi-tab-btn:active { transform: scale(0.94); }
 
+/* ===== Modal Scan Wajah (e-absensi) — animasi popup & sukses ===== */
+#modal-scan-wajah.flex { display: flex; }
+@keyframes modalPopIn {
+  0% { opacity: 0; transform: scale(0.92) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-modal-pop { animation: modalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes suksesPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-sukses-pop { animation: suksesPop 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+
 .absensi-day-cell { transition: transform 0.12s ease, box-shadow 0.12s ease; }
 .absensi-day-cell:active { transform: scale(0.88); }
 
@@ -765,3 +779,6 @@ svg.lucide {
   vertical-align: middle;
   flex-shrink: 0;
 }
+
+/* ================= Screen Kehadiran (E-Absensi Wajah) ================= */
+#overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
