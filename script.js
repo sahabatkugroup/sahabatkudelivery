@@ -1,5 +1,5 @@
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, remove, update, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, remove, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         const firebaseConfig = {
         apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
         authDomain: "aplikasi-sahabatkugroup.firebaseapp.com",
@@ -2728,17 +2728,50 @@
             document.getElementById('calc-biaya').innerText = "Rp " + totalBiayaTambahan.toLocaleString('id-ID');
             document.getElementById('calc-total').innerText = "Rp " + notaState.total.toLocaleString('id-ID');
         }
-        window.prosesPratinjauNota = function() {
+        // ===================================================================
+        // NOMOR NOTA — dikunci ATOMIC per KURIR, per tanggal, lewat Firebase
+        // Transaction. Nomor nota memang sengaja dihitung PER KURIR (jadi Kurir A
+        // dan Kurir B boleh saja sama-sama punya nota nomor 0001 di hari yang sama —
+        // tetap bisa dibedakan lewat nama kurirnya). Yang tidak boleh terjadi adalah
+        // KURIR YANG SAMA dapat nomor dobel — makanya counter-nya dikunci per kurir
+        // lewat transaction, supaya walau tombolnya ke-tap 2x atau datanya belum
+        // sempat sinkron, kurir yang sama tetap dijamin dapat nomor urut yang beda.
+        // ===================================================================
+        let sedangReservasiNomorNota = false;
+        async function reserveNextNotaNumber(tanggalRaw, kurirUsername) {
+            const counterRef = ref(db, `nota_counter_harian/${tanggalRaw}/${kurirUsername}`);
+            const hasil = await runTransaction(counterRef, (nilaiSekarang) => (nilaiSekarang || 0) + 1);
+            const nomorUrut = hasil.snapshot.val() || 1;
+            return `NT-${tanggalRaw.replace(/-/g, '')}-${String(nomorUrut).padStart(4, '0')}`;
+        }
+
+        window.prosesPratinjauNota = async function() {
             const cekOngkir = parseInt(document.getElementById('nota-ongkir').value) || 0;
             if (cekOngkir <= 0) { 
                 toast("Wajib mengisi Ongkir untuk melanjutkan!"); 
                 return; 
             }
+            if (sedangReservasiNomorNota) return; // cegah dobel-tap = dobel reservasi nomor
+            sedangReservasiNomorNota = true;
+
+            const btnLanjut = document.querySelector('button[onclick="prosesPratinjauNota()"]');
+            if (btnLanjut) btnLanjut.disabled = true;
+
+            let nomorNotaFinal;
+            try {
+                nomorNotaFinal = await reserveNextNotaNumber(getWibRawDate(), userSession.username);
+            } catch (e) {
+                toast('Gagal mengambil nomor nota, coba lagi.');
+                sedangReservasiNomorNota = false;
+                if (btnLanjut) btnLanjut.disabled = false;
+                return;
+            }
+
             invalidateNotaCanvasCache('canvas-nota'); // isi nota berganti, canvas lama tidak valid lagi
             calculateNotaTotal();
             
             const tgl = new Date();
-            document.getElementById('p-nota-num').innerText = document.getElementById('dash-next-nota').innerText;
+            document.getElementById('p-nota-num').innerText = nomorNotaFinal;
             document.getElementById('p-nota-date').innerText = tgl.toLocaleString('id-ID');
             document.getElementById('p-nota-kurir').innerText = userSession.nama;
             document.getElementById('p-nota-status').innerText = document.getElementById('nota-status').value;
@@ -2783,8 +2816,10 @@
             updatePreviewButtonsLayout();
 
             // Data terstruktur buat gambar nota (canvas), terpisah dari HTML preview di atas.
+            // notaNum di sini SUDAH nomor final hasil reservasi atomic di atas — jadi gambar
+            // yang diunduh/dibagikan lewat WhatsApp dijamin sama persis dengan yang tersimpan.
             kurirNotaPreviewData = {
-                notaNum: document.getElementById('dash-next-nota') ? document.getElementById('dash-next-nota').innerText : (document.getElementById('p-nota-num').innerText || 'Nota'),
+                notaNum: nomorNotaFinal,
                 tanggal: tgl.toLocaleString('id-ID'),
                 kurir: userSession.nama,
                 status: document.getElementById('nota-status').value,
@@ -2798,6 +2833,9 @@
             // Siapkan canvas-nya di background begitu preview tampil, biar pas tombol
             // Simpan Gambar/Bagikan WhatsApp ditekan, prosesnya sudah instan (dari cache).
             requestAnimationFrame(() => { getNotaCanvas('canvas-nota', kurirNotaPreviewData).catch(() => {}); });
+
+            sedangReservasiNomorNota = false;
+            if (btnLanjut) btnLanjut.disabled = false;
 
             navigateTo('screen-preview');
         }
@@ -4533,6 +4571,11 @@
             if (elTotalTrx) elTotalTrx.innerText = totalNotaHariIni;
             if (elTotalIncome) elTotalIncome.innerText = "Rp " + totalOmsetHariIni.toLocaleString('id-ID');
 
+            // CATATAN: ini cuma ESTIMASI/tampilan di dashboard (dihitung dari nota kurir
+            // ini sendiri hari ini). Nomor nota yang SEBENARNYA dikunci secara atomic per
+            // kurir (lihat reserveNextNotaNumber) tepat saat kurir menekan "Lanjut ke
+            // Pratinjau", supaya kurir yang sama tidak pernah kebagian nomor dobel walau
+            // tombolnya ke-tap 2x atau datanya belum sempat sinkron.
             const nextCode = `NT-${tanggalRawHariIni.replace(/-/g, '')}-${String(totalNotaHariIni + 1).padStart(4, '0')}`;
             if (elNextNota) elNextNota.innerText = nextCode;
 
@@ -7945,9 +7988,9 @@
                 id: r.id, message: r.message, createdAt: r.createdAt, isLocal: true
             }));
 
-            const items = [...localItems, ...firebaseItems].sort((a, b) =>
-                (b.createdAt || '').localeCompare(a.createdAt || '')
-            );
+            const items = [...localItems, ...firebaseItems]
+                .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+                .slice(0, 5); // hanya tampilkan 5 notifikasi terakhir biar rapi
 
             if (dot) dot.classList.toggle('hidden', items.length === 0);
 
@@ -7973,7 +8016,7 @@
                         </div>
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-1.5 flex-wrap mb-0.5">${senderBadge}</div>
-                            <p class="text-[11px] leading-snug text-slate-700 dark:text-slate-200">${n.message || ''}</p>
+                            <p class="text-[11px] leading-snug text-slate-700 dark:text-slate-200 break-words">${n.message || ''}</p>
                             <p class="text-[10px] text-slate-400 mt-1">${waktu}</p>
                         </div>
                         <button onclick="${dismissFn}" class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center text-[10px] shrink-0">✕</button>
@@ -8051,8 +8094,10 @@
             if (willShow) {
                 renderKurirNotifPanel();
                 panel.classList.remove('hidden');
+                panel.classList.add('flex');
             } else {
                 panel.classList.add('hidden');
+                panel.classList.remove('flex');
             }
         };
 
