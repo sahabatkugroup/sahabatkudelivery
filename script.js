@@ -7988,8 +7988,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 id: r.id, message: r.message, createdAt: r.createdAt, isLocal: true
             }));
 
-            const items = [...localItems, ...firebaseItems]
-                .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+            const items = [...firebaseItems, ...localItems]
+                .sort((a, b) => {
+                    // Notifikasi dari Owner/Admin (isLocal:false) selalu di atas,
+                    // baru di bawahnya notifikasi sistem/reminder (isLocal:true).
+                    if (a.isLocal !== b.isLocal) return a.isLocal ? 1 : -1;
+                    // Dalam grup yang sama, urut dari yang terbaru.
+                    return (b.createdAt || '').localeCompare(a.createdAt || '');
+                })
                 .slice(0, 5); // hanya tampilkan 5 notifikasi terakhir biar rapi
 
             if (dot) dot.classList.toggle('hidden', items.length === 0);
