@@ -118,6 +118,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         let kurirNotaPreviewData = null;
         let adminNotaPreviewData = null;
         let cloudKurirList = {};
+        // Diekspos ke window supaya modul terpisah (mis. profilkurir.js) bisa membaca
+        // data akun kurir yang sama (tglGabung, status) tanpa bikin listener Firebase kedua.
+        window.getCloudKurirList = function() { return cloudKurirList; };
         let cloudNotaList = {};
         let cloudMitraList = {};
         let cloudLogMitra = {};
@@ -4062,8 +4065,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
             container.innerHTML = filtered.map(([key, item], index) => {
                 const dotStatus = item.status === 'aktif' ? 'bg-emerald-500' : 'bg-rose-500';
+                const adaPending = typeof window.getCloudProfilPendingList === 'function' && !!window.getCloudProfilPendingList()[key];
                 return `
-                    <div class="bg-white dark:bg-darkCard p-3.5 rounded-xl border dark:border-slate-800 shadow-sm space-y-2 text-xs">
+                    <div class="bg-white dark:bg-darkCard p-3.5 rounded-xl border ${adaPending ? 'border-amber-300 dark:border-amber-800 ring-1 ring-amber-200 dark:ring-amber-900' : 'dark:border-slate-800'} shadow-sm space-y-2 text-xs">
                         <div class="flex justify-between items-center">
                             <div class="flex items-center gap-2 min-w-0">
                                 <span class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white flex items-center justify-center font-bold text-[10px] shrink-0">${index + 1}</span>
@@ -4072,6 +4076,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             </div>
                             <span class="text-[10px] text-slate-400 shrink-0">Gabung: ${item.tglGabung || '-'}</span>
                         </div>
+                        ${adaPending ? `
+                        <div class="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
+                            <i data-lucide="clock" class="w-3 h-3 shrink-0"></i>
+                            <span class="text-[10px] font-semibold">Ada perubahan profil menunggu persetujuan Anda</span>
+                        </div>` : ''}
                         <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg grid grid-cols-2 gap-2 font-mono text-[11px]">
                             <div class="dark:text-slate-300">Leader: <span class="text-emerald-600 font-bold block truncate">${item.leader || '-'}</span></div>
                             <div class="dark:text-slate-300">User: <span class="text-primary font-bold block truncate">@${item.username}</span></div>
@@ -4094,7 +4103,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             </div>
                         </div>
                         ${isHeadOperasional ? '' : `
-                        <div class="flex justify-end gap-2 pt-1">
+                        <div class="flex flex-wrap justify-end gap-2 pt-1">
+                            <button onclick="bukaProfilAdminKurir('${key}')" class="px-2.5 py-1 rounded-md font-semibold flex items-center gap-1 ${adaPending ? 'bg-amber-500 text-white animate-pulse' : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400'}"><i data-lucide="id-card" class="w-3 h-3"></i> ${adaPending ? 'Tinjau Perubahan' : 'Profil Data Diri'}</button>
                             <button onclick="editAkunKurir('${key}')" class="px-2.5 py-1 bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-md font-semibold">Edit</button>
                             <button onclick="hapusAkunKurir('${key}')" class="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 rounded-md font-semibold">Hapus</button>
                         </div>`}
