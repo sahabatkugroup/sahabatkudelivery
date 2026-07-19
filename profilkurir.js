@@ -348,6 +348,11 @@ window.bukaProfilAdminKurir = function(key) {
     elStatus.className = `text-xs font-bold mt-0.5 ${aktif ? 'text-emerald-600' : 'text-rose-500'}`;
   }
 
+  // Badge "sudah bergabung sejak ..." — sama seperti sisi kurir, dihitung
+  // otomatis dari tgl bergabung tiap kali modal dibuka.
+  const elLamaGabungAdmin = document.getElementById('profil-admin-lama-bergabung');
+  if (elLamaGabungAdmin) elLamaGabungAdmin.innerText = hitungLamaBergabungProfil(akun.tglGabung);
+
   setVal('profil-admin-nama-lengkap', sumber.namaLengkap);
   setVal('profil-admin-nik', sumber.nik);
   setVal('profil-admin-tempat-lahir', sumber.tempatLahir);
