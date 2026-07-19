@@ -429,10 +429,23 @@ window.simpanProfilAdminKurir = function() {
     })
     .then(() => {
       tampilkanToastProfil(adaPendingSebelumnya ? 'Perubahan kurir disetujui & profil diperbarui!' : 'Profil data diri kurir berhasil disimpan!');
+
+      // Update cache lokal LANGSUNG (jangan nunggu listener Firebase yang
+      // kadang delay), supaya tanda "menunggu persetujuan" di kartu Data
+      // Akun Kurir & badge merah menu langsung hilang seketika.
+      if (adaPendingSebelumnya) {
+        delete cloudProfilPendingList[key];
+        perbaruiBadgePendingMenu();
+        if (typeof window.renderAdminKurirList === 'function') {
+          try { window.renderAdminKurirList(); } catch (e) {}
+        }
+      }
+
       window.tutupProfilAdminKurir();
     })
     .catch((err) => {
       tampilkanToastProfil('Gagal menyimpan profil: ' + err.message);
+      console.error('Gagal menyimpan/approve profil kurir:', err);
     });
 };
 
@@ -449,9 +462,19 @@ window.tolakPerubahanProfilKurir = async function() {
   dbProfilKurir.ref(`profil_kurir_pending/${key}`).remove()
     .then(() => {
       tampilkanToastProfil('Pengajuan perubahan ditolak, data lama tetap berlaku.');
+
+      // Sama seperti approve — update cache lokal langsung biar badge
+      // & kartu langsung hilang tanpa nunggu listener Firebase.
+      delete cloudProfilPendingList[key];
+      perbaruiBadgePendingMenu();
+      if (typeof window.renderAdminKurirList === 'function') {
+        try { window.renderAdminKurirList(); } catch (e) {}
+      }
+
       window.tutupProfilAdminKurir();
     })
     .catch((err) => {
       tampilkanToastProfil('Gagal menolak pengajuan: ' + err.message);
+      console.error('Gagal menolak pengajuan profil kurir:', err);
     });
 };
