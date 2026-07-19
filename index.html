@@ -194,7 +194,7 @@
 
             <div id="screen-dashboard" class="screen p-4 space-y-4">
                 <div class="flex items-center justify-between bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-                    <div class="flex items-center space-x-3 min-w-0">
+                    <button onclick="bukaProfilSayaKurir()" class="flex items-center space-x-3 min-w-0 text-left active:scale-95 transition-transform">
                         <div class="w-11 h-11 rounded-2xl overflow-hidden bg-blue-50 dark:bg-slate-800 flex items-center justify-center ring-2 ring-blue-50 dark:ring-slate-800 shrink-0">
                             <img src="https://uploads.onecompiler.io/44rwmsthk/44rwmtf46/Sahabatku%20(3).png" alt="User" class="w-full h-full object-cover">
                         </div>
@@ -202,7 +202,7 @@
                             <h3 class="font-bold text-sm dark:text-white session-fullname truncate">Memuat Nama...</h3>
                             <div class="flex items-center text-[11px] text-slate-400"><span class="w-2 h-2 rounded-full bg-success mr-1.5 animate-pulse"></span>Aktif</div>
                         </div>
-                    </div>
+                    </button>
                     <div class="flex items-center gap-2 shrink-0">
                         <button onclick="toggleKurirNotifPanel()" id="btn-kurir-notif-bell" class="relative w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-primary flex items-center justify-center active:scale-90 transition-transform">
                             <i data-lucide="bell" class="w-4 h-4"></i>
@@ -238,19 +238,208 @@
                         </div>
                     </div>
                 </div>
-                <div class="custom-gradient text-white p-4 rounded-3xl shadow-xl shadow-blue-500/25 space-y-3.5 relative overflow-hidden">
-                    <div class="pointer-events-none absolute inset-0 opacity-[0.07]" style="background-image:radial-gradient(circle,#fff 1px,transparent 1px);background-size:16px 16px;"></div>
-                    <div class="relative flex justify-between items-start">
-                        <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0"><i data-lucide="radar" class="w-4 h-4"></i></div>
-                            <div class="min-w-0">
-                                <p class="text-[9px] text-white/70 uppercase tracking-wider font-semibold">Monitoring Hari Ini</p>
-                                <h4 class="text-[11px] font-bold mt-0.5" id="dash-date"></h4>
+
+                <!-- Popup "Profil Saya" — muncul saat kurir tap avatar/nama di header dashboard.
+                     Kurir bisa isi/ubah data sendiri; klik Simpan akan MENGAJUKAN perubahan
+                     (status pending) dan baru berlaku setelah disetujui Admin. -->
+                <div id="modal-profil-saya" class="hidden fixed inset-0 z-[80] items-center justify-center p-4">
+                    <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onclick="tutupProfilSayaKurir()"></div>
+                    <div class="relative w-full max-w-sm max-h-[88vh] bg-white dark:bg-darkCard rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-modal-pop">
+                        <div class="shrink-0 bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-4 pb-6 relative">
+                            <button onclick="tutupProfilSayaKurir()" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/15 text-white flex items-center justify-center">✕</button>
+                            <p class="text-[9px] uppercase tracking-wider text-white/70 font-semibold flex items-center gap-1"><i data-lucide="id-card" class="w-3 h-3"></i> Profil Data Diri Kurir</p>
+                            <h3 id="profil-saya-nama" class="font-black text-base mt-1 truncate pr-8">Memuat...</h3>
+                            <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+                                <span id="profil-saya-status-badge" class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15">-</span>
+                                <span id="profil-saya-lama-bergabung" class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm">
+                                    <i data-lucide="calendar-heart" class="w-3 h-3"></i>
+                                    Sudah bergabung <span id="profil-saya-lama-bergabung-text">...</span>
+                                </span>
                             </div>
                         </div>
-                        <div class="text-right shrink-0">
-                            <p class="text-[9px] text-white/70 uppercase tracking-wider font-semibold">No. Nota</p>
-                            <h4 class="text-[11px] font-bold mt-0.5" id="dash-next-nota">Generating...</h4>
+
+                        <div class="overflow-y-auto flex-1 px-4 pt-4 pb-4 space-y-3 text-xs">
+                            <!-- Banner status pengajuan (tampil kalau ada perubahan yg blm disetujui admin) -->
+                            <div id="profil-saya-pending-banner" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 rounded-xl p-3 space-y-2">
+                                <div class="flex items-start gap-2">
+                                    <i data-lucide="clock" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                                    <p class="text-[11px] leading-relaxed">Perubahan data Anda sedang <b>menunggu persetujuan Admin</b>. Data lama masih berlaku sampai disetujui.</p>
+                                </div>
+                                <button onclick="batalkanPengajuanProfilKurir()" class="text-[10px] font-bold text-rose-600 dark:text-rose-400 underline">Batalkan pengajuan ini</button>
+                            </div>
+
+                            <!-- Info otomatis (read-only, ikut data akun & admin) -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-2.5">
+                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">No. ID Card</p>
+                                    <p id="kf-id-card-display" class="text-xs font-bold text-slate-700 dark:text-slate-200 mt-0.5 truncate">-</p>
+                                </div>
+                                <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-2.5">
+                                    <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Tgl Bergabung</p>
+                                    <p id="kf-tgl-gabung-display" class="text-xs font-bold text-slate-700 dark:text-slate-200 mt-0.5 truncate">-</p>
+                                </div>
+                            </div>
+
+                            <!-- ============================================================ -->
+                            <!-- MODE VIEW — tampil PERTAMA KALI saat modal dibuka (read-only)  -->
+                            <!-- ============================================================ -->
+                            <div id="profil-saya-view-mode" class="space-y-2">
+                                <div class="rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-white dark:bg-darkCard">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">Nama Lengkap</span>
+                                        <span id="kfv-nama-lengkap" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-slate-800/60">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">NIK KTP</span>
+                                        <span id="kfv-nik" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-white dark:bg-darkCard">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">Tempat, Tgl Lahir</span>
+                                        <span id="kfv-ttl" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-slate-800/60">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">No HP Aktif/WA</span>
+                                        <span id="kfv-hp-wa" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-white dark:bg-darkCard">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">No HP Kurir</span>
+                                        <span id="kfv-hp-kurir" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 bg-slate-50/60 dark:bg-slate-800/60">
+                                        <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Alamat Domisili</p>
+                                        <p id="kfv-alamat" class="text-xs font-bold text-slate-700 dark:text-slate-200 mt-0.5">-</p>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-white dark:bg-darkCard">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">Pekerjaan Lain</span>
+                                        <span id="kfv-pekerjaan-lain" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-slate-800/60">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">No. BPJS</span>
+                                        <span id="kfv-bpjs" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-white dark:bg-darkCard">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">Kelas / Biaya BPJS</span>
+                                        <span id="kfv-kelas-biaya-bpjs" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-slate-800/60">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">Nama Kontak Darurat</span>
+                                        <span id="kfv-kontak-darurat-nama" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-white dark:bg-darkCard">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">No Kontak Darurat</span>
+                                        <span id="kfv-kontak-darurat-hp" class="text-xs font-bold text-slate-700 dark:text-slate-200 text-right truncate">-</span>
+                                    </div>
+                                    <div class="p-2.5 flex items-center justify-between gap-3 bg-slate-50/60 dark:bg-slate-800/60">
+                                        <span class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold shrink-0">Status Keaktifan</span>
+                                        <span id="kf-status-display" class="text-xs font-bold">-</span>
+                                    </div>
+                                </div>
+
+                                <button id="btn-edit-profil-saya" onclick="window.aktifkanModeEditProfilSaya()" class="w-full py-3 border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+                                    <i data-lucide="pencil-line" class="w-3.5 h-3.5"></i> Edit Data Diri
+                                </button>
+                            </div>
+
+                            <!-- ============================================================ -->
+                            <!-- MODE EDIT — muncul setelah tap tombol "Edit Data Diri"        -->
+                            <!-- ============================================================ -->
+                            <div id="profil-saya-edit-mode" class="hidden space-y-3">
+                                <p class="text-[10px] text-slate-400">No. ID Card & Tgl Bergabung diatur oleh Admin. Isi data di bawah ini lalu tekan Ajukan Perubahan.</p>
+
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 mb-1">Nama Lengkap <span class="text-rose-500">*</span></label>
+                                    <input type="text" id="kf-nama-lengkap" placeholder="Nama lengkap sesuai KTP" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 mb-1">NIK KTP</label>
+                                    <input type="text" id="kf-nik" inputmode="numeric" maxlength="16" placeholder="16 digit NIK KTP" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 mb-1">Tempat Lahir</label>
+                                        <input type="text" id="kf-tempat-lahir" placeholder="Kota lahir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 mb-1">Tanggal Lahir</label>
+                                        <input type="date" id="kf-tanggal-lahir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 mb-1">No HP Aktif/WA</label>
+                                        <input type="text" id="kf-hp-wa" inputmode="numeric" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 mb-1">No HP Kurir</label>
+                                        <input type="text" id="kf-hp-kurir" inputmode="numeric" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 mb-1">Alamat Domisili</label>
+                                    <textarea id="kf-alamat" rows="2" placeholder="Alamat domisili lengkap" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700 resize-none"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 mb-1">Pekerjaan Lainnya</label>
+                                    <input type="text" id="kf-pekerjaan-lain" placeholder="Kalau ada pekerjaan sampingan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 mb-1">No. BPJS Kesehatan</label>
+                                    <input type="text" id="kf-bpjs" inputmode="numeric" placeholder="Nomor BPJS Kesehatan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 mb-1">Kelas BPJS</label>
+                                        <select id="kf-kelas-bpjs" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                            <option value="">-- Pilih Kelas --</option>
+                                            <option value="Kelas I">Kelas I</option>
+                                            <option value="Kelas II">Kelas II</option>
+                                            <option value="Kelas III">Kelas III</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 mb-1">Biaya / Bulan</label>
+                                        <input type="text" id="kf-biaya-bpjs" inputmode="numeric" placeholder="Contoh: 150000" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 mb-1">Nama (Nama Keluarga)</label>
+                                        <input type="text" id="kf-kontak-darurat-nama" placeholder="Nama & hubungan keluarga" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] text-slate-400 mb-1">No Kontak Darurat</label>
+                                        <input type="text" id="kf-kontak-darurat-hp" inputmode="numeric" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2 pt-1 pb-1 sticky bottom-0 bg-white dark:bg-darkCard">
+                                    <button onclick="window.batalModeEditProfilSaya()" class="flex-1 py-3 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 text-xs font-bold rounded-xl active:scale-[0.98] transition-transform">
+                                        Batal
+                                    </button>
+                                    <button onclick="simpanProfilSayaKurir()" class="flex-[2] py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/25 flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+                                        <i data-lucide="send" class="w-3.5 h-3.5"></i> Ajukan Perubahan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="relative text-white p-4 rounded-3xl shadow-xl shadow-blue-500/25 space-y-3.5 overflow-hidden monitor-card-kurir">
+                    <div class="pointer-events-none absolute inset-0 opacity-[0.08]" style="background-image:radial-gradient(circle,#fff 1px,transparent 1px);background-size:16px 16px;"></div>
+                    <div class="pointer-events-none absolute -right-8 -top-10 w-32 h-32 rounded-full bg-white/10 blur-2xl"></div>
+                    <div class="relative flex justify-between items-start gap-2">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0 ring-1 ring-white/20"><i data-lucide="radar" class="w-4 h-4"></i></div>
+                            <div class="min-w-0">
+                                <p class="text-[9px] text-white/70 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse shrink-0"></span> Monitoring Hari Ini
+                                </p>
+                                <h4 class="text-[11px] font-bold mt-0.5 truncate" id="dash-date"></h4>
+                            </div>
+                        </div>
+                        <div class="shrink-0 bg-white/12 ring-1 ring-white/20 rounded-xl px-2.5 py-1.5 text-right max-w-[45%]">
+                            <p class="text-[8px] text-white/70 uppercase tracking-wider font-semibold">No. Nota</p>
+                            <h4 class="text-[10.5px] font-bold mt-0.5 truncate" id="dash-next-nota">Generating...</h4>
                         </div>
                     </div>
                     <div class="relative grid gap-2" style="grid-template-columns: 0.82fr 1.36fr 0.82fr;">
@@ -329,11 +518,11 @@
                     </div>
                     <span id="badge-admin-role" class="text-[10px] bg-amber-500/15 text-amber-400 font-bold px-2.5 py-1.5 rounded-full uppercase tracking-wider shrink-0 ring-1 ring-amber-400/20">Super Admin</span>
                 </div>
-                <div class="bg-gradient-to-br from-amber-100 via-yellow-100 to-amber-200 text-slate-900 p-4 rounded-2xl shadow-2xl border border-amber-300/60 space-y-4 dark:from-[#2a2118] dark:via-[#1f1811] dark:to-[#15110c] dark:text-amber-50 dark:border-amber-900/40">
+                <div class="monitor-card-admin p-4 rounded-2xl space-y-4">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <h4 class="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-700 dark:text-amber-300">
-                                Monitoring Omset Hari Ini
+                            <h4 class="text-[10px] font-bold uppercase tracking-[0.25em] text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span> Monitoring Omset Hari Ini
                             </h4>
                             <p class="text-xs text-amber-800/80 dark:text-amber-200/70 mt-1">
                                 Ringkasan operasional harian
@@ -379,7 +568,8 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <button onclick="navigateTo('screen-admin-kurir')" class="menu-card active:scale-95 transition-transform">
+                    <button onclick="navigateTo('screen-admin-kurir')" class="menu-card active:scale-95 transition-transform relative">
+                        <span id="badge-profil-pending-menu" class="hidden absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-darkCard">!</span>
                         <div class="icon-tile" data-tone="blue"><i data-lucide="users" class="w-4 h-4"></i></div>
                         <div>
                             <span class="menu-card-title block">Data Akun Kurir</span>
@@ -2464,6 +2654,127 @@
         </div>
     </div>
 
+    <!-- Modal ADMIN: kelola Profil Data Diri Kurir (NIK, tempat/tgl lahir, BPJS, kontak darurat, dst) -->
+    <div id="modal-profil-admin" class="hidden fixed inset-0 z-[85] items-center justify-center p-3 sm:p-4">
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onclick="tutupProfilAdminKurir()"></div>
+        <div class="relative bg-white dark:bg-darkCard w-full max-w-[400px] rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 max-h-[92vh] overflow-y-auto animate-modal-pop">
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 bg-white dark:bg-darkCard border-b border-slate-100 dark:border-slate-800">
+                <div class="min-w-0">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Profil Data Diri Kurir</h3>
+                    <p id="profil-admin-nama-akun" class="text-sm font-bold text-slate-800 dark:text-white truncate">-</p>
+                </div>
+                <button onclick="tutupProfilAdminKurir()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">✕</button>
+            </div>
+
+            <div class="p-4 space-y-3">
+                <input type="hidden" id="profil-admin-key">
+
+                <!-- Banner: tampil kalau kurir mengajukan perubahan & belum ditinjau -->
+                <div id="profil-admin-pending-banner" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 rounded-xl p-3">
+                    <div class="flex items-start gap-2">
+                        <i data-lucide="clock" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                        <p class="text-[11px] leading-relaxed">Form di bawah ini sudah otomatis diisi dari <b>pengajuan perubahan kurir</b>. Periksa datanya, ubah kalau perlu, lalu tekan <b>Simpan Profil</b> untuk menyetujui — atau tekan <b>Tolak Perubahan</b> untuk membatalkan pengajuan ini.</p>
+                    </div>
+                </div>
+
+                <!-- Info otomatis (read-only, ikut data akun kurir) -->
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-2.5">
+                        <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Tgl Bergabung</p>
+                        <p id="profil-admin-tgl-gabung" class="text-xs font-bold text-slate-700 dark:text-slate-200 mt-0.5">-</p>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-2.5">
+                        <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Status Keaktifan</p>
+                        <p id="profil-admin-status" class="text-xs font-bold mt-0.5">-</p>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-400 -mt-1">Dua data di atas otomatis ikut data akun kurir, tidak diedit di sini.</p>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">Nama Lengkap <span class="text-rose-500">*</span> <span class="font-normal normal-case">(wajib, boleh beda dari nama akun)</span></label>
+                    <input type="text" id="profil-admin-nama-lengkap" placeholder="Nama lengkap sesuai KTP" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">NIK KTP</label>
+                    <input type="text" id="profil-admin-nik" inputmode="numeric" maxlength="16" placeholder="16 digit NIK KTP" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Tempat Lahir</label>
+                        <input type="text" id="profil-admin-tempat-lahir" placeholder="Kota lahir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Tanggal Lahir</label>
+                        <input type="date" id="profil-admin-tanggal-lahir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">No. ID Card</label>
+                    <input type="text" id="profil-admin-id-card" placeholder="Nomor ID Card kurir" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">No HP Aktif/WA</label>
+                        <input type="text" id="profil-admin-hp-wa" inputmode="numeric" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">No HP Kurir</label>
+                        <input type="text" id="profil-admin-hp-kurir" inputmode="numeric" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">Alamat Domisili</label>
+                    <textarea id="profil-admin-alamat" rows="2" placeholder="Alamat domisili lengkap" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700 resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">Pekerjaan Lainnya</label>
+                    <input type="text" id="profil-admin-pekerjaan-lain" placeholder="Kalau ada pekerjaan sampingan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1">No. BPJS Kesehatan</label>
+                    <input type="text" id="profil-admin-bpjs" inputmode="numeric" placeholder="Nomor BPJS Kesehatan" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Kelas BPJS</label>
+                        <select id="profil-admin-kelas-bpjs" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                            <option value="">-- Pilih Kelas --</option>
+                            <option value="Kelas I">Kelas I</option>
+                            <option value="Kelas II">Kelas II</option>
+                            <option value="Kelas III">Kelas III</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Biaya / Bulan</label>
+                        <input type="text" id="profil-admin-biaya-bpjs" inputmode="numeric" placeholder="Contoh: 150000" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Nama (Nama Keluarga)</label>
+                        <input type="text" id="profil-admin-kontak-darurat-nama" placeholder="Nama & hubungan keluarga" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">No Kontak Darurat</label>
+                        <input type="text" id="profil-admin-kontak-darurat-hp" inputmode="numeric" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-1 pb-1">
+                    <button onclick="simpanProfilAdminKurir()" class="flex-1 py-2.5 bg-primary text-white text-xs font-bold rounded-xl uppercase">
+                        Simpan Profil
+                    </button>
+                    <button id="btn-tolak-perubahan-profil" onclick="tolakPerubahanProfilKurir()" class="hidden px-3 py-2.5 bg-rose-50 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 text-xs font-bold rounded-xl">
+                        Tolak Perubahan
+                    </button>
+                    <button onclick="tutupProfilAdminKurir()" class="px-3 py-2.5 bg-slate-100 text-slate-500 dark:bg-slate-800 text-xs rounded-xl">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-sop" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
         <div class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[85vh] flex flex-col">
             <div class="flex items-center justify-between gap-2 p-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
@@ -2706,6 +3017,7 @@
     <script type="module" src="sop.js"></script>
     <script type="module" src="absensi.js"></script>
     <script type="module" src="kehadiran.js"></script>
+    <script type="module" src="profilkurir.js"></script>
     <script>
       // Daftarkan service worker supaya aplikasi bisa di-install & tetap bisa dibuka walau sinyal lemah
       if ('serviceWorker' in navigator) {
