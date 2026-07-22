@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulir Kemitraan — Sahabatku Delivery Group</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --paper:#ffffff;
+    --canvas-bg:#eef1f6;
+    --ink:#1c2430;
+    --ink-soft:#5b6472;
+    --rule:#c9cfd8;
+    --brand:#2f6fd6;
+    --brand-dark:#1d4fa8;
+    --brand-tint:#eaf1fc;
+    --accent:#d98a3d;
+    --input-bg:#fbfcfe;
+    --serif:'Source Serif 4','Georgia',serif;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    /* A4 at 96dpi */
+    --a4-width:794px;
+  }
+  *{box-sizing:border-box;}
+  html{ color-scheme:light; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--canvas-bg);
+    font-family:var(--sans);
+    color:var(--ink);
+    padding:28px 14px 60px;
+  }
+  .toolbar{
+    max-width:var(--a4-width);
+    margin:0 auto 18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .toolbar h1{
+    font-size:14px;
+    font-weight:600;
+    margin:0;
+    color:var(--ink-soft);
+    letter-spacing:.02em;
+  }
+  .btn-row{display:flex; gap:10px; flex-wrap:wrap;}
+  button{
+    font-family:var(--sans);
+    font-size:13.5px;
+    font-weight:600;
+    border-radius:8px;
+    padding:10px 16px;
+    border:1px solid var(--rule);
+    background:#fff;
+    color:var(--ink);
+    cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button:hover{ transform:translateY(-1px); box-shadow:0 4px 10px rgba(29,79,168,.12);}
+  button:active{ transform:translateY(0); }
+  button.primary{
+    background:var(--brand);
+    border-color:var(--brand-dark);
+    color:#fff;
+  }
+  button.primary:hover{ background:var(--brand-dark); }
+  button.ghost{ color:var(--brand-dark); }
+
+  #sheet{
+    max-width:var(--a4-width);
+    width:100%;
+    margin:0 auto;
+    background:var(--paper);
+    box-shadow:0 10px 40px rgba(20,30,50,.14);
+    padding:44px 48px 40px;
+    border-radius:2px;
+  }
+
+  /* ---- header: logo sits centered as a soft watermark behind the text,
+         so the text block itself is perfectly centered without offset hacks ---- */
+  .head{
+    position:relative;
+    text-align:center;
+    border-bottom:4px solid var(--ink);
+    padding-bottom:16px;
+    margin-bottom:26px;
+    overflow:hidden;
+  }
+  .logo-bg{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    height:118px;
+    width:auto;
+    opacity:0.14;
+    z-index:0;
+    pointer-events:none;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  .head-text{
+    position:relative;
+    z-index:1;
+    width:100%;
+    padding:0 6px;
+  }
+  .brand-name{
+    font-family:var(--serif);
+    font-weight:700;
+    font-size:clamp(17px, 4.6vw, 26px);
+    letter-spacing:.01em;
+    margin:0 0 4px;
+    color:var(--ink);
+  }
+  .tagline{
+    font-family:var(--serif);
+    font-style:italic;
+    font-size:14px;
+    margin:0 0 6px;
+    color:var(--ink-soft);
+  }
+  .addr{
+    font-family:var(--serif);
+    font-style:italic;
+    font-size:12px;
+    color:var(--ink-soft);
+    line-height:1.6;
+  }
+  .addr a{ color:var(--brand); text-decoration:none; }
+  .addr-line1{ margin:0 0 3px; }
+  .addr-line2{
+    margin:0;
+    font-size:clamp(9.5px, 2.7vw, 12px);
+  }
+
+  h2.section-title{
+    font-family:var(--serif);
+    font-size:16.5px;
+    text-align:center;
+    text-decoration:underline;
+    text-underline-offset:5px;
+    margin:26px 0 16px;
+    letter-spacing:.03em;
+  }
+
+  .field-list{ display:flex; flex-direction:column; gap:12px; margin-bottom:6px; }
+  .data-mitra-list{ padding-left:4px; }
+  .data-mitra-list > .field-row > label::before{
+    content:"• ";
+    color:var(--ink);
+  }
+  .field-row{
+    display:grid;
+    grid-template-columns:230px 14px 1fr;
+    align-items:center;
+    gap:2px;
+  }
+  .field-row label{
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .field-row .colon{ color:var(--ink-soft); }
+  .field-row input, .field-row textarea{
+    width:100%;
+    font-family:var(--sans);
+    font-size:13.5px;
+    padding:7px 9px;
+    border:none;
+    border-bottom:1.4px solid var(--rule);
+    background:var(--input-bg);
+    color:var(--ink);
+    outline:none;
+    transition:border-color .15s ease, background .15s ease;
+    border-radius:4px 4px 0 0;
+  }
+  .field-row input:focus, .field-row textarea:focus{
+    border-bottom-color:var(--brand);
+    background:var(--brand-tint);
+  }
+  .field-row textarea{ resize:vertical; min-height:34px; font-family:var(--sans); }
+  .hours-group{ display:flex; gap:14px; }
+  .hours-group .sub{ display:grid; grid-template-columns:44px 8px 1fr; align-items:center; gap:2px; flex:1; min-width:0; }
+  .hours-group .sub label{ font-size:13px; color:var(--ink-soft); }
+  input[type="time"]{
+    min-width:0;
+    color:var(--ink);
+    background:var(--input-bg);
+    -webkit-text-fill-color:var(--ink);
+  }
+  input[type="time"]::-webkit-datetime-edit{ padding:0; color:var(--ink); }
+  input[type="time"]::-webkit-datetime-edit-fields-wrapper{ color:var(--ink); }
+  input[type="time"]::-webkit-calendar-picker-indicator{
+    filter:invert(38%) sepia(23%) saturate(1226%) hue-rotate(178deg) brightness(93%) contrast(87%);
+    cursor:pointer;
+    opacity:1;
+  }
+
+  .agree-intro{ font-size:13.5px; line-height:1.7; margin-bottom:14px; }
+
+  .party-block{ margin-bottom:20px; }
+  .party-title{
+    font-weight:700;
+    font-size:13.5px;
+    margin-bottom:8px;
+    color:var(--brand-dark);
+    letter-spacing:.03em;
+  }
+  .party-fixed{
+    font-size:13.5px;
+    line-height:1.8;
+    background:var(--brand-tint);
+    border-left:3px solid var(--brand);
+    padding:10px 14px;
+    border-radius:0 6px 6px 0;
+    margin-bottom:10px;
+  }
+  .party-fixed b{ font-weight:700; }
+  .party-fixed .kv-row{
+    display:grid;
+    grid-template-columns:128px 10px 1fr;
+    gap:2px;
+    align-items:baseline;
+  }
+  .party-fixed .kv-row + .kv-row{ margin-top:2px; }
+  .party-fixed .kv-colon{ color:var(--ink-soft); }
+
+  .agree-body{ font-size:13.5px; line-height:1.75; margin:18px 0 6px; }
+  .agree-body b{ font-weight:700; }
+  .date-line{ display:inline-flex; align-items:center; gap:4px; }
+  .date-line input{
+    font-family:var(--sans);
+    font-size:13.5px;
+    border:none;
+    border-bottom:1.4px solid var(--rule);
+    background:var(--input-bg);
+    padding:2px 6px;
+    outline:none;
+  }
+  .date-line input:focus{ border-bottom-color:var(--brand); background:var(--brand-tint); }
+  .place-date{
+    text-align:right;
+    font-size:13.5px;
+    margin:26px 0 18px;
+    display:flex;
+    justify-content:flex-end;
+    width:100%;
+  }
+  .place-date-wrap{
+    display:inline-flex;
+    justify-content:flex-end;
+    align-items:baseline;
+    gap:6px;
+    margin-left:auto;
+  }
+  .place-date input{
+    flex:0 0 220px;
+    max-width:220px;
+    text-align:right;
+  }
+  .place-date input:focus{ border-bottom-color:var(--brand); background:var(--brand-tint); }
+
+  .sign-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:32px;
+    margin-top:8px;
+  }
+  .sign-col b.role{ font-size:13.5px; display:block; }
+  .sign-col .sub{ font-size:12.5px; color:var(--ink-soft); display:block; margin-bottom:2px; }
+  .sign-col .sub-input{
+    font-family:var(--sans);
+    font-size:12.5px;
+    color:var(--ink-soft);
+    display:block;
+    margin-bottom:2px;
+    width:100%;
+    border:none;
+    border-bottom:1px dashed transparent;
+    background:transparent;
+    padding:0 0 1px;
+    outline:none;
+    text-align:left;
+  }
+  .sign-col .sub-input:hover{ border-bottom-color:var(--rule); }
+  .sign-col .sub-input:focus{ border-bottom-color:var(--brand); background:var(--brand-tint); border-radius:3px; }
+
+  .sig-mode-toggle{
+    display:flex;
+    justify-content:center;
+    margin:8px 0 2px;
+  }
+  .sig-mode-toggle button{
+    font-size:11px;
+    padding:4px 10px;
+    border-radius:20px;
+    border:1px solid var(--rule);
+    background:#fff;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .sig-mode-toggle button:hover{ color:var(--brand-dark); border-color:var(--brand); }
+
+  .sig-area{
+    height:96px;
+    margin:8px 0 6px;
+    position:relative;
+  }
+  .sig-fixed{
+    height:100%;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+  }
+  .sig-fixed svg{ height:84px; }
+  .sig-fixed.hidden, .sig-canvas-wrap.hidden{ display:none; }
+
+  .sig-canvas-wrap{ height:100%; }
+
+  canvas.sig-pad{
+    width:100%;
+    height:100%;
+    border:1.4px dashed var(--rule);
+    border-radius:8px;
+    background:var(--input-bg);
+    touch-action:none;
+    cursor:crosshair;
+    display:block;
+  }
+  .sig-tools{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:4px;
+    min-height:18px;
+  }
+  .sig-hint{ font-size:11px; color:var(--ink-soft); }
+  .clear-sig{
+    font-size:11.5px;
+    padding:4px 9px;
+    border-radius:6px;
+    border:1px solid var(--rule);
+    background:#fff;
+    cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .clear-sig:hover{ color:var(--brand-dark); border-color:var(--brand); }
+
+  .name-line{
+    border-top:1.4px solid var(--ink);
+    margin-top:8px;
+    padding-top:6px;
+    text-align:center;
+  }
+  .name-line input{
+    width:100%;
+    text-align:center;
+    font-family:var(--sans);
+    font-size:13.5px;
+    border:none;
+    background:transparent;
+    outline:none;
+    padding:2px 4px;
+  }
+  .name-line input:focus{ background:var(--brand-tint); border-radius:4px; }
+
+  footer.hint{
+    max-width:var(--a4-width);
+    margin:14px auto 0;
+    text-align:center;
+    font-size:11.5px;
+    color:var(--ink-soft);
+  }
+
+  @media (max-width:640px){
+    body{ padding:14px 10px 40px; }
+    #sheet{ padding:22px 16px 24px; border-radius:10px; }
+
+    .toolbar{ padding:0 2px; margin-bottom:14px; }
+    .toolbar h1{ font-size:12.5px; text-align:center; width:100%; line-height:1.4; }
+    .btn-row{ width:100%; justify-content:center; gap:8px; }
+    .btn-row button{ flex:1; padding:11px 10px; font-size:13px; }
+
+    .head{ padding-bottom:14px; margin-bottom:20px; }
+    .logo-bg{ height:76px; }
+    .brand-name{ font-size:18px; line-height:1.3; }
+    .tagline{ font-size:12.5px; }
+    .addr{ line-height:1.55; }
+
+    h2.section-title{ font-size:14.5px; margin:22px 0 14px; }
+
+    .field-list{ gap:14px; }
+    .field-row{ grid-template-columns:1fr; row-gap:6px; }
+    .field-row .colon{ display:none; }
+    .field-row label{ font-size:12.5px; }
+    .field-row input, .field-row textarea{ font-size:15px; padding:9px 10px; }
+
+    /* Jam Operasional: Buka & Tutup side-by-side, clearly labeled, text always visible */
+    .hours-group{ gap:10px; }
+    .hours-group .sub{ grid-template-columns:auto; display:flex; flex-direction:column; align-items:stretch; gap:4px; }
+    .hours-group .sub .colon{ display:none; }
+    .hours-group .sub label{ font-size:11.5px; font-weight:600; color:var(--ink); text-transform:uppercase; letter-spacing:.03em; }
+    input[type="time"]{
+      font-size:15px;
+      padding:9px 8px;
+      width:100%;
+      text-align:center;
+    }
+
+    .party-block{ margin-bottom:18px; }
+    .party-fixed{ font-size:13px; padding:10px 12px; }
+    .party-fixed .kv-row{ grid-template-columns:98px 8px 1fr; }
+    .agree-intro, .agree-body{ font-size:13px; line-height:1.7; }
+
+    .sign-grid{ grid-template-columns:1fr; gap:28px; }
+    .sig-area{ height:110px; }
+
+    .place-date{ font-size:12.5px; margin:22px 0 16px; }
+    .place-date input{ max-width:160px; flex:0 1 160px; font-size:12.5px; }
+  }
+
+  /* ---- fullscreen signature modal ---- */
+  .sig-modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(18,22,30,.62);
+    z-index:9999;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  }
+  .sig-modal-overlay.active{ display:flex; }
+  .sig-modal-panel{
+    background:#fff;
+    border-radius:14px;
+    width:min(94vw, 680px);
+    height:min(60vw, 420px);
+    max-height:86vh;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+  }
+  .sig-modal-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13.5px;
+    font-weight:600;
+    margin-bottom:8px;
+    color:var(--ink);
+    flex:0 0 auto;
+  }
+  .sig-modal-close{
+    border:none;
+    background:none;
+    font-size:20px;
+    line-height:1;
+    cursor:pointer;
+    color:var(--ink-soft);
+    padding:2px 6px;
+  }
+  .sig-modal-canvas-wrap{ flex:1; min-height:0; }
+  #sigModalCanvas{
+    width:100%;
+    height:100%;
+    border:1.6px dashed var(--rule);
+    border-radius:10px;
+    background:var(--input-bg);
+    touch-action:none;
+    cursor:crosshair;
+    display:block;
+  }
+  .sig-modal-actions{
+    display:flex;
+    gap:10px;
+    margin-top:10px;
+    flex:0 0 auto;
+  }
+  .sig-modal-actions button{ flex:1; }
+
+  /* on narrow portrait phones, rotate the whole panel so it behaves like landscape */
+  @media (max-width:640px) and (orientation:portrait){
+    .sig-modal-panel{
+      position:fixed;
+      top:50%;
+      left:50%;
+      width:88vh;
+      height:min(72vw, 340px);
+      transform:translate(-50%, -50%) rotate(90deg);
+      margin:0;
+    }
+  }
+
+  .expand-sig{
+    font-size:11.5px;
+    padding:4px 9px;
+    border-radius:6px;
+    border:1px solid var(--rule);
+    background:#fff;
+    cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .expand-sig:hover{ color:var(--brand-dark); border-color:var(--brand); }
+
+  @media print{
+    body{ background:#fff; padding:0; }
+    .toolbar, footer.hint{ display:none; }
+    #sheet{ box-shadow:none; max-width:none; width:100%; }
+    @page{ size:A4; margin:14mm; }
+  }
+
+  /* ---- preview-before-download modal ---- */
+  .preview-modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(18,22,30,.72);
+    z-index:10000;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  }
+  .preview-modal-overlay.active{ display:flex; }
+  .preview-modal-panel{
+    background:#fff;
+    border-radius:14px;
+    width:min(94vw, 560px);
+    max-height:92vh;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);
+  }
+  .preview-modal-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13.5px;
+    font-weight:600;
+    margin-bottom:10px;
+    color:var(--ink);
+    flex:0 0 auto;
+  }
+  .preview-modal-body{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    background:var(--canvas-bg);
+    border-radius:8px;
+    display:flex;
+    justify-content:center;
+    padding:8px;
+  }
+  .preview-modal-body img{
+    width:100%;
+    height:auto;
+    display:block;
+    box-shadow:0 4px 18px rgba(20,30,50,.18);
+    border-radius:2px;
+  }
+  .preview-modal-actions{
+    display:flex;
+    gap:10px;
+    margin-top:12px;
+    flex:0 0 auto;
+  }
+  .preview-modal-actions button{ flex:1; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>Formulir Kemitraan Digital · Sahabatku Delivery Group</h1>
+  <div class="btn-row">
+    <button class="ghost" id="clearAllBtn">Kosongkan Semua</button>
+    <button class="primary" id="saveBtn">Simpan</button>
+  </div>
+</div>
+
+<div id="sheet">
+
+  <div class="head">
+    <div class="head-text">
+      <p class="brand-name">SAHABATKU DELIVERY GROUP</p>
+      <p class="tagline">&ldquo;Pesan Cepat Tanpa Ribet!&rdquo;</p>
+      <p class="addr addr-line1">Jl. Mayor Dasuki, Kec. Jatibarang, Kab. Indramayu &ndash; Jawa Barat</p>
+      <p class="addr addr-line2">Telepon/WA: 0821-1845-415 | Email: <a href="mailto:sahabatkugroupjtb@gmail.com">sahabatkugroupjtb@gmail.com</a></p>
+    </div>
+  </div>
+
+  <h2 class="section-title">DATA MITRA</h2>
+  <div class="field-list data-mitra-list">
+    <div class="field-row">
+      <label>Nama Usaha/Kedai</label><span class="colon">:</span>
+      <input type="text" data-field placeholder="Isi nama usaha/kedai" id="businessName">
+    </div>
+    <div class="field-row">
+      <label>Nama Pemilik/Perwakilan</label><span class="colon">:</span>
+      <input type="text" data-field placeholder="Isi nama pemilik/perwakilan" id="ownerName">
+    </div>
+    <div class="field-row">
+      <label>Lokasi/Alamat Kedai</label><span class="colon">:</span>
+      <textarea rows="2" data-field placeholder="Isi alamat lengkap kedai" id="ownerAddress"></textarea>
+    </div>
+    <div class="field-row">
+      <label>Nomor Telepon (WhatsApp Aktif)</label><span class="colon">:</span>
+      <input type="text" data-field placeholder="08xx-xxxx-xxxx" id="ownerPhone">
+    </div>
+    <div class="field-row">
+      <label>Jam Operasional</label><span class="colon">:</span>
+      <div class="hours-group">
+        <div class="sub"><label>Buka</label><span class="colon">:</span><input type="time" data-field data-time-field id="hoursOpen"></div>
+        <div class="sub"><label>Tutup</label><span class="colon">:</span><input type="time" data-field data-time-field id="hoursClose"></div>
+      </div>
+    </div>
+    <div class="field-row">
+      <label>Nama Facebook &amp; Instagram</label><span class="colon">:</span>
+      <input type="text" data-field placeholder="Isi nama akun Facebook & Instagram" id="socialField">
+    </div>
+  </div>
+
+  <h2 class="section-title">PERSETUJUAN KERJA SAMA</h2>
+  <p class="agree-intro">Dengan ini, para pihak yang bertanda tangan di bawah ini:</p>
+
+  <div class="party-block">
+    <p class="party-title">PIHAK PERTAMA</p>
+    <div class="party-fixed">
+      <div class="kv-row"><span>Nama Perusahaan</span><span class="kv-colon">:</span><span><b>Sahabatku Group Delivery</b></span></div>
+      <div class="kv-row"><span>Alamat</span><span class="kv-colon">:</span><span>Blok Karanganyar, Ds. Jatibarang, Kec. Jatibarang, Kab. Indramayu, Jawa Barat</span></div>
+    </div>
+    <div class="field-list">
+      <div class="field-row">
+        <label>Diwakili oleh</label><span class="colon">:</span>
+        <input type="text" data-field value="Walhidayat" id="firstPartyName">
+      </div>
+      <div class="field-row">
+        <label>Jabatan</label><span class="colon">:</span>
+        <input type="text" data-field value="Head Operational" id="firstPartyJabatan">
+      </div>
+    </div>
+  </div>
+
+  <div class="party-block">
+    <p class="party-title">PIHAK KEDUA</p>
+    <div class="field-list">
+      <div class="field-row">
+        <label>Nama Usaha</label><span class="colon">:</span>
+        <input type="text" data-field placeholder="Isi nama usaha" id="secondPartyBusiness">
+      </div>
+      <div class="field-row">
+        <label>Nama Pemilik/Penanggung Jawab</label><span class="colon">:</span>
+        <input type="text" data-field placeholder="Isi nama penanggung jawab" id="secondPartyName">
+      </div>
+      <div class="field-row">
+        <label>Nomor WhatsApp</label><span class="colon">:</span>
+        <input type="text" data-field placeholder="08xx-xxxx-xxxx" id="secondPartyWhatsapp">
+      </div>
+    </div>
+  </div>
+
+  <p class="agree-body">
+    <b>PIHAK PERTAMA</b> dan <b>PIHAK KEDUA</b> dengan ini menyatakan telah membaca, memahami, serta menyetujui seluruh isi proposal kerja sama kemitraan usaha <b>Sahabatku Delivery Jatibarang.</b> Kedua belah pihak <b>sepakat menjalin kerja sama secara profesional,</b> berlandaskan itikad baik, dan saling menguntungkan. Persetujuan ini dibuat tanpa paksaan dari pihak mana pun serta dinyatakan sah, berlaku, dan mengikat sejak ditandatangani dan mulai berlaku pada tanggal
+    <span class="date-line"><input type="text" data-field placeholder="__________" style="width:150px;" id="agreementDate"></span>.
+  </p>
+  <p class="agree-body">Apabila terdapat hal-hal yang belum diatur, penyelesaiannya dilakukan melalui musyawarah mufakat.</p>
+  <p class="agree-body">Demikian persetujuan ini dibuat untuk dipergunakan sebagaimana mestinya.</p>
+
+  <div class="place-date">
+    <span class="place-date-wrap">
+      <span class="label">Indramayu,</span>
+      <input type="text" data-field placeholder="tanggal / bulan / tahun" id="placeDateInput">
+    </span>
+  </div>
+
+  <div class="sign-grid">
+    <div class="sign-col">
+      <b class="role">PIHAK PERTAMA</b>
+      <span class="sub">Sahabatku Delivery Group</span>
+      <input type="text" class="sub-input" data-field value="Head Operational" id="firstPartyRoleSign">
+
+      <div class="sig-mode-toggle">
+        <button type="button" data-sig-toggle="1">Ganti ke tanda tangan manual</button>
+      </div>
+
+      <div class="sig-area">
+        <div class="sig-fixed" id="sigFixed1">
+          <svg viewBox="0 0 260 90" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 70 C 30 20, 45 20, 50 55 C 55 80, 65 55, 70 40 C 75 25, 80 30, 82 45 C 84 60, 90 65, 100 45 C 108 28, 112 30, 118 50 C 122 62, 130 50, 138 35 C 145 22, 150 25, 155 40 C 158 50, 165 48, 172 35"
+                  fill="none" stroke="#1c2430" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M175 30 L 235 55" stroke="#1c2430" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="sig-canvas-wrap hidden" id="sigCanvasWrap1">
+          <canvas class="sig-pad" id="sigPad1"></canvas>
+        </div>
+      </div>
+      <div class="sig-tools">
+        <span class="sig-hint" id="sigHint1"></span>
+        <span style="display:flex; gap:6px;">
+          <button class="expand-sig hidden" id="expandSigBtn1" type="button">Perbesar</button>
+          <button class="clear-sig hidden" id="clearSigBtn1" type="button">Hapus</button>
+        </span>
+      </div>
+
+      <div class="name-line">
+        <input type="text" data-field value="( Walhidayat )" id="firstPartySignName">
+      </div>
+    </div>
+
+    <div class="sign-col">
+      <b class="role" style="text-align:right;">PIHAK KEDUA</b>
+      <span class="sub" style="text-align:right;">Mitra Usaha</span>
+      <span class="sub" style="text-align:right;">Pemilik Usaha</span>
+
+      <div class="sig-mode-toggle" style="visibility:hidden;">
+        <button type="button">spacer</button>
+      </div>
+
+      <div class="sig-area">
+        <div class="sig-canvas-wrap" id="sigCanvasWrap2">
+          <canvas class="sig-pad" id="sigPad2"></canvas>
+        </div>
+      </div>
+      <div class="sig-tools">
+        <span class="sig-hint">Tanda tangan di sini</span>
+        <span style="display:flex; gap:6px;">
+          <button class="expand-sig" id="expandSigBtn2" type="button">Perbesar</button>
+          <button class="clear-sig" id="clearSigBtn2" type="button">Hapus</button>
+        </span>
+      </div>
+
+      <div class="name-line">
+        <input type="text" data-field placeholder="( Nama Pemilik Usaha )" id="secondPartySignName">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="hint">Formulir ini otomatis menyesuaikan ukuran kertas A4 saat disimpan atau dicetak.</footer>
+
+<div class="preview-modal-overlay" id="previewModalOverlay">
+  <div class="preview-modal-panel">
+    <div class="preview-modal-header">
+      <span>Pratinjau Hasil Simpan</span>
+      <button type="button" class="sig-modal-close" id="previewModalClose">✕</button>
+    </div>
+    <div class="preview-modal-body">
+      <img id="previewImage" alt="Pratinjau formulir">
+    </div>
+    <div class="preview-modal-actions">
+      <button type="button" id="previewEditBtn">✎ Edit Lagi</button>
+      <button type="button" class="primary" id="previewDownloadBtn">Simpan Gambar</button>
+    </div>
+  </div>
+</div>
+
+<div class="sig-modal-overlay" id="sigModalOverlay">
+  <div class="sig-modal-panel" id="sigModalPanel">
+    <div class="sig-modal-header">
+      <span>Tanda tangan di sini</span>
+      <button type="button" class="sig-modal-close" id="sigModalClose">✕</button>
+    </div>
+    <div class="sig-modal-canvas-wrap">
+      <canvas id="sigModalCanvas"></canvas>
+    </div>
+    <div class="sig-modal-actions">
+      <button type="button" id="sigModalClear">Hapus</button>
+      <button type="button" class="primary" id="sigModalDone">Gunakan Tanda Tangan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ---- generic signature pad factory ----
+  function makeSigPad(canvasId){
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    let drawing = false, hasSignature = false, last = null;
+
+    function resizeCanvas(){
+      const rect = canvas.getBoundingClientRect();
+      if(rect.width === 0 || rect.height === 0) return;
+      const ratio = window.devicePixelRatio || 1;
+      const prev = hasSignature ? canvas.toDataURL() : null;
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(ratio, ratio);
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#1c2430';
+      if(prev){
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        img.src = prev;
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function getPos(e){
+      const rect = canvas.getBoundingClientRect();
+      const p = e.touches ? e.touches[0] : e;
+      return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+    }
+    function start(e){
+      drawing = true; hasSignature = true;
+      last = getPos(e);
+      e.preventDefault();
+    }
+    function move(e){
+      if(!drawing) return;
+      const pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      last = pos;
+      e.preventDefault();
+    }
+    function end(){ drawing = false; }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', start, {passive:false});
+    canvas.addEventListener('touchmove', move, {passive:false});
+    canvas.addEventListener('touchend', end);
+
+    function clear(){
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      hasSignature = false;
+    }
+
+    return { resizeCanvas, clear, canvas, hasSignature: () => hasSignature, markSigned: () => { hasSignature = true; } };
+  }
+
+  const sigPad1 = makeSigPad('sigPad1');
+  const sigPad2 = makeSigPad('sigPad2');
+  sigPad2.resizeCanvas();
+
+  document.getElementById('clearSigBtn1').addEventListener('click', () => sigPad1.clear());
+  document.getElementById('clearSigBtn2').addEventListener('click', () => sigPad2.clear());
+
+  // ---- fullscreen signature modal (rotates to a landscape-friendly layout on phones) ----
+  const sigModalOverlay = document.getElementById('sigModalOverlay');
+  const sigModalPanel = document.getElementById('sigModalPanel');
+  const sigModalCanvas = document.getElementById('sigModalCanvas');
+  const modalCtx = sigModalCanvas.getContext('2d');
+  let modalDrawing = false, modalLast = null, modalHasSig = false;
+
+  function resizeModalCanvas(){
+    const rect = sigModalCanvas.getBoundingClientRect();
+    if(rect.width === 0 || rect.height === 0) return;
+    const ratio = window.devicePixelRatio || 1;
+    const prev = modalHasSig ? sigModalCanvas.toDataURL() : null;
+    sigModalCanvas.width = rect.width * ratio;
+    sigModalCanvas.height = rect.height * ratio;
+    modalCtx.setTransform(1,0,0,1,0,0);
+    modalCtx.scale(ratio, ratio);
+    modalCtx.lineWidth = 3;
+    modalCtx.lineCap = 'round';
+    modalCtx.strokeStyle = '#1c2430';
+    if(prev){
+      const img = new Image();
+      img.onload = () => modalCtx.drawImage(img, 0, 0, rect.width, rect.height);
+      img.src = prev;
+    }
+  }
+  function getModalPos(e){
+    const rect = sigModalCanvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return { x: p.clientX - rect.left, y: p.clientY - rect.top };
+  }
+  function modalStart(e){ modalDrawing = true; modalHasSig = true; modalLast = getModalPos(e); e.preventDefault(); }
+  function modalMove(e){
+    if(!modalDrawing) return;
+    const pos = getModalPos(e);
+    modalCtx.beginPath();
+    modalCtx.moveTo(modalLast.x, modalLast.y);
+    modalCtx.lineTo(pos.x, pos.y);
+    modalCtx.stroke();
+    modalLast = pos;
+    e.preventDefault();
+  }
+  function modalEnd(){ modalDrawing = false; }
+  sigModalCanvas.addEventListener('mousedown', modalStart);
+  sigModalCanvas.addEventListener('mousemove', modalMove);
+  window.addEventListener('mouseup', modalEnd);
+  sigModalCanvas.addEventListener('touchstart', modalStart, {passive:false});
+  sigModalCanvas.addEventListener('touchmove', modalMove, {passive:false});
+  sigModalCanvas.addEventListener('touchend', modalEnd);
+
+  let activeTargetPad = null;
+
+  async function openSigModal(pad){
+    activeTargetPad = pad;
+    modalHasSig = false;
+    sigModalOverlay.classList.add('active');
+    try{
+      if(sigModalOverlay.requestFullscreen){ await sigModalOverlay.requestFullscreen(); }
+      if(screen.orientation && screen.orientation.lock){ await screen.orientation.lock('landscape'); }
+    }catch(e){ /* not supported on this device/browser — the CSS rotation below still helps */ }
+    requestAnimationFrame(() => {
+      resizeModalCanvas();
+      const rect = sigModalCanvas.getBoundingClientRect();
+      modalCtx.clearRect(0, 0, rect.width, rect.height);
+    });
+  }
+  function closeSigModal(){
+    sigModalOverlay.classList.remove('active');
+    if(document.fullscreenElement){ document.exitFullscreen().catch(() => {}); }
+    try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
+  }
+  document.getElementById('sigModalClose').addEventListener('click', closeSigModal);
+  document.getElementById('sigModalClear').addEventListener('click', () => {
+    const rect = sigModalCanvas.getBoundingClientRect();
+    modalCtx.clearRect(0, 0, rect.width, rect.height);
+    modalHasSig = false;
+  });
+  document.getElementById('sigModalDone').addEventListener('click', () => {
+    if(activeTargetPad && modalHasSig){
+      const targetCanvas = activeTargetPad.canvas;
+      const targetCtx = targetCanvas.getContext('2d');
+      const targetRect = targetCanvas.getBoundingClientRect();
+      targetCtx.clearRect(0, 0, targetRect.width, targetRect.height);
+      targetCtx.drawImage(sigModalCanvas, 0, 0, targetRect.width, targetRect.height);
+      activeTargetPad.markSigned();
+    }
+    closeSigModal();
+  });
+  window.addEventListener('resize', () => {
+    if(sigModalOverlay.classList.contains('active')) resizeModalCanvas();
+  });
+
+  document.getElementById('expandSigBtn1').addEventListener('click', () => openSigModal(sigPad1));
+  document.getElementById('expandSigBtn2').addEventListener('click', () => openSigModal(sigPad2));
+
+  // ---- toggle Pihak Pertama: TTD tetap vs manual ----
+  const toggleBtn1 = document.querySelector('[data-sig-toggle="1"]');
+  const sigFixed1 = document.getElementById('sigFixed1');
+  const sigCanvasWrap1 = document.getElementById('sigCanvasWrap1');
+  const clearSigBtn1 = document.getElementById('clearSigBtn1');
+  const expandSigBtn1 = document.getElementById('expandSigBtn1');
+  const sigHint1 = document.getElementById('sigHint1');
+  let manualMode1 = false;
+
+  toggleBtn1.addEventListener('click', () => {
+    manualMode1 = !manualMode1;
+    if(manualMode1){
+      sigFixed1.classList.add('hidden');
+      sigCanvasWrap1.classList.remove('hidden');
+      clearSigBtn1.classList.remove('hidden');
+      expandSigBtn1.classList.remove('hidden');
+      sigHint1.textContent = 'Tanda tangan di sini';
+      toggleBtn1.textContent = 'Pakai tanda tangan default';
+      sigPad1.resizeCanvas();
+      // langsung buka layar penuh supaya lebih enak menandatangani
+      openSigModal(sigPad1);
+    } else {
+      sigFixed1.classList.remove('hidden');
+      sigCanvasWrap1.classList.add('hidden');
+      clearSigBtn1.classList.add('hidden');
+      expandSigBtn1.classList.add('hidden');
+      sigHint1.textContent = '';
+      toggleBtn1.textContent = 'Ganti ke tanda tangan manual';
+      sigPad1.clear();
+    }
+  });
+
+  // ---- clear all fields ----
+  document.getElementById('clearAllBtn').addEventListener('click', () => {
+    if(!confirm('Kosongkan semua isian dan tanda tangan?')) return;
+    document.querySelectorAll('[data-field]').forEach(el => {
+      if(el.id === 'firstPartyName'){ el.value = 'Walhidayat'; return; }
+      if(el.id === 'firstPartySignName'){ el.value = '( Walhidayat )'; return; }
+      if(el.id === 'firstPartyRoleSign'){ el.value = 'Head Operational'; return; }
+      if(el.tagName === 'INPUT' && el.getAttribute('value') === 'Head Operational'){ return; }
+      el.value = '';
+    });
+    sigPad1.clear();
+    sigPad2.clear();
+    if(manualMode1){ toggleBtn1.click(); }
+    linkedFields.forEach(f => { f.override = false; });
+  });
+
+  // ---- auto-fill linked fields: typing in a Data Mitra field copies the value
+  //      into its matching Persetujuan Kerja Sama field, but the moment the person
+  //      types directly into the target field themselves, that field "detaches"
+  //      and keeps whatever they typed (manual override) ----
+  const linkedFields = [];
+
+  function linkField(sourceId, targetId, formatFn){
+    const source = document.getElementById(sourceId);
+    const target = document.getElementById(targetId);
+    if(!source || !target) return;
+    const state = { source, target, formatFn: formatFn || (v => v), override: false };
+
+    source.addEventListener('input', () => {
+      if(state.override) return;
+      target.value = state.formatFn(source.value);
+    });
+    target.addEventListener('input', () => { state.override = true; });
+
+    linkedFields.push(state);
+  }
+
+  linkField('businessName', 'secondPartyBusiness');
+  linkField('ownerName', 'secondPartyName');
+  linkField('ownerPhone', 'secondPartyWhatsapp');
+  linkField('agreementDate', 'placeDateInput');
+  linkField('ownerName', 'secondPartySignName', v => v.trim() ? '( ' + v.trim() + ' )' : '');
+
+  // ---- save as PNG (renders a fixed A4-width, print-style clone so the result
+  //      always looks the same and high-resolution, no matter the device/screen size) ----
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('saveBtn');
+    const originalText = btn.textContent;
+    btn.textContent = 'Menyimpan…';
+    btn.disabled = true;
+
+    const sheet = document.getElementById('sheet');
+    const clone = sheet.cloneNode(true);
+
+    // offscreen wrapper, fixed A4 CSS width (794px @ 96dpi) so mobile layout rules never apply
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '0';
+    wrapper.style.left = '-99999px';
+    wrapper.style.width = '794px';
+    wrapper.style.background = '#ffffff';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    // force desktop-style layout on the clone regardless of viewport
+    clone.style.width = '794px';
+    clone.style.maxWidth = '794px';
+    clone.style.boxShadow = 'none';
+    clone.style.borderRadius = '0';
+    clone.style.padding = '44px 48px 40px';
+    const cLogoBg = clone.querySelector('.logo-bg');
+    if(cLogoBg){ cLogoBg.style.height = '118px'; }
+    const cBrand = clone.querySelector('.brand-name');
+    if(cBrand){ cBrand.style.fontSize = '26px'; }
+    const cAddr2 = clone.querySelector('.addr-line2');
+    if(cAddr2){ cAddr2.style.fontSize = '12px'; }
+    clone.querySelectorAll('.field-row').forEach(row => {
+      row.style.gridTemplateColumns = '230px 14px 1fr';
+      row.style.rowGap = '0';
+    });
+    clone.querySelectorAll('.field-row .colon').forEach(c => c.style.display = 'inline');
+    clone.querySelectorAll('.hours-group .sub').forEach(sub => sub.style.gridTemplateColumns = '70px 14px 1fr');
+    const cSignGrid = clone.querySelector('.sign-grid');
+    if(cSignGrid){ cSignGrid.style.gridTemplateColumns = '1fr 1fr'; cSignGrid.style.gap = '32px'; }
+    const cPlaceDate = clone.querySelector('.place-date');
+    if(cPlaceDate){
+      cPlaceDate.style.fontSize = '13.5px';
+      cPlaceDate.style.justifyContent = 'flex-end';
+      cPlaceDate.style.width = '100%';
+      cPlaceDate.style.display = 'flex';
+    }
+    const cPlaceDateInput = clone.querySelector('.place-date input');
+    if(cPlaceDateInput){ cPlaceDateInput.style.maxWidth = '220px'; cPlaceDateInput.style.flex = '0 1 220px'; cPlaceDateInput.style.fontSize = '13.5px'; }
+
+    // add bullet markers to DATA MITRA labels (in case CSS ::before is not captured reliably)
+    clone.querySelectorAll('.data-mitra-list > .field-row > label').forEach(label => {
+      if(!label.dataset.bulleted){
+        label.textContent = '• ' + label.textContent;
+        label.dataset.bulleted = '1';
+      }
+    });
+
+    // replace every input/textarea with a plain, monochrome, print-style line
+    const originals = sheet.querySelectorAll('input[data-field], textarea[data-field]');
+    const clones = clone.querySelectorAll('input[data-field], textarea[data-field]');
+    clones.forEach((el, i) => {
+      const originalEl = originals[i];
+      const value = originalEl ? originalEl.value.trim() : '';
+      const span = document.createElement('span');
+      span.textContent = value;
+      span.style.fontFamily = getComputedStyle(el).fontFamily;
+      span.style.fontSize = getComputedStyle(el).fontSize;
+      span.style.display = 'inline-block';
+      span.style.minHeight = '1.1em';
+      span.style.width = '100%';
+      span.style.color = '#111';
+      span.style.background = 'transparent';
+      span.style.whiteSpace = el.tagName === 'TEXTAREA' ? 'pre-wrap' : 'nowrap';
+      span.style.padding = '0 2px 3px';
+      span.style.borderBottom = '1.3px solid #555';
+      if(el.id === 'firstPartySignName' || el.id === 'secondPartySignName'){
+        span.style.textAlign = 'center';
+        span.style.borderBottom = 'none';
+        span.style.fontWeight = '400';
+      }
+      if(el.id === 'firstPartyRoleSign'){
+        span.style.borderBottom = 'none';
+        span.style.padding = '0';
+      }
+      el.replaceWith(span);
+    });
+
+    // hide interactive-only controls in the capture
+    clone.querySelectorAll('.sig-mode-toggle, .clear-sig, .expand-sig').forEach(t => t.remove());
+
+    // signatures: canvases lose their pixels on cloneNode, so redraw them from the live canvases
+    const firstSigWrap = clone.querySelector('#sigCanvasWrap1');
+    const firstSigFixed = clone.querySelector('#sigFixed1');
+    if(manualMode1 && sigPad1.hasSignature()){
+      if(firstSigFixed) firstSigFixed.remove();
+      if(firstSigWrap){
+        firstSigWrap.classList.remove('hidden');
+        firstSigWrap.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = sigPad1.canvas.toDataURL('image/png');
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        firstSigWrap.appendChild(img);
+      }
+    } else {
+      if(firstSigWrap) firstSigWrap.remove();
+      if(firstSigFixed) firstSigFixed.classList.remove('hidden');
+    }
+
+    const secondSigWrap = clone.querySelector('#sigCanvasWrap2');
+    if(secondSigWrap){
+      secondSigWrap.innerHTML = '';
+      if(sigPad2.hasSignature()){
+        const img2 = document.createElement('img');
+        img2.src = sigPad2.canvas.toDataURL('image/png');
+        img2.style.width = '100%';
+        img2.style.height = '100%';
+        img2.style.objectFit = 'contain';
+        secondSigWrap.appendChild(img2);
+      }
+    }
+
+    try {
+      const canvasOut = await html2canvas(clone, {
+        backgroundColor: '#ffffff',
+        scale: 3.15,
+        useCORS: true,
+        width: 794
+      });
+      const nameField = document.getElementById('businessName');
+      const fname = (nameField && nameField.value.trim())
+        ? 'MitraSahabatku_' + nameField.value.trim().replace(/\s+/g,'_') + '.png'
+        : 'MitraSahabatku_Delivery.png';
+
+      // show a preview first — the person can go back and edit, or confirm and download
+      pendingDownload.dataUrl = canvasOut.toDataURL('image/png');
+      pendingDownload.filename = fname;
+      previewImage.src = pendingDownload.dataUrl;
+      previewModalOverlay.classList.add('active');
+    } catch(err) {
+      alert('Gagal membuat pratinjau gambar. Coba lagi ya.');
+      console.error(err);
+    } finally {
+      wrapper.remove();
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
+  });
+
+  // ---- preview-before-download modal ----
+  const previewModalOverlay = document.getElementById('previewModalOverlay');
+  const previewImage = document.getElementById('previewImage');
+  const pendingDownload = { dataUrl: null, filename: null };
+
+  document.getElementById('previewEditBtn').addEventListener('click', () => {
+    previewModalOverlay.classList.remove('active');
+  });
+  document.getElementById('previewModalClose').addEventListener('click', () => {
+    previewModalOverlay.classList.remove('active');
+  });
+  document.getElementById('previewDownloadBtn').addEventListener('click', () => {
+    if(!pendingDownload.dataUrl) return;
+    const link = document.createElement('a');
+    link.download = pendingDownload.filename;
+    link.href = pendingDownload.dataUrl;
+    link.click();
+    previewModalOverlay.classList.remove('active');
+  });
+</script>
+
+</body>
+</html>
