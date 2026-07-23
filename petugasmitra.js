@@ -486,100 +486,103 @@ function pmScreensHtml() {
     </div>
 
     <!-- ================= DAFTAR MITRA ================= -->
-    <div id="screen-pm-daftar" class="screen">
-        <div class="pm-topbar">
-            <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-            <h2>Daftar Mitra</h2>
-        </div>
-        <div class="pm-body">
-            <div class="pm-card space-y-2">
-                <input id="pm-daftar-search" oninput="window.__pm.renderDaftarMitra()" class="pm-input" placeholder="Cari nama mitra / owner...">
-                <input id="pm-daftar-bulan" type="month" onchange="window.__pm.renderDaftarMitra()" class="pm-input">
+        <div id="screen-pm-daftar" class="screen">
+            <div class="pm-topbar">
+                <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                <h2>Daftar Mitra</h2>
             </div>
-            <button id="pm-daftar-toggle-btn" onclick="window.__pm.toggleDaftarMitra()" class="pm-btn-toggle"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>Buka</button>
-            <div id="pm-daftar-results" class="hidden">
-                <div id="pm-daftar-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ================= AJUKAN PERUBAHAN ================= -->
-    <div id="screen-pm-edit" class="screen">
-        <div class="pm-topbar">
-            <button class="pm-back" onclick="window.__pm.go('screen-pm-daftar')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-            <h2>Ajukan Perubahan Data</h2>
-        </div>
-        <div class="pm-body" style="padding-bottom:110px">
-            <input type="hidden" id="pm-edit-mitra-id">
-            ${pmFormMitraHtml("pm-edit")}
-            <button id="pm-edit-submit" onclick="window.__pm.submitPerubahan()" class="pm-btn-primary flex items-center justify-center gap-2 mt-2">
-                <i data-lucide="send" class="w-4 h-4"></i><span id="pm-edit-submit-text">Ajukan Perubahan</span>
-            </button>
-            <p class="text-[10px] text-center text-slate-400 mt-2">Perubahan akan berstatus <b>Pending</b> sampai disetujui Admin.</p>
-        </div>
-    </div>
-
-    <!-- ================= RIWAYAT TRANSAKSI ================= -->
-    <div id="screen-pm-riwayat" class="screen">
-        <div class="pm-topbar">
-            <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-            <h2>Riwayat Transaksi Mitra</h2>
-        </div>
-        <div class="pm-body">
-            <div class="pm-card grid grid-cols-2 gap-2">
-                <input id="pm-rwt-bulan" type="month" onchange="window.__pm.renderRiwayat()" class="pm-input">
-                <input id="pm-rwt-tanggal" type="date" onchange="window.__pm.renderRiwayat()" class="pm-input">
-                <select id="pm-rwt-kurir" onchange="window.__pm.renderRiwayat()" class="pm-select col-span-2"><option value="">-- Semua Kurir --</option></select>
-                <input id="pm-rwt-search" oninput="window.__pm.renderRiwayat()" class="pm-input col-span-2" placeholder="Cari nama mitra / kurir...">
-            </div>
-            <button id="pm-rwt-toggle-btn" onclick="window.__pm.toggleRiwayat()" class="pm-btn-toggle"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>Buka Daftar Total Transaksi</button>
-            <div id="pm-rwt-results" class="hidden">
-                <div class="pm-card flex items-center justify-between">
-                    <span class="text-[11px] font-bold text-slate-500">Total Transaksi</span>
-                    <span class="text-sm font-black text-emerald-600" id="pm-rwt-total">0</span>
+            <div class="pm-body">
+                <div class="pm-card space-y-2">
+                    <input id="pm-daftar-search" oninput="window.__pm.renderDaftarMitra()" class="pm-input" placeholder="Cari nama mitra / owner...">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input id="pm-daftar-bulan" type="month" onchange="window.__pm.renderDaftarMitra()" class="pm-input">
+                        <input id="pm-daftar-trx" type="number" min="0" oninput="window.__pm.renderDaftarMitra()" class="pm-input" placeholder="Jml Trx (Misal: 0)">
+                    </div>
                 </div>
-                <div id="pm-rwt-list"></div>
+                <button id="pm-daftar-toggle-btn" onclick="window.__pm.toggleDaftarMitra()" class="pm-btn-toggle"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>Buka</button>
+                <div id="pm-daftar-results" class="hidden">
+                    <div id="pm-daftar-list"></div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ================= CEK TRX KURIR ================= -->
-    <div id="screen-pm-cekkurir" class="screen">
-        <div class="pm-topbar">
-            <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-            <h2>Cek Trx Kurir</h2>
-        </div>
-        <div class="pm-body">
-            <div class="pm-card space-y-2">
-                <input id="pm-cek-tanggal" type="date" onchange="window.__pm.renderCekKurir()" class="pm-input">
-                <input id="pm-cek-search" oninput="window.__pm.renderCekKurir()" class="pm-input" placeholder="Cari nama kurir...">
+        <!-- ================= AJUKAN PERUBAHAN ================= -->
+        <div id="screen-pm-edit" class="screen">
+            <div class="pm-topbar">
+                <button class="pm-back" onclick="window.__pm.go('screen-pm-daftar')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                <h2>Ajukan Perubahan Data</h2>
             </div>
-            <div id="pm-cek-list"></div>
+            <div class="pm-body" style="padding-bottom:110px">
+                <input type="hidden" id="pm-edit-mitra-id">
+                ${pmFormMitraHtml("pm-edit")}
+                <button id="pm-edit-submit" onclick="window.__pm.submitPerubahan()" class="pm-btn-primary flex items-center justify-center gap-2 mt-2">
+                    <i data-lucide="send" class="w-4 h-4"></i><span id="pm-edit-submit-text">Ajukan Perubahan</span>
+                </button>
+                <p class="text-[10px] text-center text-slate-400 mt-2">Perubahan akan berstatus <b>Pending</b> sampai disetujui Admin.</p>
+            </div>
         </div>
-    </div>
 
-    <!-- ================= STATUS PENGAJUAN SAYA ================= -->
-    <div id="screen-pm-status" class="screen">
-        <div class="pm-topbar">
-            <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
-            <h2>Status Pengajuan Saya</h2>
-        </div>
-        <div class="pm-body">
-            <div class="pm-card grid grid-cols-2 gap-2">
-                <input id="pm-status-bulan" type="month" onchange="window.__pm.renderStatusSaya()" class="pm-input">
-                <input id="pm-status-tanggal" type="date" onchange="window.__pm.renderStatusSaya()" class="pm-input">
-                <input id="pm-status-search" oninput="window.__pm.renderStatusSaya()" class="pm-input col-span-2" placeholder="Cari nama mitra...">
+        <!-- ================= RIWAYAT TRANSAKSI ================= -->
+        <div id="screen-pm-riwayat" class="screen">
+            <div class="pm-topbar">
+                <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                <h2>Riwayat Transaksi Mitra</h2>
             </div>
-            <button id="pm-status-toggle-btn" onclick="window.__pm.toggleStatus()" class="pm-btn-toggle"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>Buka Daftar Pengajuan</button>
-            <div id="pm-status-results" class="hidden">
-                <div id="pm-status-list"></div>
+            <div class="pm-body">
+                <div class="pm-card grid grid-cols-2 gap-2">
+                    <input id="pm-rwt-bulan" type="month" onchange="window.__pm.renderRiwayat()" class="pm-input">
+                    <input id="pm-rwt-tanggal" type="date" onchange="window.__pm.renderRiwayat()" class="pm-input">
+                    <select id="pm-rwt-kurir" onchange="window.__pm.renderRiwayat()" class="pm-select col-span-2"><option value="">-- Semua Kurir --</option></select>
+                    <input id="pm-rwt-search" oninput="window.__pm.renderRiwayat()" class="pm-input col-span-2" placeholder="Cari nama mitra / kurir...">
+                </div>
+                <button id="pm-rwt-toggle-btn" onclick="window.__pm.toggleRiwayat()" class="pm-btn-toggle"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>Buka Daftar Total Transaksi</button>
+                <div id="pm-rwt-results" class="hidden">
+                    <div class="pm-card flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-500">Total Transaksi</span>
+                        <span class="text-sm font-black text-emerald-600" id="pm-rwt-total">0</span>
+                    </div>
+                    <div id="pm-rwt-list"></div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div id="pm-modal-slot"></div>
-    `;
-}
+        <!-- ================= CEK TRX KURIR ================= -->
+        <div id="screen-pm-cekkurir" class="screen">
+            <div class="pm-topbar">
+                <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                <h2>Cek Trx Kurir</h2>
+            </div>
+            <div class="pm-body">
+                <div class="pm-card space-y-2">
+                    <input id="pm-cek-tanggal" type="date" onchange="window.__pm.renderCekKurir()" class="pm-input">
+                    <input id="pm-cek-search" oninput="window.__pm.renderCekKurir()" class="pm-input" placeholder="Cari nama kurir...">
+                </div>
+                <div id="pm-cek-list"></div>
+            </div>
+        </div>
+
+        <!-- ================= STATUS PENGAJUAN SAYA ================= -->
+        <div id="screen-pm-status" class="screen">
+            <div class="pm-topbar">
+                <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                <h2>Status Pengajuan Saya</h2>
+            </div>
+            <div class="pm-body">
+                <div class="pm-card grid grid-cols-2 gap-2">
+                    <input id="pm-status-bulan" type="month" onchange="window.__pm.renderStatusSaya()" class="pm-input">
+                    <input id="pm-status-tanggal" type="date" onchange="window.__pm.renderStatusSaya()" class="pm-input">
+                    <input id="pm-status-search" oninput="window.__pm.renderStatusSaya()" class="pm-input col-span-2" placeholder="Cari nama mitra...">
+                </div>
+                <button id="pm-status-toggle-btn" onclick="window.__pm.toggleStatus()" class="pm-btn-toggle"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>Buka Daftar Pengajuan</button>
+                <div id="pm-status-results" class="hidden">
+                    <div id="pm-status-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pm-modal-slot"></div>
+        `;
+    }
 
 /* ------------------------------------------------------------------ *
  * 6. INJEKSI DOM (screen Petugas Kemitraan)
@@ -728,19 +731,26 @@ function pmReadForm(prefix) {
     };
 }
 function pmValidateForm(data, prefix) {
-    if (!data.namaOwner) return "Nama Pemilik wajib diisi.";
-    if (!data.nama) return "Nama Kedai/Toko wajib diisi.";
-    if (!data.alamat) return "Link Google Maps wajib diisi.";
-    if (!data.hpOwner) return "No HP Owner wajib diisi.";
-    if (!data.hpKaryawan.length) return "Minimal 1 No HP Karyawan wajib diisi.";
-    if (!data.tglGabung) return "Tanggal Bergabung wajib diisi.";
-    if (!data.jamBuka || !data.jamTutup) return "Jam operasional (buka & tutup) wajib diisi.";
-    const fileLokasi = document.getElementById(`${prefix}-file-lokasi`);
-    const fileDok = document.getElementById(`${prefix}-file-dokumentasi`);
-    const fileSurat = document.getElementById(`${prefix}-file-surat`);
-    if (!fileLokasi?.dataset.compressed) return "Foto lokasi kedai wajib diupload.";
-    if (!fileDok?.dataset.compressed) return "Foto dokumentasi wajib diupload.";
-    if (!fileSurat?.dataset.compressed) return "Surat Pernyataan Digital wajib diupload.";
+    if (prefix === "pm-new") {
+        // Validasi ketat HANYA untuk mitra baru
+        if (!data.namaOwner) return "Nama Pemilik wajib diisi.";
+        if (!data.nama) return "Nama Kedai/Toko wajib diisi.";
+        if (!data.alamat) return "Link Google Maps wajib diisi.";
+        if (!data.hpOwner) return "No HP Owner wajib diisi.";
+        if (!data.hpKaryawan.length) return "Minimal 1 No HP Karyawan wajib diisi.";
+        if (!data.tglGabung) return "Tanggal Bergabung wajib diisi.";
+        if (!data.jamBuka || !data.jamTutup) return "Jam operasional (buka & tutup) wajib diisi.";
+        const fileLokasi = document.getElementById(`${prefix}-file-lokasi`);
+        const fileDok = document.getElementById(`${prefix}-file-dokumentasi`);
+        const fileSurat = document.getElementById(`${prefix}-file-surat`);
+        if (!fileLokasi?.dataset.compressed) return "Foto lokasi kedai wajib diupload.";
+        if (!fileDok?.dataset.compressed) return "Foto dokumentasi wajib diupload.";
+        if (!fileSurat?.dataset.compressed) return "Surat Pernyataan Digital wajib diupload.";
+    } else if (prefix === "pm-edit") {
+        // Mode Perubahan: tidak wajib diisi semua (bebas).
+        // Tapi minimal nama kedai jangan sampai terhapus/kosong
+        if (!data.nama) return "Nama Kedai/Toko tidak boleh dikosongkan.";
+    }
     return null;
 }
 async function pmUploadFormPhotos(prefix, namePrefix) {
@@ -809,13 +819,15 @@ function pmResetForm(prefix) {
 /* ------------------------------------------------------------------ *
  * 10. DAFTAR MITRA + AJUKAN PERUBAHAN
  * ------------------------------------------------------------------ */
-function pmMitraCardHtml(id, m, bulan, showActions) {
+function pmMitraCardHtml(id, m, bulan, showActions, index) {
     const stat = pmMitraTrxStat(m.nama, bulan);
     const jam = pmFormatJam(m.jamBuka, m.jamTutup);
     return `<div class="pm-card">
         <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
-                <p class="font-bold text-[13px] truncate">${pmEsc(m.nama)}</p>
+                <p class="font-bold text-[13px] truncate">
+                    <span class="text-emerald-600 mr-1">#${index}</span>${pmEsc(m.nama)}
+                </p>
                 <p class="text-[10.5px] text-slate-400 truncate">Owner: ${pmEsc(m.namaOwner || "-")}</p>
                 <p class="text-[10px] text-slate-400 mt-1"><i data-lucide="calendar" class="w-3 h-3 inline"></i> Gabung: ${pmFormatTanggal(m.tglGabung)}</p>
                 ${jam ? `<p class="text-[10px] text-slate-400"><i data-lucide="clock" class="w-3 h-3 inline"></i> Jam: ${pmEsc(jam)}</p>` : ""}
@@ -832,7 +844,6 @@ function pmMitraCardHtml(id, m, bulan, showActions) {
         </div>
     </div>`;
 }
-
 function pmRenderDaftarMitra() {
     const bulanEl = document.getElementById("pm-daftar-bulan");
     pmEnsureDefault(bulanEl, pmCurrentBulan());
@@ -842,15 +853,25 @@ function pmRenderDaftarMitra() {
     if (!list) return;
     const search = pmNorm(document.getElementById("pm-daftar-search")?.value || "");
     const bulan = bulanEl?.value || pmCurrentBulan();
+    const filterTrx = document.getElementById("pm-daftar-trx")?.value; // Ambil nilai TRX
 
     const entries = Object.entries(cloudMitra || {}).filter(([, m]) => {
         if (!m) return false;
         if (search && !(pmNorm(m.nama).includes(search) || pmNorm(m.namaOwner).includes(search))) return false;
+        
+        // Logika penyaringan (filter) berdasarkan jumlah TRX
+        if (filterTrx !== "" && filterTrx !== undefined) {
+            const stat = pmMitraTrxStat(m.nama, bulan);
+            if (stat.count !== parseInt(filterTrx)) return false;
+        }
+        
         return true;
     }).sort((a, b) => (a[1].nama || "").localeCompare(b[1].nama || ""));
 
-    if (!entries.length) { list.innerHTML = `<div class="pm-empty">Belum ada data mitra.</div>`; return; }
-    list.innerHTML = entries.map(([id, m]) => pmMitraCardHtml(id, m, bulan, true)).join("");
+    if (!entries.length) { list.innerHTML = `<div class="pm-empty">Belum ada data mitra yang sesuai.</div>`; return; }
+    
+    // Tampilkan daftar mitra dengan index + 1 (untuk nomor urut)
+    list.innerHTML = entries.map(([id, m], index) => pmMitraCardHtml(id, m, bulan, true, index + 1)).join("");
     if (window.lucide) window.lucide.createIcons();
 }
 
