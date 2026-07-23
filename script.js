@@ -200,7 +200,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     if (currentScreen === 'screen-admin-kurir' && typeof renderAdminKurirList === 'function') renderAdminKurirList();
                     if (currentScreen === 'screen-admin-manajemen' && typeof renderAdminManajemen === 'function') renderAdminManajemen();
                     if (currentScreen === 'screen-admin-nota' && typeof renderAdminNota === 'function') renderAdminNota();
-                    if (currentScreen === 'screen-admin-mitra' && typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
+                    if (currentScreen === 'screen-admin-mitra-data' && typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
+                    if (currentScreen === 'screen-admin-mitra-riwayat' && typeof renderAdminLogMitra === 'function') renderAdminLogMitra();
                     if (currentScreen === 'screen-admin-laporan' && typeof renderLaporanData === 'function') renderLaporanData();
                     if (currentScreen === 'screen-admin-tracking' && typeof renderTrackingKurirList === 'function') renderTrackingKurirList();
                     if (currentScreen === 'screen-admin-testimonial' && typeof renderAdminTestimonial === 'function') renderAdminTestimonial();
@@ -603,9 +604,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         window.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             if (typeof initTheme === 'function') initTheme();
-            if (typeof sembunyikanRiwayatMitraAdmin === 'function') {
-                sembunyikanRiwayatMitraAdmin();
-            }
 
             ['nav-dashboard-btn', 'nav-nota-btn', 'nav-sistem-btn'].forEach(id => {
                 const el = document.getElementById(id);
@@ -1335,6 +1333,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             'screen-admin-leader': { title: 'Leader & Penilaian', icon: 'crown' },
             'screen-admin-nota': { title: 'Semua Nota Kurir', icon: 'file-spreadsheet' },
             'screen-admin-mitra': { title: 'Kelola Mitra', icon: 'store' },
+            'screen-admin-mitra-data': { title: 'Data Mitra', icon: 'store' },
+            'screen-admin-mitra-riwayat': { title: 'Riwayat Trx Inputan', icon: 'receipt-text' },
+            'screen-admin-mitra-cekkurir': { title: 'Cek Trx Kurir', icon: 'user-search' },
+            'screen-admin-mitra-audit': { title: 'Cek Audit Trx', icon: 'shield-alert' },
+            'screen-admin-mitra-approval': { title: 'Persetujuan Kemitraan', icon: 'clock' },
             'screen-admin-laporan': { title: 'Laporan', icon: 'file-down' },
             'screen-admin-tracking': { title: 'Tracking Kurir', icon: 'map-pin' },
             'screen-admin-kpi': { title: 'KPI & Penghargaan', icon: 'trophy' },
@@ -1409,6 +1412,24 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             if (screenId === 'screen-statistik') {
                 setTimeout(() => {
                     if (typeof renderStatistikKurir === 'function') renderStatistikKurir();
+                }, 100);
+            }
+            if (screenId === 'screen-admin-mitra-data') {
+                setTimeout(() => {
+                    const bulanEl = document.getElementById('am-filter-bulan');
+                    if (bulanEl && !bulanEl.value) bulanEl.value = getWibRawDate().substring(0, 7);
+                    if (typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
+                }, 100);
+            }
+            if (screenId === 'screen-admin-mitra-riwayat') {
+                setTimeout(() => {
+                    const today = getWibRawDate();
+                    const tglEl = document.getElementById('am-log-tgl');
+                    if (tglEl && !tglEl.value) tglEl.value = today;
+                    const bulanEl = document.getElementById('am-log-bulan');
+                    if (bulanEl && !bulanEl.value) bulanEl.value = today.substring(0, 7);
+                    if (typeof populateMitraLogKurirDropdown === 'function') populateMitraLogKurirDropdown();
+                    if (typeof renderAdminLogMitra === 'function') renderAdminLogMitra();
                 }, 100);
             }
             if (screenId === currentScreen) return;
@@ -2114,6 +2135,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const container = document.getElementById('container-admin-log-mitra');
             if (!container) return;
 
+            const isOpen = ensureSectionToggleState('box-riwayat-trx-inputan', false);
+            if (!isOpen) { container.innerHTML = ''; return; }
+
             const logTgl = document.getElementById('am-log-tgl')?.value || '';
             const logBulan = document.getElementById('am-log-bulan')?.value || '';
             const logSearch = document.getElementById('am-log-search')?.value.toLowerCase();
@@ -2200,6 +2224,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 const isOpen = ensureSectionToggleState('container-admin-daftar-mitra', false);
                 const searchKey = normalizeNama(document.getElementById('am-search-mitra')?.value || '');
                 const filterBulan = document.getElementById('am-filter-bulan')?.value || getWibRawDate().substring(0, 7);
+                const trxFilterRaw = document.getElementById('am-search-mitra-trx')?.value ?? '';
+                const trxFilterActive = trxFilterRaw !== '';
+                const trxFilterValue = parseInt(trxFilterRaw) || 0;
 
                 container.innerHTML = `
                     <div class="flex items-center gap-2 mb-2">
@@ -2233,6 +2260,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             if (log.tglRaw && log.tglRaw.substring(0, 7) === filterBulan) totalTrxFilterBulan += trx;
                         }
                     }
+
+                    const trxUntukFilter = filterBulan ? totalTrxFilterBulan : totalTrxMenyeluruh;
+                    if (trxFilterActive && trxUntukFilter !== trxFilterValue) continue;
 
                     const targetMitra = m.target || 0;
                     let cleanPhone = (m.hp || '').toString().trim().replace(/[^0-9+]/g, '');
@@ -4022,23 +4052,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             if (window.lucide) lucide.createIcons();
         };
 
-        window.toggleRiwayatTrxInputan = function() {
-            const box = document.getElementById('box-riwayat-trx-inputan');
-            if (!box) return;
-        
-            const today = getWibRawDate();
-            const tglEl = document.getElementById('am-log-tgl');
-            if (tglEl && !tglEl.value) tglEl.value = today;
-        
-            const bulanEl = document.getElementById('am-log-bulan');
-            if (bulanEl && !bulanEl.value) bulanEl.value = today.substring(0, 7);
-        
-            box.classList.toggle('hidden');
-            if (!box.classList.contains('hidden')) {
-                populateMitraLogKurirDropdown();
-                renderAdminLogMitra();
-            }
-        };
         window.renderAdminKurirList = function() {
             const container = document.getElementById('container-admin-kurir');
             if (!container) return;
@@ -4114,12 +4127,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
         };   
-        window.sembunyikanRiwayatMitraAdmin = function() {
-            const box = document.getElementById('box-riwayat-trx-inputan');
-            const container = document.getElementById('container-admin-log-mitra');
-            if (container) container.innerHTML = '';
-            if (box) box.classList.add('hidden');
-        };
 
         window.bukaInputTransaksiMitra = function(namaMitra) {
             if (!userSession) {
@@ -7140,7 +7147,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const ongkirCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-ongkir"]');
             const orderDepositCardBtn = document.querySelector('#screen-admin-dashboard button[onclick*="screen-admin-order-deposit"]');
 
-            const mitraForm = document.querySelector('#screen-admin-mitra > .bg-white');
+            const mitraForm = document.querySelector('#screen-admin-mitra-data > .bg-white');
             
             if (badge) {
                 if (kategoriFixed === 'Owner') badge.innerText = 'Owner';
@@ -7152,7 +7159,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             if (kategoriFixed === 'Owner' || kategoriFixed === 'Head Operasional') {
                 const allScreenIds = [
                     'screen-admin-kurir', 'screen-admin-manajemen', 'screen-admin-leader', 'screen-admin-nota',
-                    'screen-admin-mitra', 'screen-admin-laporan', 'screen-admin-tracking',
+                    'screen-admin-mitra', 'screen-admin-mitra-data', 'screen-admin-mitra-riwayat',
+                    'screen-admin-mitra-cekkurir', 'screen-admin-mitra-audit', 'screen-admin-mitra-approval',
+                    'screen-admin-laporan', 'screen-admin-tracking',
                     'screen-admin-kpi', 'screen-admin-testimonial', 'screen-admin-notifikasi',
                     'screen-admin-absensi', 'screen-admin-ongkir', 'screen-admin-order-deposit', 'screen-pengaturan'
                 ];
@@ -7250,6 +7259,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     'screen-admin-leader',
                     'screen-admin-nota',
                     'screen-admin-mitra',
+                    'screen-admin-mitra-data',
+                    'screen-admin-mitra-riwayat',
+                    'screen-admin-mitra-cekkurir',
+                    'screen-admin-mitra-audit',
+                    'screen-admin-mitra-approval',
                     'screen-admin-laporan',
                     'screen-admin-notifikasi',
                     'screen-admin-ongkir',
@@ -8209,6 +8223,30 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 renderAdminDaftarMitra();
             } else {
                 container.innerHTML = '';
+            }
+        };
+
+        window.toggleAdminRiwayatMitraOpen = function() {
+            const box = document.getElementById('box-riwayat-trx-inputan');
+            const btn = document.getElementById('btn-toggle-riwayat-mitra-text');
+            if (!box) return;
+            const isOpen = box.dataset.open === '1';
+
+            box.dataset.open = isOpen ? '0' : '1';
+            box.classList.toggle('hidden', isOpen);
+            if (btn) btn.innerText = isOpen ? 'Buka' : 'Tutup';
+
+            if (!isOpen) {
+                const today = getWibRawDate();
+                const tglEl = document.getElementById('am-log-tgl');
+                if (tglEl && !tglEl.value) tglEl.value = today;
+                const bulanEl = document.getElementById('am-log-bulan');
+                if (bulanEl && !bulanEl.value) bulanEl.value = today.substring(0, 7);
+                if (typeof populateMitraLogKurirDropdown === 'function') populateMitraLogKurirDropdown();
+                renderAdminLogMitra();
+            } else {
+                const container = document.getElementById('container-admin-log-mitra');
+                if (container) container.innerHTML = '';
             }
         };
 
