@@ -69,6 +69,7 @@ let cloudMitra = {};
 let cloudLogMitra = {};
 let cloudCalonMitra = {};
 let cloudPerubahanMitra = {};
+let cloudHapusTrxMitra = {};
 
 let pmBooted = false;
 let pmRenderTimer = null;
@@ -76,7 +77,7 @@ let pmRenderTimer = null;
 /* Status buka/tutup tiap daftar — default TERTUTUP, murni penanda di
  * memori (bukan loop). Saat tertutup, fungsi render terkait langsung
  * berhenti di awal (tidak membangun DOM), jadi hemat & tidak berat. */
-const pmOpenState = { rwt: false, daftar: false, status: false, legacyCek: false };
+const pmOpenState = { rwt: false, daftar: false, status: false, legacyCek: false, legacyPending: false, cekkurir: false, audit: false };
 
 function pmQueueRender() {
     if (pmRenderTimer) clearTimeout(pmRenderTimer);
@@ -85,6 +86,7 @@ function pmQueueRender() {
         pmRenderActiveScreen();
         pmRenderLegacyPending();
         pmRenderLegacyCek();
+        pmRenderLegacyAudit();
         pmUpdateAdminBadge();
     }, 120);
 }
@@ -95,6 +97,7 @@ onValue(ref(db, "mitra"), (snap) => { cloudMitra = snap.val() || {}; pmQueueRend
 onValue(ref(db, "log_mitra"), (snap) => { cloudLogMitra = snap.val() || {}; pmQueueRender(); });
 onValue(ref(db, "calon_mitra"), (snap) => { cloudCalonMitra = snap.val() || {}; pmQueueRender(); });
 onValue(ref(db, "perubahan_mitra"), (snap) => { cloudPerubahanMitra = snap.val() || {}; pmQueueRender(); });
+onValue(ref(db, "hapus_trx_mitra"), (snap) => { cloudHapusTrxMitra = snap.val() || {}; pmQueueRender(); });
 
 /* ------------------------------------------------------------------ *
  * 2. HELPER UMUM
@@ -451,6 +454,11 @@ function pmScreensHtml() {
                     <span class="pm-menu-title">Cek Trx Kurir</span>
                     <span class="pm-menu-sub">Per tanggal tertentu</span>
                 </button>
+                <button class="pm-menu-card" onclick="window.__pm.go('screen-pm-audit')">
+                    <div class="pm-menu-icon" style="background:#DC2626"><i data-lucide="shield-alert" class="w-4 h-4"></i></div>
+                    <span class="pm-menu-title">Cek Audit Trx</span>
+                    <span class="pm-menu-sub">Kurir tanpa trx per hari</span>
+                </button>
                 <button class="pm-menu-card" onclick="window.__pm.go('screen-pm-status')">
                     <div class="pm-menu-icon" style="background:#D97706"><i data-lucide="clock" class="w-4 h-4"></i></div>
                     <span class="pm-menu-title">Status Pengajuan Saya</span>
@@ -557,7 +565,29 @@ function pmScreensHtml() {
                     <input id="pm-cek-tanggal" type="date" onchange="window.__pm.renderCekKurir()" class="pm-input">
                     <input id="pm-cek-search" oninput="window.__pm.renderCekKurir()" class="pm-input" placeholder="Cari nama kurir...">
                 </div>
-                <div id="pm-cek-list"></div>
+                <button id="pm-cek-toggle-btn" onclick="window.__pm.toggleCekKurir()" class="pm-btn-toggle"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>Buka Daftar Kurir</button>
+                <div id="pm-cek-results" class="hidden">
+                    <div id="pm-cek-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= CEK AUDIT TRX ================= -->
+        <div id="screen-pm-audit" class="screen">
+            <div class="pm-topbar">
+                <button class="pm-back" onclick="window.__pm.go('screen-pm-dashboard')"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                <h2>Cek Audit Trx</h2>
+            </div>
+            <div class="pm-body">
+                <div class="pm-card space-y-2">
+                    <input id="pm-audit-bulan" type="month" onchange="window.__pm.renderAudit()" class="pm-input">
+                    <input id="pm-audit-search" oninput="window.__pm.renderAudit()" class="pm-input" placeholder="Cari nama kurir...">
+                    <p class="text-[10px] text-slate-400">Menghitung jumlah hari kurir tidak input trx mitra (di luar hari off/izin/sakit). Ketuk kurir untuk lihat rincian tanggal.</p>
+                </div>
+                <button id="pm-audit-toggle-btn" onclick="window.__pm.toggleAudit()" class="pm-btn-toggle"><i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>Buka Daftar Kurir</button>
+                <div id="pm-audit-results" class="hidden">
+                    <div id="pm-audit-list"></div>
+                </div>
             </div>
         </div>
 
@@ -647,7 +677,7 @@ function pmRenderHpRows(prefix) {
  * ------------------------------------------------------------------ */
 const PM_SCREENS = [
     "screen-pm-dashboard", "screen-pm-ajukan", "screen-pm-daftar", "screen-pm-edit",
-    "screen-pm-riwayat", "screen-pm-cekkurir", "screen-pm-status"
+    "screen-pm-riwayat", "screen-pm-cekkurir", "screen-pm-audit", "screen-pm-status"
 ];
 
 function pmHideAppBar() {
@@ -678,7 +708,7 @@ function pmPatchNavigation() {
         if (typeof origNavigateBack === "function") origNavigateBack();
         const activeEl = document.querySelector("#pm-root .screen.active");
         if (activeEl) pmAfterNavigate(activeEl.id);
-        else { pmHideAppBar(); pmCurrentScreen = null; }
+        else { pmCurrentScreen = null; }
     };
 }
 
@@ -689,6 +719,7 @@ function pmRenderActiveScreen() {
         case "screen-pm-daftar": pmRenderDaftarMitra(); break;
         case "screen-pm-riwayat": pmRenderRiwayat(); break;
         case "screen-pm-cekkurir": pmRenderCekKurir(); break;
+        case "screen-pm-audit": pmRenderAudit(); break;
         case "screen-pm-status": pmRenderStatusSaya(); break;
     }
 }
@@ -993,14 +1024,15 @@ function pmPopulateKurirDropdown(selectId) {
 
 function pmFilterRiwayat(bulan, tanggal, kurir, search) {
     search = pmNorm(search);
-    return Object.values(cloudLogMitra || {}).filter(l => {
+    return Object.entries(cloudLogMitra || {}).filter(([, l]) => {
         if (!l) return false;
         if (bulan && l.bulan !== bulan) return false;
         if (tanggal && l.tglRaw !== tanggal) return false;
         if (kurir && pmNorm(l.kurirNama) !== pmNorm(kurir)) return false;
         if (search && !(pmNorm(l.mitraNama).includes(search) || pmNorm(l.kurirNama).includes(search))) return false;
         return true;
-    }).sort((a, b) => (b.tglRaw || "").localeCompare(a.tglRaw || "") || (b.waktu || "").localeCompare(a.waktu || ""));
+    }).map(([key, l]) => ({ ...l, __key: key }))
+      .sort((a, b) => (b.tglRaw || "").localeCompare(a.tglRaw || "") || (b.waktu || "").localeCompare(a.waktu || ""));
 }
 function pmRenderRiwayatList(rows, listId, totalId) {
     const list = document.getElementById(listId);
@@ -1008,18 +1040,46 @@ function pmRenderRiwayatList(rows, listId, totalId) {
     if (totalEl) totalEl.innerText = rows.reduce((s, r) => s + (parseInt(r.trxInput) || 0), 0);
     if (!list) return;
     if (!rows.length) { list.innerHTML = `<div class="pm-empty">Tidak ada transaksi untuk filter ini.</div>`; return; }
+    const pendingKeys = new Set(Object.values(cloudHapusTrxMitra || {}).filter(h => h && h.status === "pending").map(h => h.logKey));
     list.innerHTML = rows.slice(0, 200).map(r => {
         const m = pmFindMitraByName(r.mitraNama);
         const jam = m ? pmFormatJam(m.jamBuka, m.jamTutup) : "";
-        return `<div class="pm-card flex items-center justify-between">
+        const sedangDiajukan = pendingKeys.has(r.__key);
+        return `<div class="pm-card flex items-center justify-between gap-2">
             <div class="min-w-0">
                 <p class="font-bold text-[12px] truncate">${pmEsc(r.mitraNama)}</p>
                 <p class="text-[10px] text-slate-400">${pmEsc(r.kurirNama)} &middot; ${pmFormatTanggal(r.tglRaw)} ${pmEsc(r.waktu || "")}</p>
                 ${jam ? `<p class="text-[9.5px] text-slate-400">Jam Operasional: ${pmEsc(jam)}</p>` : ""}
+                ${sedangDiajukan
+                    ? `<span class="pm-chip pm-chip-pending mt-1 inline-block">Menunggu Persetujuan Hapus</span>`
+                    : `<button onclick="window.__pm.requestHapusTrx('${r.__key}')" class="mt-1 text-[10px] font-bold text-rose-500 flex items-center gap-1"><i data-lucide="trash-2" class="w-3 h-3"></i>Hapus</button>`}
             </div>
             <span class="text-sm font-black text-emerald-600 flex-shrink-0">${parseInt(r.trxInput) || 0}</span>
         </div>`;
     }).join("");
+    if (window.lucide) window.lucide.createIcons();
+}
+async function pmRequestHapusTrx(logKey) {
+    const l = cloudLogMitra ? cloudLogMitra[logKey] : null;
+    if (!l) return pmToast("Transaksi tidak ditemukan (mungkin sudah dihapus).");
+    const sudahAda = Object.values(cloudHapusTrxMitra || {}).some(h => h && h.status === "pending" && h.logKey === logKey);
+    if (sudahAda) return pmToast("Transaksi ini sudah diajukan untuk dihapus, menunggu persetujuan Admin.");
+    if (!(await pmConfirm(`Ajukan hapus transaksi ${l.mitraNama} (${l.tglRaw})? Transaksi baru benar-benar terhapus setelah disetujui Admin.`))) return;
+    const session = pmGetSession();
+    try {
+        await push(ref(db, "hapus_trx_mitra"), {
+            logKey,
+            mitraNama: l.mitraNama || "-",
+            kurirNama: l.kurirNama || "-",
+            tglRaw: l.tglRaw || "-",
+            trxInput: l.trxInput || 0,
+            waktu: l.waktu || "",
+            diajukanOleh: (session && session.nama) || (session && session.username) || "-",
+            status: "pending",
+            createdAt: Date.now()
+        });
+        pmToast("Permintaan hapus transaksi dikirim, menunggu persetujuan Admin.");
+    } catch (err) { pmToast("Gagal mengajukan hapus: " + err.message); }
 }
 function pmRenderRiwayat() {
     pmPopulateKurirDropdown("pm-rwt-kurir");
@@ -1116,7 +1176,138 @@ function pmRenderCekKurirInto(tanggalId, listId, searchId) {
     list.innerHTML = html;
     if (window.lucide) window.lucide.createIcons();
 }
-function pmRenderCekKurir() { pmRenderCekKurirInto("pm-cek-tanggal", "pm-cek-list", "pm-cek-search"); }
+function pmRenderCekKurir() {
+    pmEnsureDefault(document.getElementById("pm-cek-tanggal"), pmTodayISO());
+    if (!pmOpenState.cekkurir) return;
+    pmRenderCekKurirInto("pm-cek-tanggal", "pm-cek-list", "pm-cek-search");
+}
+
+/* ------------------------------------------------------------------ *
+ * 13.b CEK AUDIT TRX — kurir yg tdk trx mitra per hari dlm 1 bulan,
+ *      hari off/izin/sakit TIDAK dihitung karena memang tidak masuk.
+ * ------------------------------------------------------------------ */
+function pmDaysInMonth(bulan) {
+    const [y, m] = (bulan || "").split("-").map(Number);
+    if (!y || !m) return 30;
+    return new Date(y, m, 0).getDate();
+}
+
+function pmBuildAuditBulan(bulan) {
+    if (!bulan) return [];
+    const activeKurir = Object.values(cloudUsers || {}).filter(u => u && u.role === "kurir" && u.status === "aktif");
+    const todayISO = pmTodayISO();
+    const totalHari = pmDaysInMonth(bulan);
+    const isBulanIni = bulan === pmCurrentBulan();
+    const hariTerakhir = isBulanIni ? parseInt(todayISO.split("-")[2], 10) : totalHari;
+
+    // Tanggal2 mana saja tiap kurir sudah trx (>0) bulan ini.
+    const trxByKurir = {};
+    Object.values(cloudLogMitra || {}).forEach(l => {
+        if (!l || !l.tglRaw || l.tglRaw.slice(0, 7) !== bulan) return;
+        if ((parseInt(l.trxInput) || 0) <= 0) return;
+        const key = pmNorm(l.kurirNama);
+        if (!trxByKurir[key]) trxByKurir[key] = new Set();
+        trxByKurir[key].add(l.tglRaw);
+    });
+
+    // Rentang off/izin/sakit tiap kurir.
+    const offRanges = {};
+    Object.values(cloudJadwalOff || {}).forEach(j => {
+        if (!j) return;
+        const jenis = pmNorm(j.jenisOff);
+        if (!["off reguler", "izin", "sakit"].includes(jenis)) return;
+        const mulai = (j.tanggalMulai || "").trim();
+        const selesai = (j.tanggalSelesai || mulai).trim();
+        if (!mulai) return;
+        const key = pmNorm(j.nama);
+        if (!offRanges[key]) offRanges[key] = [];
+        offRanges[key].push({ mulai, selesai, jenis: j.jenisOff });
+    });
+    function excusedOn(key, tgl) {
+        return (offRanges[key] || []).some(r => tgl >= r.mulai && tgl <= r.selesai);
+    }
+
+    return activeKurir.map(u => {
+        const key = pmNorm(u.nama);
+        const gabung = (u.tglGabung || "").trim();
+        const tanggalBolong = [];
+        for (let d = 1; d <= hariTerakhir; d++) {
+            const tgl = `${bulan}-${String(d).padStart(2, "0")}`;
+            if (gabung && tgl < gabung) continue; // belum jadi kurir aktif di tanggal ini
+            if (excusedOn(key, tgl)) continue; // off / izin / sakit, tidak dihitung
+            const sudahTrx = trxByKurir[key] && trxByKurir[key].has(tgl);
+            if (!sudahTrx) tanggalBolong.push(tgl);
+        }
+        return { nama: u.nama, tanggalBolong, total: tanggalBolong.length };
+    }).sort((a, b) => b.total - a.total || a.nama.localeCompare(b.nama));
+}
+
+function pmAuditRowHtml(r, bulan) {
+    const tone = r.total === 0 ? { bg: "#D1FAE5", icon: "shield-check", chip: "pm-chip-approved" }
+        : (r.total <= 2 ? { bg: "#FEF3C7", icon: "shield-alert", chip: "" }
+        : { bg: "#FEE2E2", icon: "shield-x", chip: "pm-chip-rejected" });
+    const namaSafe = pmEsc(r.nama).replace(/'/g, "\\'");
+    const chipStyle = tone.chip ? "" : `style="background:#FEF3C7;color:#B45309"`;
+    return `<div class="pm-card flex items-center justify-between gap-2" ${r.total > 0 ? `onclick="window.__pm.showAuditDetail('${namaSafe}','${bulan}')" style="cursor:pointer"` : ""}>
+        <div class="flex items-center gap-2 min-w-0">
+            <div class="pm-menu-icon" style="width:28px;height:28px;background:${tone.bg};color:#334155"><i data-lucide="${tone.icon}" class="w-3.5 h-3.5"></i></div>
+            <span class="font-bold text-[12px] truncate">${pmEsc(r.nama)}</span>
+        </div>
+        <span class="pm-chip ${tone.chip}" ${chipStyle}>${r.total} Hari</span>
+    </div>`;
+}
+
+function pmRenderAuditInto(bulanId, listId, searchId) {
+    pmEnsureDefault(document.getElementById(bulanId), pmCurrentBulan());
+    const bulan = document.getElementById(bulanId)?.value || pmCurrentBulan();
+    const list = document.getElementById(listId);
+    if (!list) return;
+    const search = pmNorm(document.getElementById(searchId)?.value || "");
+    let rows = pmBuildAuditBulan(bulan);
+    if (search) rows = rows.filter(r => pmNorm(r.nama).includes(search));
+
+    const totalKurirBermasalah = rows.filter(r => r.total > 0).length;
+    const totalHariBolong = rows.reduce((s, r) => s + r.total, 0);
+
+    let html = `<div class="pm-card grid grid-cols-3 gap-2 text-center mb-1">
+        <div><p class="text-[9px] text-slate-400 font-bold uppercase">Kurir</p><p class="font-black">${rows.length}</p></div>
+        <div><p class="text-[9px] text-slate-400 font-bold uppercase">Bermasalah</p><p class="font-black text-rose-600">${totalKurirBermasalah}</p></div>
+        <div><p class="text-[9px] text-slate-400 font-bold uppercase">Total Hari Bolong</p><p class="font-black text-rose-600">${totalHariBolong}</p></div>
+    </div>`;
+    html += rows.length ? rows.map(r => pmAuditRowHtml(r, bulan)).join("") : `<div class="pm-empty">Tidak ada data kurir.</div>`;
+
+    list.innerHTML = html;
+    if (window.lucide) window.lucide.createIcons();
+}
+function pmRenderAudit() {
+    pmEnsureDefault(document.getElementById("pm-audit-bulan"), pmCurrentBulan());
+    if (!pmOpenState.audit) return;
+    pmRenderAuditInto("pm-audit-bulan", "pm-audit-list", "pm-audit-search");
+}
+function pmRenderLegacyAudit() { pmRenderAuditInto("pm-legacy-audit-bulan", "pm-legacy-audit-list", "pm-legacy-audit-search"); }
+
+function pmShowAuditDetail(nama, bulan) {
+    const rows = pmBuildAuditBulan(bulan);
+    const row = rows.find(r => pmNorm(r.nama) === pmNorm(nama));
+    const tanggalBolong = row ? row.tanggalBolong : [];
+    const slot = document.getElementById("pm-modal-slot");
+    if (!slot) return;
+    slot.innerHTML = `
+    <div class="pm-modal-overlay" onclick="if(event.target===this) this.remove()">
+        <div class="pm-modal-sheet">
+            <div class="flex items-center justify-between mb-3">
+                <div><h3 class="font-bold text-sm">${pmEsc(nama)}</h3><p class="text-[10px] text-slate-400">Tidak Trx Mitra &middot; ${pmEsc(bulan)}</p></div>
+                <button onclick="document.getElementById('pm-modal-slot').innerHTML=''" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="pm-card flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500">Total Hari Tanpa Trx</span>
+                <span class="text-sm font-black text-rose-600">${tanggalBolong.length}</span>
+            </div>
+            ${tanggalBolong.length ? tanggalBolong.map(t => `<div class="pm-card flex items-center justify-between"><span class="font-bold text-[12px]">${pmFormatTanggal(t)}</span><span class="pm-chip pm-chip-rejected">Belum Trx</span></div>`).join("") : `<div class="pm-empty">Semua hari (di luar off/izin/sakit) sudah trx.</div>`}
+        </div>
+    </div>`;
+    if (window.lucide) window.lucide.createIcons();
+}
 
 function pmShowKurirTrx(nama, tanggal) {
     const rows = pmBuildKurirDailyStatus(tanggal);
@@ -1311,24 +1502,75 @@ function pmPendingCardPerubahan(id, c) {
     </div>`;
 }
 
+function pmPendingCardHapusTrx(id, h) {
+    return `<div class="bg-rose-50/60 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-700/50 rounded-2xl p-3 mb-3 relative overflow-hidden">
+        <div class="absolute top-0 right-0 bg-gradient-to-r from-rose-500 to-red-600 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider shadow-sm">
+            Hapus Transaksi
+        </div>
+        <div class="pr-24 mb-2.5">
+            <p class="font-black text-sm text-slate-800 dark:text-slate-100 leading-tight">${pmEsc(h.mitraNama)}</p>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Diajukan oleh: <span class="font-bold text-rose-600 dark:text-rose-400">${pmEsc(h.diajukanOleh || "-")}</span></p>
+        </div>
+        <div class="grid grid-cols-1 gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 mb-3 shadow-sm">
+            <div class="flex justify-between items-start gap-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
+                <span class="shrink-0 flex items-center gap-1.5 text-slate-400 font-medium"><i data-lucide="truck" class="w-3.5 h-3.5"></i>Kurir</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100">${pmEsc(h.kurirNama)}</span>
+            </div>
+            <div class="flex justify-between items-start gap-2 border-b border-slate-100 dark:border-slate-700 pb-1.5">
+                <span class="shrink-0 flex items-center gap-1.5 text-slate-400 font-medium"><i data-lucide="calendar" class="w-3.5 h-3.5"></i>Tanggal</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100">${pmFormatTanggal(h.tglRaw)} ${pmEsc(h.waktu || "")}</span>
+            </div>
+            <div class="flex justify-between items-center gap-2 pt-0.5">
+                <span class="shrink-0 flex items-center gap-1.5 text-slate-400 font-medium"><i data-lucide="hash" class="w-3.5 h-3.5"></i>Jumlah Trx</span>
+                <span class="font-black text-emerald-600 dark:text-emerald-400">${parseInt(h.trxInput) || 0}</span>
+            </div>
+        </div>
+        <div class="flex gap-2 mt-1">
+            <button onclick="window.__pm.approveHapusTrx('${id}')" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Setujui Hapus</button>
+            <button onclick="window.__pm.rejectHapusTrx('${id}')" class="flex-1 bg-white dark:bg-slate-800 border-2 border-rose-500 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-black py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"><i data-lucide="x-circle" class="w-4 h-4"></i> Tolak</button>
+        </div>
+    </div>`;
+}
+
 function pmRenderLegacyPending() {
     const list = document.getElementById("pm-legacy-pending-list");
     const countEl = document.getElementById("pm-legacy-pending-count");
     if (!list) return;
     const pendingCalon = Object.entries(cloudCalonMitra || {}).filter(([, c]) => c && c.status === "pending");
     const pendingPerubahan = Object.entries(cloudPerubahanMitra || {}).filter(([, c]) => c && c.status === "pending");
-    const total = pendingCalon.length + pendingPerubahan.length;
+    const pendingHapusTrx = Object.entries(cloudHapusTrxMitra || {}).filter(([, c]) => c && c.status === "pending");
+    const total = pendingCalon.length + pendingPerubahan.length + pendingHapusTrx.length;
     if (countEl) countEl.innerText = total;
-    if (!total) {
-        list.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-3">Tidak ada pengajuan yang menunggu persetujuan.</p>`;
+    if (!pmOpenState.legacyPending) return;
+
+    const bulan = document.getElementById("pm-legacy-pending-bulan")?.value || "";
+    const search = pmNorm(document.getElementById("pm-legacy-pending-search")?.value || "");
+
+    function cocok(c, namaKey) {
+        if (bulan && (!c.createdAt || new Date(c.createdAt).toISOString().slice(0, 7) !== bulan)) return false;
+        if (search && !(pmNorm(c[namaKey] || "").includes(search) || pmNorm(c.petugasNama || "").includes(search))) return false;
+        return true;
+    }
+    function cocokHapus(c) {
+        if (bulan && (c.tglRaw || "").slice(0, 7) !== bulan) return false;
+        if (search && !(pmNorm(c.mitraNama || "").includes(search) || pmNorm(c.kurirNama || "").includes(search) || pmNorm(c.diajukanOleh || "").includes(search))) return false;
+        return true;
+    }
+    const filteredCalon = pendingCalon.filter(([, c]) => cocok(c, "nama"));
+    const filteredPerubahan = pendingPerubahan.filter(([, c]) => cocok(c, "mitraNamaLama"));
+    const filteredHapusTrx = pendingHapusTrx.filter(([, c]) => cocokHapus(c));
+    const totalFiltered = filteredCalon.length + filteredPerubahan.length + filteredHapusTrx.length;
+
+    if (!totalFiltered) {
+        list.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-3">Tidak ada pengajuan untuk filter ini.</p>`;
     } else {
-        list.innerHTML = pendingCalon.map(([id, c]) => pmPendingCardCalon(id, c)).join("") +
-            pendingPerubahan.map(([id, c]) => pmPendingCardPerubahan(id, c)).join("");
+        list.innerHTML = filteredCalon.map(([id, c]) => pmPendingCardCalon(id, c)).join("") +
+            filteredPerubahan.map(([id, c]) => pmPendingCardPerubahan(id, c)).join("") +
+            filteredHapusTrx.map(([id, c]) => pmPendingCardHapusTrx(id, c)).join("");
     }
     if (window.lucide) window.lucide.createIcons();
 }
 function pmRenderLegacyCek() {
-    if (!pmOpenState.legacyCek) return;
     pmRenderCekKurirInto("pm-legacy-cek-tanggal", "pm-legacy-cek-list", "pm-legacy-cek-search");
 }
 
@@ -1374,6 +1616,24 @@ async function pmRejectPerubahan(id) {
         pmToast("Pengajuan perubahan ditolak.");
     } catch (err) { pmToast("Gagal menolak: " + err.message); }
 }
+async function pmApproveHapusTrx(id) {
+    if (!(await pmConfirm("Setujui & hapus transaksi ini secara permanen?"))) return;
+    const h = cloudHapusTrxMitra[id];
+    if (!h) return;
+    try {
+        if (h.logKey) await remove(ref(db, `log_mitra/${h.logKey}`));
+        await remove(ref(db, `hapus_trx_mitra/${id}`));
+        pmToast("Transaksi berhasil dihapus.");
+    } catch (err) { pmToast("Gagal menghapus transaksi: " + err.message); }
+}
+async function pmRejectHapusTrx(id) {
+    const catatan = prompt("Alasan penolakan (opsional):") || "";
+    if (!(await pmConfirm("Tolak permintaan hapus transaksi ini?"))) return;
+    try {
+        await update(ref(db, `hapus_trx_mitra/${id}`), { status: "rejected", catatanAdmin: catatan });
+        pmToast("Permintaan hapus transaksi ditolak.");
+    } catch (err) { pmToast("Gagal menolak: " + err.message); }
+}
 
 /* ------------------------------------------------------------------ *
  * 16. INJEKSI KE LAYAR "KELOLA MITRA" (MODE LAMA) UNTUK ADMIN
@@ -1389,19 +1649,29 @@ function pmEnsureNativeMitraBadge() {
     btn.appendChild(span);
 }
 function pmUpdateAdminBadge() {
-    const badge = document.getElementById("pm-admin-badge");
-    if (!badge) return;
     const count = Object.values(cloudCalonMitra || {}).filter(c => c && c.status === "pending").length +
-        Object.values(cloudPerubahanMitra || {}).filter(c => c && c.status === "pending").length;
-    if (count > 0) { badge.classList.remove("hidden"); badge.innerText = count > 9 ? "9+" : String(count); }
-    else badge.classList.add("hidden");
+        Object.values(cloudPerubahanMitra || {}).filter(c => c && c.status === "pending").length +
+        Object.values(cloudHapusTrxMitra || {}).filter(c => c && c.status === "pending").length;
+
+    const badge = document.getElementById("pm-admin-badge");
+    if (badge) {
+        if (count > 0) { badge.classList.remove("hidden"); badge.innerText = count > 9 ? "9+" : String(count); }
+        else badge.classList.add("hidden");
+    }
+
+    const hubBadge = document.getElementById("pm-admin-badge-approval");
+    if (hubBadge) {
+        if (count > 0) { hubBadge.classList.remove("hidden"); hubBadge.innerText = count > 9 ? "9+" : String(count); }
+        else hubBadge.classList.add("hidden");
+    }
 }
 function pmInjectLegacyMitraExtras() {
-    const screen = document.getElementById("screen-admin-mitra");
-    if (!screen || pmLegacyInjected) return;
+    const approvalScreen = document.getElementById("screen-admin-mitra-approval");
+    const cekkurirScreen = document.getElementById("screen-admin-mitra-cekkurir");
+    const auditScreen = document.getElementById("screen-admin-mitra-audit");
+    if (!approvalScreen || !cekkurirScreen || !auditScreen || pmLegacyInjected) return;
     pmLegacyInjected = true;
 
-    const header = screen.querySelector(".kurir-screen-header");
     const pendingWrap = document.createElement("div");
     pendingWrap.id = "pm-legacy-pending-wrap";
     pendingWrap.className = "bg-white dark:bg-darkCard p-4 rounded-2xl border border-amber-200 dark:border-amber-900/40 shadow-sm space-y-2";
@@ -1412,32 +1682,50 @@ function pmInjectLegacyMitraExtras() {
             </h3>
             <span id="pm-legacy-pending-count" class="pm-chip pm-chip-pending">0</span>
         </div>
-        <div id="pm-legacy-pending-list" class="space-y-2"></div>
+        <div class="space-y-2">
+            <input type="month" id="pm-legacy-pending-bulan" onchange="window.__pm.renderLegacyPending()" class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+            <input type="text" id="pm-legacy-pending-search" oninput="window.__pm.renderLegacyPending()" placeholder="Cari nama mitra / petugas..." class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+        </div>
+        <button id="pm-legacy-pending-toggle-btn" onclick="window.__pm.toggleLegacyPending()" class="w-full py-2 rounded-lg bg-slate-800 text-white text-[10px] font-bold uppercase tracking-wide">Buka Daftar Pengajuan</button>
+        <div id="pm-legacy-pending-results" class="hidden space-y-2">
+            <div id="pm-legacy-pending-list" class="space-y-2"></div>
+        </div>
     `;
-    if (header && header.parentNode) header.parentNode.insertBefore(pendingWrap, header.nextSibling);
-    else screen.insertBefore(pendingWrap, screen.firstChild);
+    approvalScreen.appendChild(pendingWrap);
 
     const cekWrap = document.createElement("div");
     cekWrap.className = "bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3";
     cekWrap.innerHTML = `
-        <div class="flex items-center justify-between">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <i data-lucide="user-search" class="w-3.5 h-3.5 shrink-0"></i> Cek Trx Kurir (Kemitraan)
-            </h3>
-            <button id="pm-legacy-cek-toggle-btn" onclick="window.__pm.toggleLegacyCek()" class="px-2 py-1 rounded-lg bg-slate-800 text-white text-[8px] font-bold uppercase tracking-wide leading-none">Buka</button>
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i data-lucide="user-search" class="w-3.5 h-3.5 shrink-0"></i> Cek Trx Kurir (Kemitraan)
+        </h3>
+        <div class="space-y-2">
+            <input type="date" id="pm-legacy-cek-tanggal" onchange="window.__pm.renderLegacyCek()" class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+            <input type="text" id="pm-legacy-cek-search" oninput="window.__pm.renderLegacyCek()" placeholder="Cari nama kurir..." class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
         </div>
-        <div id="pm-legacy-cek-results" class="hidden space-y-2">
-            <div class="space-y-2">
-                <input type="date" id="pm-legacy-cek-tanggal" onchange="window.__pm.renderLegacyCek()" class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
-                <input type="text" id="pm-legacy-cek-search" oninput="window.__pm.renderLegacyCek()" placeholder="Cari nama kurir..." class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
-            </div>
-            <div id="pm-legacy-cek-list"></div>
-        </div>
+        <div id="pm-legacy-cek-list"></div>
     `;
-    screen.appendChild(cekWrap);
+    cekkurirScreen.appendChild(cekWrap);
+
+    const auditWrap = document.createElement("div");
+    auditWrap.className = "bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3";
+    auditWrap.innerHTML = `
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5 shrink-0"></i> Cek Audit Trx Kurir
+        </h3>
+        <div class="space-y-2">
+            <input type="month" id="pm-legacy-audit-bulan" onchange="window.__pm.renderLegacyAudit()" class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+            <input type="text" id="pm-legacy-audit-search" oninput="window.__pm.renderLegacyAudit()" placeholder="Cari nama kurir..." class="w-full px-2 py-1.5 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+            <p class="text-[9.5px] text-slate-400">Menghitung jumlah hari kurir tidak input trx mitra (di luar hari off/izin/sakit). Ketuk kurir untuk lihat rincian tanggal.</p>
+        </div>
+        <div id="pm-legacy-audit-list"></div>
+    `;
+    auditScreen.appendChild(auditWrap);
 
     if (window.lucide) window.lucide.createIcons();
     pmRenderLegacyPending();
+    pmRenderLegacyCek();
+    pmRenderLegacyAudit();
 }
 
 /* ------------------------------------------------------------------ *
@@ -1492,17 +1780,26 @@ window.__pm = {
     renderRiwayat: pmRenderRiwayat,
     renderCekKurir: pmRenderCekKurir,
     showKurirTrx: pmShowKurirTrx,
+    renderAudit: pmRenderAudit,
+    renderLegacyAudit: pmRenderLegacyAudit,
+    showAuditDetail: pmShowAuditDetail,
     renderStatusSaya: pmRenderStatusSaya,
     deletePengajuan: pmDeletePengajuan,
     approveCalon: pmApproveCalon,
     rejectCalon: pmRejectCalon,
     approvePerubahan: pmApprovePerubahan,
     rejectPerubahan: pmRejectPerubahan,
+    approveHapusTrx: pmApproveHapusTrx,
+    rejectHapusTrx: pmRejectHapusTrx,
     renderLegacyCek: pmRenderLegacyCek,
+    renderLegacyPending: pmRenderLegacyPending,
+    requestHapusTrx: pmRequestHapusTrx,
     toggleRiwayat() { pmToggleResults("rwt", "pm-rwt-results", "pm-rwt-toggle-btn", pmRenderRiwayat, "Buka Daftar Total Transaksi", "Tutup Daftar Total Transaksi"); },
     toggleDaftarMitra() { pmToggleResults("daftar", "pm-daftar-results", "pm-daftar-toggle-btn", pmRenderDaftarMitra, "Buka", "Tutup"); },
     toggleStatus() { pmToggleResults("status", "pm-status-results", "pm-status-toggle-btn", pmRenderStatusSaya, "Buka Daftar Pengajuan", "Tutup Daftar Pengajuan"); },
-    toggleLegacyCek() { pmToggleResults("legacyCek", "pm-legacy-cek-results", "pm-legacy-cek-toggle-btn", pmRenderLegacyCek, "Buka", "Tutup"); }
+    toggleLegacyPending() { pmToggleResults("legacyPending", "pm-legacy-pending-results", "pm-legacy-pending-toggle-btn", pmRenderLegacyPending, "Buka Daftar Pengajuan", "Tutup Daftar Pengajuan"); },
+    toggleCekKurir() { pmToggleResults("cekkurir", "pm-cek-results", "pm-cek-toggle-btn", pmRenderCekKurir, "Buka Daftar Kurir", "Tutup Daftar Kurir"); },
+    toggleAudit() { pmToggleResults("audit", "pm-audit-results", "pm-audit-toggle-btn", pmRenderAudit, "Buka Daftar Kurir", "Tutup Daftar Kurir"); }
 };
 
 function pmBoot() {
