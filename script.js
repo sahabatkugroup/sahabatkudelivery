@@ -5661,7 +5661,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             };
         
             const hasil = cariTarif(asal) + cariTarif(titik) - 6000 + cariTarif(tujuan) - 3000;        
-        
             document.getElementById('admin-ongkir-display-3').innerText = 'Rp ' + Math.max(0, hasil).toLocaleString('id-ID');
             document.getElementById('admin-ongkir-result-3').classList.remove('hidden');
         };
