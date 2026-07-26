@@ -1,3 +1,28 @@
+/* =====================================================================
+   TRAINER.JS
+   Modul baru khusus role "Trainer" — login lewat akun Manajemen dengan
+   kategori "Trainer". Dashboard-nya:
+     1. Data Calon Kurir (identitas, kendaraan, checklist berkas,
+        checklist perlengkapan, status verifikasi — semua dalam 1 form)
+     2. Penilaian Calon Kurir (form skor 100 poin + riwayat penilaian)
+     3. Peraturan & SOP Kerja (pakai modal SOP yang sudah ada — read only)
+     4. Keluar
+
+   File ini BERDIRI SENDIRI (tidak mengubah script.js) dan cuma butuh:
+     <script type="module" src="trainer.js"></script>
+   ditambahkan di index.html, plus opsi baru di dropdown "Kategori" pada
+   form Manajemen:
+     <option value="Trainer">Trainer</option>
+   (di #manajemen-kategori dan #edit-manajemen-kategori)
+
+   Data disimpan di Firebase:
+     calon_kurir/{id}              -> identitas, kendaraan, checklist, verifikasi
+     penilaian_calon_kurir/{id}    -> riwayat penilaian (bisa lebih dari 1x per kurir)
+
+   Reuse: CSS class "pm-*" dari petugasmitra.js (pmInjectStyle), dan
+   window.openSOP() dari sop.js untuk menu "Peraturan & SOP Kerja".
+   ===================================================================== */
+
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
     getDatabase, ref, push, set, update, remove, onValue
@@ -151,15 +176,28 @@ function trInjectStyle() {
 const TR_SCORE_FIELDS = [
     { key: "kehadiran", label: "Kehadiran & Disiplin — Tepat waktu & patuh jadwal", max: 10, group: "1️⃣ Kehadiran & Disiplin" },
     { key: "etika", label: "Peraturan & etika", max: 10, group: "2️⃣ Pemahaman Materi" },
-    { key: "sop", label: "SOP harian", max: 15, group: "2️⃣ Pemahaman Materi" },
+    { key: "sop", label: "SOP harian", max: 10, group: "2️⃣ Pemahaman Materi" },
     { key: "aplikasi", label: "Aplikasi kurir", max: 10, group: "2️⃣ Pemahaman Materi" },
     { key: "attitude", label: "Perilaku & attitude", max: 5, group: "3️⃣ Kesiapan Kurir (Attitude & Mental)" },
     { key: "tanggungjawab", label: "Tanggung jawab", max: 5, group: "3️⃣ Kesiapan Kurir (Attitude & Mental)" },
     { key: "kejujuran", label: "Kejujuran", max: 5, group: "3️⃣ Kesiapan Kurir (Attitude & Mental)" },
     { key: "ketelitian", label: "Alamat, barang, update order, komunikasi customer", max: 10, group: "4️⃣ Ketelitian Kerja" },
-    { key: "praktik", label: "Ikuti arahan & siap antar (didampingi Trainer)", max: 10, group: "5️⃣ Praktik Lapangan" }
+    { key: "praktik", label: "Ikuti arahan & siap antar (didampingi Trainer)", max: 20, group: "5️⃣ Praktik Lapangan" }
 ];
-const TR_SCORE_MAX_TOTAL = TR_SCORE_FIELDS.reduce((a, f) => a + f.max, 0) + 10; // +10 dari Kelengkapan Wajib
+/* 6️⃣ Kelengkapan Wajib — dinilai per item.
+ * Catatan: kalau "tidak ada/tidak aktif/tidak layak" tetap dikasih poin 1 (bukan 0). */
+const TR_KELENGKAPAN_ITEMS = [
+    { key: "sim", label: "SIM", ada: "Ada", tidak: "Tidak Ada", max: 2 },
+    { key: "stnk", label: "STNK", ada: "Ada/Aktif", tidak: "Tidak Aktif", max: 2 },
+    { key: "helm", label: "Helm", ada: "Ada", tidak: "Tidak Ada", max: 2 },
+    { key: "helm2", label: "Helm 2 (opsional)", ada: "Ada", tidak: "Tidak Ada", max: 1 },
+    { key: "jashujan", label: "Jas Hujan", ada: "Ada", tidak: "Tidak Ada", max: 2 },
+    { key: "sarungtangan", label: "Sarung Tangan", ada: "Ada", tidak: "Tidak Ada", max: 2 },
+    { key: "sepatu", label: "Sepatu", ada: "Ada", tidak: "Tidak Ada", max: 2 },
+    { key: "motor", label: "Motor", ada: "Layak", tidak: "Tidak Layak", max: 2 }
+];
+const TR_KELENGKAPAN_MAX_TOTAL = TR_KELENGKAPAN_ITEMS.reduce((a, k) => a + k.max, 0);
+const TR_SCORE_MAX_TOTAL = TR_SCORE_FIELDS.reduce((a, f) => a + f.max, 0) + TR_KELENGKAPAN_MAX_TOTAL;
 
 function trHitungHasil(total) {
     if (total >= 90) return { label: "LULUS", cls: "tr-hasil-lulus", emoji: "✅" };
@@ -886,18 +924,29 @@ function trRenderPenilaianList() {
     if (!entries.length) { container.innerHTML = `<div class="pm-empty">Belum ada data calon kurir untuk dinilai.</div>`; return; }
 
     container.innerHTML = entries.map(([id, c]) => {
-        const riwayat = Object.values(cloudPenilaian || {}).filter(p => p && p.calonKurirId === id).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        const last = riwayat[0];
+        const riwayat = Object.entries(cloudPenilaian || {}).filter(([, p]) => p && p.calonKurirId === id).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+        const last = riwayat[0] ? riwayat[0][1] : null;
+        const lastPid = riwayat[0] ? riwayat[0][0] : null;
         const hasilChip = last ? (() => { const h = trHitungHasil(last.total || 0); return `<span class="tr-hasil-badge ${h.cls}" style="font-size:10px;padding:3px 9px;">${h.emoji} ${last.total}/100</span>`; })() : `<span class="pm-chip" style="background:#f1f5f9;color:#64748b">Belum dinilai</span>`;
         const pengajuanChip = trPengajuanBadgeHtml(c);
-        const tombolLabel = riwayat.length ? "Lihat" : "Nilai";
-        return `<div class="pm-card flex items-center justify-between gap-2">
+        const statusP = c.statusPengajuan || "belum";
+        const bisaAjukan = riwayat.length > 0 && statusP !== "diajukan" && statusP !== "disetujui";
+
+        const actionHtml = riwayat.length
+            ? `<div class="flex flex-wrap gap-1.5 mt-2">
+                <button onclick="window.__tr.openScoreForm('${id}')" class="pm-btn-outline" style="width:auto;padding:7px 10px;font-size:10.5px;">Detail Penilaian</button>
+                <button onclick="window.__tr.deleteScoreQuick('${lastPid}','${id}')" class="pm-btn-outline" style="width:auto;padding:7px 10px;font-size:10.5px;border-color:#e11d48;color:#e11d48;">Hapus</button>
+                ${bisaAjukan ? `<button onclick="window.__tr.ajukanKeAdmin('${id}')" class="pm-btn-outline" style="width:auto;padding:7px 10px;font-size:10.5px;border-color:#7c3aed;color:#7c3aed;">Ajukan Kembali</button>` : ""}
+              </div>`
+            : `<button onclick="window.__tr.openScoreForm('${id}')" class="pm-btn-primary mt-2" style="width:auto;padding:9px 14px;">Nilai</button>`;
+
+        return `<div class="pm-card">
             <div class="min-w-0">
                 <p class="font-bold text-[12.5px] truncate">${trEsc(c.nama || "-")}</p>
                 <p class="text-[10px] text-slate-400">${riwayat.length ? "Sudah dinilai" : "Belum dinilai"}</p>
                 <div class="mt-1 flex flex-wrap gap-1">${hasilChip}${pengajuanChip}</div>
             </div>
-            <button onclick="window.__tr.openScoreForm('${id}')" class="pm-btn-primary" style="width:auto;padding:9px 14px;">${tombolLabel}</button>
+            ${actionHtml}
         </div>`;
     }).join("");
     if (window.lucide) window.lucide.createIcons();
@@ -922,6 +971,17 @@ function trScoreFieldRowHtml(f) {
     return `<div class="tr-score-row">
         <label>${trEsc(f.label)} <span class="text-slate-400">(maks ${f.max})</span></label>
         <input type="number" min="0" max="${f.max}" id="tr-p-${f.key}" class="pm-input" placeholder="0" oninput="window.__tr.recalcScore()">
+    </div>`;
+}
+
+function trKelengkapanRowHtml(k) {
+    return `<div class="tr-score-row">
+        <label>${trEsc(k.label)} <span class="text-slate-400">(maks ${k.max})</span></label>
+        <select id="tr-p-kl-${k.key}" class="pm-select" onchange="window.__tr.recalcScore()">
+            <option value="0" selected>-- Pilih --</option>
+            <option value="${k.max}">${trEsc(k.ada)} (${k.max})</option>
+            <option value="1">${trEsc(k.tidak)} (1)</option>
+        </select>
     </div>`;
 }
 
@@ -961,6 +1021,17 @@ function trOpenScoreForm(candidateId) {
                 <button onclick="window.__tr.deleteScore('${lastPid}','${candidateId}')" class="pm-btn-outline flex items-center justify-center gap-2 mt-2" style="border-color:#e11d48;color:#e11d48;width:100%;">
                     <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus Penilaian
                 </button>
+                <div class="pm-section-title mt-4"><i data-lucide="list-checks" class="w-3.5 h-3.5"></i>Rincian Penilaian</div>
+                <div class="pm-card space-y-1">
+                    ${TR_SCORE_FIELDS.map(f => `<div class="flex items-center justify-between text-[11.5px] py-1 border-b border-slate-100 dark:border-slate-800">
+                        <span class="text-slate-500 dark:text-slate-300">${trEsc(f.label)}</span>
+                        <span class="font-bold">${(last.scores && last.scores[f.key]) || 0}/${f.max}</span>
+                    </div>`).join("")}
+                    ${TR_KELENGKAPAN_ITEMS.map(k => `<div class="flex items-center justify-between text-[11.5px] py-1 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                        <span class="text-slate-500 dark:text-slate-300">${trEsc(k.label)}</span>
+                        <span class="font-bold">${(last.scores && last.scores.kelengkapan && typeof last.scores.kelengkapan === "object" ? last.scores.kelengkapan[k.key] : 0) || 0}/${k.max}</span>
+                    </div>`).join("")}
+                </div>
                 ${riwayat.length > 1 ? `
                 <div class="pm-section-title mt-4"><i data-lucide="history" class="w-3.5 h-3.5"></i>Riwayat Sebelumnya</div>
                 ${riwayat.slice(1).map(([pid, p]) => {
@@ -1006,13 +1077,8 @@ function trOpenScoreForm(candidateId) {
             </div>
             ${groupsHtml}
             <div class="pm-section-title" style="margin-top:14px;">6️⃣ Kelengkapan Wajib</div>
-            <div class="tr-score-row">
-                <label>SIM, STNK, helm, jas hujan, sarung tangan, sepatu, motor layak</label>
-                <select id="tr-p-kelengkapan" class="pm-select" onchange="window.__tr.recalcScore()">
-                    <option value="10">Lengkap</option>
-                    <option value="0">Tidak Lengkap</option>
-                </select>
-            </div>
+            ${TR_KELENGKAPAN_ITEMS.map(k => trKelengkapanRowHtml(k)).join("")}
+            <p class="text-[10px] text-slate-400 mt-1">Catatan: kalau tidak ada/tidak aktif/tidak layak tetap dikasih poin 1.</p>
             <div class="pm-card mt-3">
                 <label class="pm-label">Catatan Trainer</label>
                 <textarea id="tr-p-catatan" rows="2" class="pm-textarea" placeholder="Catatan tambahan (opsional)"></textarea>
@@ -1090,8 +1156,11 @@ function trRecalcScore() {
         const v = Math.max(0, Math.min(f.max, parseInt(el?.value) || 0));
         total += v;
     });
-    const kelengkapan = parseInt(document.getElementById("tr-p-kelengkapan")?.value) || 0;
-    total += kelengkapan;
+    TR_KELENGKAPAN_ITEMS.forEach(k => {
+        const el = document.getElementById(`tr-p-kl-${k.key}`);
+        const v = Math.max(0, Math.min(k.max, parseInt(el?.value) || 0));
+        total += v;
+    });
 
     const totalEl = document.getElementById("tr-p-total-display");
     if (totalEl) totalEl.innerText = `${total}/100`;
@@ -1120,7 +1189,11 @@ async function trSubmitScore() {
     TR_SCORE_FIELDS.forEach(f => {
         scores[f.key] = Math.max(0, Math.min(f.max, parseInt(document.getElementById(`tr-p-${f.key}`)?.value) || 0));
     });
-    scores.kelengkapan = parseInt(document.getElementById("tr-p-kelengkapan")?.value) || 0;
+    const kelengkapan = {};
+    TR_KELENGKAPAN_ITEMS.forEach(k => {
+        kelengkapan[k.key] = Math.max(0, Math.min(k.max, parseInt(document.getElementById(`tr-p-kl-${k.key}`)?.value) || 0));
+    });
+    scores.kelengkapan = kelengkapan;
 
     const payload = {
         calonKurirId: candidateId,
@@ -1149,6 +1222,17 @@ async function trDeleteScore(scoreId, candidateId) {
         trToast("Riwayat penilaian dihapus.");
         document.getElementById("tr-modal-slot").innerHTML = "";
         if (candidateId) trOpenScoreForm(candidateId);
+    } catch (err) { trToast("Gagal menghapus: " + err.message); }
+}
+
+/* Hapus langsung dari daftar Penilaian Calon Kurir tanpa buka modal dulu. */
+async function trDeleteScoreQuick(scoreId, candidateId) {
+    if (!scoreId) return trToast("Riwayat penilaian tidak ditemukan.");
+    if (!(await trConfirm("Hapus riwayat penilaian ini? Calon kurir bisa dinilai ulang setelah ini."))) return;
+    try {
+        await remove(ref(db, `penilaian_calon_kurir/${scoreId}`));
+        trToast("Riwayat penilaian dihapus.");
+        trRenderPenilaianList();
     } catch (err) { trToast("Gagal menghapus: " + err.message); }
 }
 
@@ -1295,6 +1379,7 @@ window.__tr = {
     recalcScore: trRecalcScore,
     submitScore: trSubmitScore,
     deleteScore: trDeleteScore,
+    deleteScoreQuick: trDeleteScoreQuick,
     ajukanKeAdmin: trAjukanKeAdmin,
     toggleListOpen: trToggleListOpen,
     togglePenilaianOpen: trTogglePenilaianOpen,
