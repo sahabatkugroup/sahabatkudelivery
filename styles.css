@@ -558,6 +558,35 @@ select[multiple] {
   background: #10192e;
 }
 
+/* Kotak "Info Pembayaran" (e-wallet/bank kurir) di nota. Warna FIXED (tidak
+   pakai dark: apapun) sama seperti bagian nota lainnya — supaya tetap jelas
+   terbaca walau aplikasi sedang dalam mode gelap, karena kartu nota memang
+   selalu tampil terang seperti kertas struk asli. */
+.receipt-rekening-box { margin-top: 14px; }
+.receipt-rekening-title {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  color: #94a3b8; margin-bottom: 6px;
+}
+.receipt-rekening-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: #eaf2ff;
+  border: 1px solid #d6e6ff;
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+.receipt-rekening-item:last-child { margin-bottom: 0; }
+.receipt-rekening-jenis {
+  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #0058E6;
+}
+.receipt-rekening-nomor { font-size: 12.5px; font-weight: 800; color: #1e293b; margin-top: 1px; }
+.receipt-rekening-nama {
+  font-size: 10px; font-weight: 600; color: #64748b; text-align: right;
+  flex-shrink: 0; max-width: 42%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.receipt-rekening-empty { font-size: 10.5px; font-style: italic; color: #94a3b8; }
+
 /* Badge sumber notifikasi: Head Ops / Admin-Owner / Manajemen */
 .sender-badge {
   display: inline-flex; align-items: center; gap: 3px;
