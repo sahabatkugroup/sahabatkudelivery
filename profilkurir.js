@@ -33,6 +33,9 @@ dbProfilKurir.ref('profil_kurir_pending').on('value', (snap) => {
 
 // Diekspos supaya script.js (module terpisah) bisa baca status pending per kurir.
 window.getCloudProfilPendingList = function() { return cloudProfilPendingList; };
+// Diekspos supaya script.js bisa baca data profil resmi (termasuk data pembayaran/
+// rekening e-wallet & bank) untuk ditampilkan otomatis di nota & caption WhatsApp.
+window.getCloudProfilKurirList = function() { return cloudProfilKurirList; };
 
 function perbaruiBadgePendingMenu() {
   const badge = document.getElementById('badge-profil-pending-menu');
@@ -132,6 +135,108 @@ function hitungLamaBergabungProfil(tglGabungStr) {
 }
 
 // ===================================================================
+// DATA PEMBAYARAN (E-WALLET / BANK) — bisa lebih dari satu per kurir.
+// Dipakai bareng oleh form "Profil Saya" (kurir) & "Profil Data Diri"
+// (admin), jadi ditulis generik dengan containerId sbg parameter.
+// ===================================================================
+const DAFTAR_JENIS_REKENING = ['DANA', 'OVO', 'GoPay', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'BNI', 'Mandiri', 'Lainnya'];
+
+function buatOpsiJenisRekeningHtml(terpilih) {
+  const opsiKosong = `<option value="">-- Jenis --</option>`;
+  const opsiLain = DAFTAR_JENIS_REKENING.map(j => `<option value="${j}" ${j === terpilih ? 'selected' : ''}>${j}</option>`).join('');
+  // Kalau nilai tersimpan bukan salah satu preset (input custom lama), tetap
+  // tampilkan sbg opsi terpilih supaya datanya tidak hilang/ketiban kosong.
+  const custom = (terpilih && !DAFTAR_JENIS_REKENING.includes(terpilih)) ? `<option value="${terpilih}" selected>${terpilih}</option>` : '';
+  return opsiKosong + custom + opsiLain;
+}
+
+// Bikin 1 baris input data pembayaran (jenis, nomor, atas nama + tombol hapus).
+function buatBarisRekening(nilai) {
+  const rek = nilai || {};
+  const div = document.createElement('div');
+  div.className = 'rekening-row flex items-start gap-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl p-2';
+  div.innerHTML = `
+    <div class="flex-1 grid grid-cols-2 gap-1.5">
+      <select class="rek-jenis w-full px-2 py-1.5 border rounded-lg text-[11px] dark:bg-darkBg dark:border-slate-700">
+        ${buatOpsiJenisRekeningHtml(rek.jenis || '')}
+      </select>
+      <input type="text" value="${(rek.nomor || '').replace(/"/g, '&quot;')}" inputmode="numeric" placeholder="No. HP/Rekening" class="rek-nomor w-full px-2 py-1.5 border rounded-lg text-[11px] dark:bg-darkBg dark:border-slate-700">
+      <input type="text" value="${(rek.pemilik || '').replace(/"/g, '&quot;')}" placeholder="Atas Nama (opsional)" class="rek-nama col-span-2 w-full px-2 py-1.5 border rounded-lg text-[11px] dark:bg-darkBg dark:border-slate-700">
+    </div>
+    <button type="button" onclick="window.hapusBarisRekening(this)" class="shrink-0 w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center mt-0.5">
+      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+    </button>
+  `;
+  return div;
+}
+
+// Hapus 1 baris data pembayaran (dipanggil langsung dari tombol trash di HTML).
+window.hapusBarisRekening = function(btn) {
+  const row = btn.closest('.rekening-row');
+  if (row) row.remove();
+};
+
+// Tambah 1 baris kosong baru (dipanggil dari tombol "+ Tambah").
+window.tambahBarisRekening = function(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.appendChild(buatBarisRekening({}));
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+};
+
+// Render ulang seluruh daftar baris (dipanggil tiap kali modal profil dibuka).
+function renderDaftarRekeningEdit(containerId, list) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  const arr = Array.isArray(list) ? list : [];
+  if (arr.length === 0) {
+    container.appendChild(buatBarisRekening({})); // selalu sediakan minimal 1 baris kosong
+  } else {
+    arr.forEach(r => container.appendChild(buatBarisRekening(r)));
+  }
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Ambil semua data dari baris-baris yang ada di container, buang baris yang
+// benar-benar kosong (tidak diisi jenis maupun nomor sama sekali).
+function kumpulkanRekeningDariContainer(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return [];
+  const rows = container.querySelectorAll('.rekening-row');
+  const hasil = [];
+  rows.forEach(row => {
+    const jenis = (row.querySelector('.rek-jenis')?.value || '').trim();
+    const nomor = (row.querySelector('.rek-nomor')?.value || '').trim();
+    const pemilik = (row.querySelector('.rek-nama')?.value || '').trim();
+    if (jenis || nomor) hasil.push({ jenis, nomor, pemilik });
+  });
+  return hasil;
+}
+
+// Render mode VIEW (read-only) di popup "Profil Saya" milik kurir — dipakai
+// supaya kurir bisa langsung lihat e-wallet/rekening yang sudah tersimpan
+// tanpa perlu masuk ke mode edit dulu.
+function renderDaftarRekeningView(containerId, list) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const arr = (Array.isArray(list) ? list : []).filter(r => r && (r.nomor || '').trim());
+  if (arr.length === 0) {
+    container.innerHTML = `<p class="text-[10.5px] text-slate-400 italic px-0.5">Belum ada e-wallet/rekening bank yang diatur.</p>`;
+    return;
+  }
+  container.innerHTML = arr.map(r => `
+    <div class="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2">
+      <div class="min-w-0">
+        <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">${r.jenis || 'Lainnya'}</p>
+        <p class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">${r.nomor || '-'}</p>
+      </div>
+      ${r.pemilik ? `<span class="text-[10px] text-slate-400 text-right shrink-0 max-w-[40%] truncate">a.n ${r.pemilik}</span>` : ''}
+    </div>
+  `).join('');
+}
+
+// ===================================================================
 // POPUP "PROFIL SAYA" — sisi Kurir (form BISA DIEDIT), dibuka lewat tap
 // avatar/nama di header dashboard. Menyimpan = mengajukan (pending).
 // ===================================================================
@@ -206,6 +311,10 @@ window.bukaProfilSayaKurir = function() {
   setTeks('kfv-kelas-biaya-bpjs', kelasBiaya);
   setTeks('kfv-kontak-darurat-nama', sumber.kontakDaruratNama || sumber.kontakDarurat);
   setTeks('kfv-kontak-darurat-hp', sumber.kontakDaruratNoHp);
+
+  // Data pembayaran (e-wallet/bank) — mode view (read-only) & mode edit (form).
+  renderDaftarRekeningView('kfv-rekening-list', sumber.rekening);
+  renderDaftarRekeningEdit('kf-rekening-list', sumber.rekening);
 
   // Banner status pengajuan
   const banner = document.getElementById('profil-saya-pending-banner');
@@ -286,6 +395,7 @@ window.simpanProfilSayaKurir = function() {
     biayaBpjs: bersihkanAngkaProfil(document.getElementById('kf-biaya-bpjs').value),
     kontakDaruratNama: document.getElementById('kf-kontak-darurat-nama').value.trim(),
     kontakDaruratNoHp: document.getElementById('kf-kontak-darurat-hp').value.trim(),
+    rekening: kumpulkanRekeningDariContainer('kf-rekening-list'),
     submittedAt: new Date().toISOString()
   };
 
@@ -370,6 +480,9 @@ window.bukaProfilAdminKurir = function(key) {
   setVal('profil-admin-kontak-darurat-nama', sumber.kontakDaruratNama || sumber.kontakDarurat);
   setVal('profil-admin-kontak-darurat-hp', sumber.kontakDaruratNoHp);
 
+  // Data pembayaran (e-wallet/bank) — admin bisa langsung ubah juga di sini.
+  renderDaftarRekeningEdit('profil-admin-rekening-list', sumber.rekening);
+
   const banner = document.getElementById('profil-admin-pending-banner');
   const btnTolak = document.getElementById('btn-tolak-perubahan-profil');
   if (banner) banner.classList.toggle('hidden', !pending);
@@ -423,6 +536,7 @@ window.simpanProfilAdminKurir = function() {
     biayaBpjs: bersihkanAngkaProfil(document.getElementById('profil-admin-biaya-bpjs').value),
     kontakDaruratNama: document.getElementById('profil-admin-kontak-darurat-nama').value.trim(),
     kontakDaruratNoHp: document.getElementById('profil-admin-kontak-darurat-hp').value.trim(),
+    rekening: kumpulkanRekeningDariContainer('profil-admin-rekening-list'),
     updatedAt: new Date().toISOString()
   };
 
