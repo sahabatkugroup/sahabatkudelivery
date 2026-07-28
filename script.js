@@ -112,6 +112,38 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             navigateBack();
         });
         let notaState = { items: [], biaya: [], subtotal: 0, ongkir: 10000, total: 0 };
+
+        // ===================================================================
+        // Ambil data pembayaran (e-wallet/bank) milik kurir dari cache profil_kurir
+        // (diekspos oleh profilkurir.js) supaya bisa ditampilkan otomatis di nota.
+        // ===================================================================
+        function getRekeningKurirByKey(key) {
+            if (!key || typeof window.getCloudProfilKurirList !== 'function') return [];
+            const profil = window.getCloudProfilKurirList()[key] || {};
+            return Array.isArray(profil.rekening) ? profil.rekening.filter(r => r && (r.nomor || '').trim()) : [];
+        }
+        function getRekeningKurirByUsername(username) {
+            if (!username) return [];
+            const list = (typeof window.getCloudKurirList === 'function') ? window.getCloudKurirList() : {};
+            const key = Object.keys(list).find(k => (list[k]?.username || '').trim() === String(username).trim());
+            return key ? getRekeningKurirByKey(key) : [];
+        }
+        // Render daftar rekening ke dalam sebuah container HTML (dipakai di preview nota kurir & admin).
+        // Sengaja pakai class CSS khusus (bukan Tailwind dark:*) karena kartu nota
+        // selalu tampil terang seperti kertas struk asli, tidak ikut dark mode app.
+        function renderRekeningNotaHtml(rekeningList) {
+            const arr = Array.isArray(rekeningList) ? rekeningList : [];
+            if (!arr.length) return '';
+            return arr.map(r => `
+                <div class="receipt-rekening-item">
+                    <div class="min-w-0">
+                        <p class="receipt-rekening-jenis">${r.jenis || 'Lainnya'}</p>
+                        <p class="receipt-rekening-nomor">${r.nomor || '-'}</p>
+                    </div>
+                    ${r.pemilik ? `<span class="receipt-rekening-nama">a.n ${r.pemilik}</span>` : ''}
+                </div>
+            `).join('');
+        }
         // Data nota terstruktur (bukan HTML) yang dipakai untuk MENGGAMBAR gambar nota
         // langsung ke <canvas> — terpisah dari notaState supaya urutan/isi nota yang
         // sedang dilihat tetap terkunci walau notaState berubah di layar lain.
@@ -1905,6 +1937,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             }
 
             const jumlahItemAdmin = (n.items && Array.isArray(n.items)) ? n.items.length : 0;
+            const rekeningKurirNotaIni = getRekeningKurirByUsername(n.kurirUsername);
+            const rekeningBoxAdminHtml = rekeningKurirNotaIni.length ? `
+                <div class="receipt-rekening-box">
+                    <p class="receipt-rekening-title"><i data-lucide="wallet" class="w-3 h-3"></i> Info Pembayaran (Transfer ke)</p>
+                    <div>${renderRekeningNotaHtml(rekeningKurirNotaIni)}</div>
+                </div>
+            ` : '';
 
             modalCanvas.innerHTML = `
                 <div class="receipt-head">
@@ -1950,6 +1989,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                         <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Total</span>
                         <span class="text-lg font-black">${(n.total || 0).toLocaleString('id-ID')}</span>
                     </div>
+                    ${rekeningBoxAdminHtml}
 
                     <!-- Ongkir History -->
                     <div class="receipt-divider"></div>
@@ -1997,6 +2037,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 ongkir: n.ongkir || 0,
                 biayaList: Array.isArray(n.biayaTambahan) ? n.biayaTambahan.map(b => ({ nama: b.nama, nominal: b.nominal || 0 })) : [],
                 total: n.total || 0,
+                rekening: rekeningKurirNotaIni,
                 history: sorted.map(e => ({
                     asal: e.asal || '-',
                     tujuan: e.tujuan || '-',
@@ -2848,6 +2889,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             if (btnSimpanNota) btnSimpanNota.classList.remove('hidden');
             updatePreviewButtonsLayout();
 
+            // Info pembayaran (e-wallet/bank) — diambil dari profil resmi kurir yg login.
+            const rekeningKurirIni = getRekeningKurirByKey(userSession.id);
+            const boxRekening = document.getElementById('p-rekening-box');
+            const listRekening = document.getElementById('p-rekening-list');
+            if (boxRekening && listRekening) {
+                if (rekeningKurirIni.length) {
+                    listRekening.innerHTML = renderRekeningNotaHtml(rekeningKurirIni);
+                    boxRekening.classList.remove('hidden');
+                } else {
+                    listRekening.innerHTML = '';
+                    boxRekening.classList.add('hidden');
+                }
+            }
+            if (window.lucide) lucide.createIcons();
+
             // Data terstruktur buat gambar nota (canvas), terpisah dari HTML preview di atas.
             // notaNum di sini SUDAH nomor final hasil reservasi atomic di atas — jadi gambar
             // yang diunduh/dibagikan lewat WhatsApp dijamin sama persis dengan yang tersimpan.
@@ -2861,6 +2917,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 ongkir: notaState.ongkir,
                 biayaList: notaState.biaya.map(b => ({ nama: b.nama, nominal: b.nominal })),
                 total: notaState.total,
+                rekening: rekeningKurirIni,
                 history: null
             };
             // Siapkan canvas-nya di background begitu preview tampil, biar pas tombol
@@ -3069,6 +3126,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             y += L.TOTALBOX_MARGIN_TOP;
             L.totalBoxTop = y;
             y += L.TOTALBOX_H;
+
+            // Section "Info Pembayaran" (e-wallet/bank kurir) — hanya dihitung/ditampilkan
+            // kalau kurirnya memang sudah mengisi data rekening di Profil Data Diri.
+            const rekeningNota = (data.rekening || []).filter(r => r && (r.nomor || '').trim());
+            L.rekening = rekeningNota;
+            if (rekeningNota.length) {
+                L.REKENING_ROW_H = u(40);
+                L.REKENING_ROW_GAP = u(8);
+                y += L.TOTALBOX_MARGIN_TOP;
+                L.rekeningTitleTop = y;
+                y += L.SECTION_TITLE_H;
+                L.rekeningRowsTop = y;
+                y += L.REKENING_ROW_H * rekeningNota.length + L.REKENING_ROW_GAP * Math.max(0, rekeningNota.length - 1);
+            }
+
             y += L.DIV_GAP; L.divider2Y = y; y += L.DIV_GAP;
             L.footerTop = y;
             y += L.FOOTER_H;
@@ -3215,6 +3287,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             notaText(ctx, 'TOTAL', tX + u(14), L.totalBoxTop + L.TOTALBOX_H / 2, { font: `800 ${u(11)}px ${NOTA_FONT}`, color: 'rgba(255,255,255,0.7)', align: 'left' });
             notaText(ctx, notaFmtRp(data.total), tX + tW - u(14), L.totalBoxTop + L.TOTALBOX_H / 2, { font: `900 ${u(18)}px ${NOTA_FONT}`, color: '#ffffff', align: 'right' });
 
+            // Info Pembayaran (e-wallet/bank kurir) — supaya CS bisa langsung cek & transfer.
+            if (L.rekening && L.rekening.length) {
+                notaText(ctx, 'INFO PEMBAYARAN (TRANSFER KE)', tX, L.rekeningTitleTop + L.SECTION_TITLE_H / 2, { font: `800 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'left' });
+                let rekY = L.rekeningRowsTop;
+                L.rekening.forEach((r) => {
+                    notaFillRoundRect(ctx, tX, rekY, tW, L.REKENING_ROW_H, u(10), 'rgba(0,102,255,0.08)');
+                    notaText(ctx, String(r.jenis || 'LAINNYA').toUpperCase(), tX + u(12), rekY + u(15), { font: `800 ${u(10)}px ${NOTA_FONT}`, color: '#0066FF', align: 'left' });
+                    notaText(ctx, r.nomor || '-', tX + u(12), rekY + u(30), { font: `700 ${u(12.5)}px ${NOTA_FONT}`, color: '#1e293b', align: 'left' });
+                    if (r.pemilik) {
+                        notaText(ctx, `a.n ${r.pemilik}`, tX + tW - u(12), rekY + L.REKENING_ROW_H / 2, { font: `500 ${u(10)}px ${NOTA_FONT}`, color: '#64748b', align: 'right', maxWidth: tW * 0.42 });
+                    }
+                    rekY += L.REKENING_ROW_H + L.REKENING_ROW_GAP;
+                });
+            }
+
             ctx.beginPath(); ctx.moveTo(tX, L.divider2Y); ctx.lineTo(tX + tW, L.divider2Y); ctx.stroke();
 
             notaText(ctx, 'Terima kasih telah menggunakan jasa Sahabatku Delivery.', cardX + cardW / 2, L.footerTop + u(14), { font: `italic 500 ${u(10.5)}px ${NOTA_FONT}`, color: '#94a3b8', align: 'center', maxWidth: tW });
@@ -3343,7 +3430,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 }
 
                 // mode === 'share': bagikan lewat share-sheet (kalau didukung) atau fallback unduh + buka WhatsApp
-                const captionText = `Nota: ${data.notaNum}\nKurir: ${data.kurir}`;
+                const rekeningNota = Array.isArray(data.rekening) ? data.rekening.filter(r => r && (r.nomor || '').trim()) : [];
+                const teksRekening = rekeningNota.length
+                    ? '\n\nInfo Pembayaran (Transfer ke):\n' + rekeningNota.map(r => `${r.jenis || 'Lainnya'}: ${r.nomor}${r.pemilik ? ' a.n ' + r.pemilik : ''}`).join('\n')
+                    : '';
+                const captionText = `Nota: ${data.notaNum}\nKurir: ${data.kurir}${teksRekening}`;
                 await new Promise((resolve) => {
                     canvas.toBlob(function(blob) {
                         if (!blob) {
