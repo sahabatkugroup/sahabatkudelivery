@@ -1,15 +1,3 @@
-/* =====================================================================
-   PETUGASMITRA.JS (v3)
-   Modul baru khusus role "Petugas Kemitraan" (login kemitraan) +
-   tambahan panel persetujuan & cek trx kurir yang disisipkan LANGSUNG
-   ke layar "Kelola Mitra" (mode lama) milik Admin/Head Operasional.
-   File ini BERDIRI SENDIRI (tidak mengubah script.js) dan hanya
-   membutuhkan 1 baris tambahan di index.html:
-     <script type="module" src="petugasmitra.js"></script>
-   serta opsi baru di dropdown "Kategori" pada form Manajemen:
-     <option value="Petugas Kemitraan">Petugas Kemitraan</option>
-   ===================================================================== */
-
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
     getDatabase, ref, push, update, remove, onValue
@@ -363,7 +351,7 @@ function pmFormMitraHtml(prefix) {
             <label class="pm-label">Penyetoran Tgl / Bulan</label>
             <select id="${prefix}-tgl-setor" class="pm-select">
                 <option value="1">Tanggal 1</option>
-                <option value="18">Tanggal 18</option>
+                <option value="14">Tanggal 14</option>
             </select>
         </div>
     </div>
