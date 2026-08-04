@@ -739,7 +739,76 @@ function renderAdminRekap() {
             <td class="py-3 text-danger font-bold">${r.alfa}</td>
             <td class="py-3"><button onclick="openAdminDetailRekapKurir('${r.nama.replace(/'/g, "\\'")}')" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold shadow-sm">Detail</button></td>
         </tr>`).join('') || `<tr><td colspan="10" class="py-6 text-center text-xs text-slate-400">Belum ada data.</td></tr>`;
+
+    updateTombolHapusRekapBulanLalu(bulan);
 }
+
+// ---------------------------------------------------------------------
+// ADMIN — Hapus data rekap (off/TAF/izin/sakit/absen masuk/pulang) untuk
+// bulan yang sedang difilter. Hanya boleh untuk bulan SEBELUM bulan berjalan,
+// supaya data tidak menumpuk tapi bulan berjalan tetap aman.
+// ---------------------------------------------------------------------
+function bulanIniStr() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function updateTombolHapusRekapBulanLalu(bulan) {
+    const btn = document.getElementById('btn-hapus-rekap-bulan-lalu');
+    const label = document.getElementById('btn-hapus-rekap-bulan-lalu-label');
+    const info = document.getElementById('rekap-hapus-info');
+    if (!btn) return;
+    const bisaHapus = bulan < bulanIniStr();
+    btn.disabled = !bisaHapus;
+    const [y, m] = bulan.split('-');
+    const labelBulan = `${NAMA_BULAN[parseInt(m, 10) - 1]} ${y}`;
+    if (label) label.textContent = `Hapus ${labelBulan}`;
+    if (info) {
+        info.textContent = bisaHapus
+            ? `Menghapus seluruh data off, TAF, izin, sakit, absen masuk & pulang bulan ${labelBulan}.`
+            : `Data bulan berjalan (${labelBulan}) belum bisa dihapus. Hanya bulan sebelumnya yang bisa dihapus.`;
+    }
+}
+
+window.hapusRekapBulanLalu = async function () {
+    const bulan = getBulanAktif();
+    if (bulan >= bulanIniStr()) {
+        notify('Hanya bisa menghapus data bulan sebelumnya. Bulan berjalan tidak bisa dihapus.');
+        return;
+    }
+
+    const [y, m] = bulan.split('-');
+    const labelBulan = `${NAMA_BULAN[parseInt(m, 10) - 1]} ${y}`;
+
+    const jadwalKeys = Object.entries(DATA_JADWAL)
+        .filter(([, j]) => getTanggalItem(j).startsWith(bulan) && ['Off Reguler', 'Tidak Ambil Off', 'Izin', 'Sakit'].includes(j.jenisOff))
+        .map(([key]) => key);
+    const absensiKeys = Object.entries(DATA_ABSENSI)
+        .filter(([, a]) => (a.tanggal || '').startsWith(bulan))
+        .map(([key]) => key);
+
+    if (!jadwalKeys.length && !absensiKeys.length) {
+        notify(`Tidak ada data rekap di bulan ${labelBulan}.`);
+        return;
+    }
+
+    const ok = await confirmAksi(`Hapus semua data off, TAF, izin, sakit, absen masuk & pulang bulan ${labelBulan}? (${jadwalKeys.length} jadwal, ${absensiKeys.length} absensi). Data yang dihapus tidak bisa dikembalikan.`);
+    if (!ok) return;
+
+    const btn = document.getElementById('btn-hapus-rekap-bulan-lalu');
+    if (btn) btn.disabled = true;
+
+    try {
+        await Promise.all([
+            ...jadwalKeys.map((key) => remove(ref(db, `jadwal_off/${key}`))),
+            ...absensiKeys.map((key) => remove(ref(db, `absensi_sahabatku/${key}`))),
+        ]);
+        notify(`Data rekap bulan ${labelBulan} berhasil dihapus.`);
+    } catch (e) {
+        notify('Gagal menghapus data. Coba lagi.');
+        if (btn) btn.disabled = false;
+    }
+};
 
 window.openAdminDetailRekapKurir = function (namaKurir) {
     const bulan = getBulanAktif();
