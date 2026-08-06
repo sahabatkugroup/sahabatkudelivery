@@ -498,11 +498,24 @@ window.openAdminTanggalDetail = function (tanggal) {
                         </div>
                         <span class="px-2 py-1 rounded-full text-white text-[10px] font-bold ${jenisColor(i.jenisOff)}">${i.jenisOff || '-'}</span>
                     </div>
+                    <div class="flex gap-1.5 pt-2.5 mt-2.5 border-t border-slate-200 dark:border-slate-700">
+                        <button onclick="closePopupDetail();editJadwal('${i.key}')" class="flex-1 px-2 py-1.5 rounded-lg bg-amber-500 text-white text-[10px] font-bold">Edit</button>
+                        <button onclick="hapusJadwalDariMonitoring('${i.key}','${tanggal}')" class="flex-1 px-2 py-1.5 rounded-lg bg-danger text-white text-[10px] font-bold">Hapus</button>
+                    </div>
                 </div>`).join('') : '<div class="text-xs text-slate-400">Tidak ada jadwal.</div>'}
         </div>`;
     document.getElementById('popup-detail').classList.remove('hidden');
     document.getElementById('popup-detail').classList.add('flex');
     refreshIcons();
+};
+
+// Hapus jadwal dari popup monitoring, lalu refresh isi popup di tanggal yang sama (tanpa perlu klik ulang)
+window.hapusJadwalDariMonitoring = async (key, tanggal) => {
+    if (await confirmAksi('Hapus jadwal ini?')) {
+        await remove(ref(db, `jadwal_off/${key}`));
+        notify('Jadwal dihapus');
+        window.openAdminTanggalDetail(tanggal);
+    }
 };
 
 function renderAdminJadwalListContent() {
@@ -929,6 +942,27 @@ function fixJamFormat(val) {
     if (!val) return '';
     return String(val).trim().replace('.', ':').slice(0, 5);
 }
+// ---------------------------------------------------------------------
+// Toggle Statistik Bulan Ini (tab Harian)
+// ---------------------------------------------------------------------
+window.toggleStatistikAbsensi = function () {
+    const content = document.getElementById('content-statistik-absensi');
+    const icon = document.getElementById('icon-statistik-absensi');
+    const label = document.getElementById('btn-statistik-absensi-label');
+    if (!content) return;
+
+    const sedangTertutup = content.classList.contains('hidden');
+    if (sedangTertutup) {
+        content.classList.remove('hidden');
+        if (icon) icon.style.transform = 'rotate(180deg)';
+        if (label) label.innerText = 'Tutup';
+    } else {
+        content.classList.add('hidden');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+        if (label) label.innerText = 'Buka';
+    }
+};
+
 window.renderAdminAbsensi = function () {
     const tglFilter = document.getElementById('absensi-filter-tgl')?.value || '';
     const bulanFilter = document.getElementById('absensi-filter-bulan')?.value || '';
@@ -936,17 +970,43 @@ window.renderAdminAbsensi = function () {
     const today = todayISO();
     const kurirList = getKurirAktif();
 
+    // Kurir yang Off / Izin / Sakit hari ini dianggap punya alasan sah, jadi tidak dihitung "Belum Masuk" atau "Total Kurir" bertugas
+    const jadwalHariIni = Object.values(DATA_JADWAL).filter((j) => getTanggalItem(j) === today);
+    const namaOffHariIni = new Set(jadwalHariIni.filter((j) => j.jenisOff === 'Off Reguler').map((j) => (j.nama || '').toLowerCase().trim()));
+    const namaIzinHariIni = new Set(jadwalHariIni.filter((j) => j.jenisOff === 'Izin').map((j) => (j.nama || '').toLowerCase().trim()));
+    const namaSakitHariIni = new Set(jadwalHariIni.filter((j) => j.jenisOff === 'Sakit').map((j) => (j.nama || '').toLowerCase().trim()));
+
+    const kurirBertugasHariIni = kurirList.filter((u) => {
+        const namaLower = (u.nama || '').toLowerCase().trim();
+        return !namaOffHariIni.has(namaLower) && !namaIzinHariIni.has(namaLower) && !namaSakitHariIni.has(namaLower);
+    });
+
     const totalKurirEl = document.getElementById('absensi-total-kurir');
-    if (totalKurirEl) totalKurirEl.textContent = kurirList.length;
+    if (totalKurirEl) totalKurirEl.textContent = kurirBertugasHariIni.length;
 
     const absensiHariIni = Object.values(DATA_ABSENSI).filter((a) => a.tanggal === today);
     const hadir = absensiHariIni.filter((a) => a.jamMasuk).length;
     const hadirEl = document.getElementById('absensi-hadir-hari-ini');
     if (hadirEl) hadirEl.textContent = hadir;
+
+    const namaSudahAbsenHariIni = new Set(absensiHariIni.filter((a) => a.jamMasuk).map((a) => (a.namaKurir || '').toLowerCase().trim()));
+
+    const belumMasukCount = kurirBertugasHariIni.filter((u) => {
+        const namaLower = (u.nama || '').toLowerCase().trim();
+        return !namaSudahAbsenHariIni.has(namaLower);
+    }).length;
+
     const belumMasukEl = document.getElementById('absensi-belum-masuk');
-    if (belumMasukEl) belumMasukEl.textContent = Math.max(kurirList.length - hadir, 0);
+    if (belumMasukEl) belumMasukEl.textContent = belumMasukCount;
     const belumPulangEl = document.getElementById('absensi-belum-pulang');
     if (belumPulangEl) belumPulangEl.textContent = absensiHariIni.filter((a) => a.jamMasuk && !a.jamPulang).length;
+
+    const offHariIniEl = document.getElementById('absensi-off-hari-ini');
+    if (offHariIniEl) offHariIniEl.textContent = namaOffHariIni.size;
+    const izinHariIniEl = document.getElementById('absensi-izin-hari-ini');
+    if (izinHariIniEl) izinHariIniEl.textContent = namaIzinHariIni.size;
+    const sakitHariIniEl = document.getElementById('absensi-sakit-hari-ini');
+    if (sakitHariIniEl) sakitHariIniEl.textContent = namaSakitHariIni.size;
 
     const prefix = tglFilter || bulanFilter || today;
     let records = Object.entries(DATA_ABSENSI).map(([key, a]) => ({ key, ...a })).filter((a) => (a.tanggal || '').startsWith(prefix));
@@ -1257,6 +1317,123 @@ window.openAdminPopupOffBulanIni = () => {
 };
 
 // ---------------------------------------------------------------------
+// Popup kartu ringkas tab Harian: Hadir Hari Ini / Belum Masuk / Belum Pulang
+// ---------------------------------------------------------------------
+window.openAbsensiPopupTotalKurirHariIni = () => {
+    const today = todayISO();
+    const kurirList = getKurirAktif();
+    const jadwalHariIni = Object.values(DATA_JADWAL).filter((j) => getTanggalItem(j) === today && ['Off Reguler', 'Izin', 'Sakit'].includes(j.jenisOff));
+    const namaAdaAlasan = new Set(jadwalHariIni.map((j) => (j.nama || '').toLowerCase().trim()));
+    const list = kurirList
+        .filter((u) => !namaAdaAlasan.has((u.nama || '').toLowerCase().trim()))
+        .sort((a, b) => (a.nama || '').localeCompare(b.nama || ''))
+        .map((u) => `
+            <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                <div class="min-w-0">
+                    <div class="font-bold text-xs truncate">${escapeHtml(u.nama)}</div>
+                    <div class="text-[10px] text-slate-400 truncate">${escapeHtml(u.leader || '-')}</div>
+                </div>
+            </div>`).join('');
+    document.getElementById('popup-detail-title').textContent = 'Total Kurir Bertugas Hari Ini';
+    document.getElementById('popup-detail-content').innerHTML = list || '<div class="text-xs text-slate-400 text-center py-4">Tidak ada kurir yang bertugas hari ini.</div>';
+    document.getElementById('popup-detail').classList.remove('hidden');
+    document.getElementById('popup-detail').classList.add('flex');
+    refreshIcons();
+};
+window.openAbsensiPopupHadir = () => {
+    const today = todayISO();
+    const list = Object.entries(DATA_ABSENSI)
+        .map(([key, a]) => ({ key, ...a }))
+        .filter((a) => a.tanggal === today && a.jamMasuk)
+        .sort((a, b) => (a.namaKurir || '').localeCompare(b.namaKurir || ''))
+        .map((a) => `
+            <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                <div class="min-w-0">
+                    <div class="font-bold text-xs truncate">${escapeHtml(a.namaKurir || '-')}</div>
+                    <div class="text-[10px] text-slate-400 truncate">Masuk ${a.jamMasuk || '-'} • Pulang ${a.jamPulang || '-'}</div>
+                </div>
+                <div class="flex gap-1.5 shrink-0">
+                    <button onclick="closePopupDetail();openAbsensiEdit('${a.tanggal}','${(a.idKurir || '').replace(/'/g, "\\'")}','${(a.namaKurir || '').replace(/'/g, "\\'")}')" class="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold">Edit</button>
+                    <button onclick="closePopupDetail();hapusAbsensi('${a.key}')" class="px-2.5 py-1.5 rounded-lg bg-danger text-white text-[10px] font-bold">Hapus</button>
+                </div>
+            </div>`).join('');
+    document.getElementById('popup-detail-title').textContent = 'Hadir Hari Ini';
+    document.getElementById('popup-detail-content').innerHTML = list || '<div class="text-xs text-slate-400 text-center py-4">Belum ada kurir yang hadir hari ini.</div>';
+    document.getElementById('popup-detail').classList.remove('hidden');
+    document.getElementById('popup-detail').classList.add('flex');
+    refreshIcons();
+};
+window.openAbsensiPopupBelumMasuk = () => {
+    const today = todayISO();
+    const kurirList = getKurirAktif();
+    const sudahAbsen = new Set(
+        Object.values(DATA_ABSENSI).filter((a) => a.tanggal === today && a.jamMasuk).map((a) => (a.namaKurir || '').toLowerCase().trim())
+    );
+    const jadwalHariIni = Object.values(DATA_JADWAL).filter((j) => getTanggalItem(j) === today && ['Off Reguler', 'Izin', 'Sakit'].includes(j.jenisOff));
+    const namaAdaAlasan = new Set(jadwalHariIni.map((j) => (j.nama || '').toLowerCase().trim()));
+    const list = kurirList
+        .filter((u) => !sudahAbsen.has((u.nama || '').toLowerCase().trim()) && !namaAdaAlasan.has((u.nama || '').toLowerCase().trim()))
+        .sort((a, b) => (a.nama || '').localeCompare(b.nama || ''))
+        .map((u) => `
+            <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30">
+                <div class="min-w-0">
+                    <div class="font-bold text-xs truncate">${escapeHtml(u.nama)}</div>
+                    <div class="text-[10px] text-slate-400 truncate">${escapeHtml(u.leader || '-')}</div>
+                </div>
+                <button onclick="closePopupDetail();openAbsensiForName('${(u.nama || '').replace(/'/g, "\\'")}')" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold">Absenkan</button>
+            </div>`).join('');
+    document.getElementById('popup-detail-title').textContent = 'Belum Masuk Hari Ini';
+    document.getElementById('popup-detail-content').innerHTML = list || '<div class="text-xs text-slate-400 text-center py-4">Semua kurir sudah absen atau ada keterangan (off/izin/sakit) 🎉</div>';
+    document.getElementById('popup-detail').classList.remove('hidden');
+    document.getElementById('popup-detail').classList.add('flex');
+    refreshIcons();
+};
+window.openAbsensiPopupBelumPulang = () => {
+    const today = todayISO();
+    const list = Object.entries(DATA_ABSENSI)
+        .map(([key, a]) => ({ key, ...a }))
+        .filter((a) => a.tanggal === today && a.jamMasuk && !a.jamPulang)
+        .sort((a, b) => (a.namaKurir || '').localeCompare(b.namaKurir || ''))
+        .map((a) => `
+            <div class="flex items-center justify-between gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30">
+                <div class="min-w-0">
+                    <div class="font-bold text-xs truncate">${escapeHtml(a.namaKurir || '-')}</div>
+                    <div class="text-[10px] text-slate-400 truncate">Masuk ${a.jamMasuk || '-'} • Belum Pulang</div>
+                </div>
+                <button onclick="closePopupDetail();openAbsensiEdit('${a.tanggal}','${(a.idKurir || '').replace(/'/g, "\\'")}','${(a.namaKurir || '').replace(/'/g, "\\'")}')" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold">Edit</button>
+            </div>`).join('');
+    document.getElementById('popup-detail-title').textContent = 'Belum Pulang Hari Ini';
+    document.getElementById('popup-detail-content').innerHTML = list || '<div class="text-xs text-slate-400 text-center py-4">Tidak ada kurir yang belum pulang.</div>';
+    document.getElementById('popup-detail').classList.remove('hidden');
+    document.getElementById('popup-detail').classList.add('flex');
+    refreshIcons();
+};
+window.openAbsensiPopupJadwalHariIni = (jenis, judul, warnaKelas) => {
+    const today = todayISO();
+    const list = Object.values(DATA_JADWAL)
+        .filter((j) => getTanggalItem(j) === today && j.jenisOff === jenis)
+        .sort((a, b) => (a.nama || '').localeCompare(b.nama || ''))
+        .map((j) => {
+            const u = getKurirAktif().find((k) => (k.nama || '').toLowerCase().trim() === (j.nama || '').toLowerCase().trim());
+            return `
+            <div class="flex items-center justify-between gap-2 p-3 rounded-xl ${warnaKelas} border">
+                <div class="min-w-0">
+                    <div class="font-bold text-xs truncate">${escapeHtml(j.nama || '-')}</div>
+                    <div class="text-[10px] text-slate-400 truncate">${escapeHtml((u && u.leader) || '-')}${j.keterangan ? ' • ' + escapeHtml(j.keterangan) : ''}</div>
+                </div>
+            </div>`;
+        }).join('');
+    document.getElementById('popup-detail-title').textContent = judul;
+    document.getElementById('popup-detail-content').innerHTML = list || `<div class="text-xs text-slate-400 text-center py-4">Tidak ada kurir ${judul.toLowerCase()}.</div>`;
+    document.getElementById('popup-detail').classList.remove('hidden');
+    document.getElementById('popup-detail').classList.add('flex');
+    refreshIcons();
+};
+window.openAbsensiPopupOffHariIni = () => window.openAbsensiPopupJadwalHariIni('Off Reguler', 'Off Hari Ini', 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700');
+window.openAbsensiPopupIzinHariIni = () => window.openAbsensiPopupJadwalHariIni('Izin', 'Izin Hari Ini', 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30');
+window.openAbsensiPopupSakitHariIni = () => window.openAbsensiPopupJadwalHariIni('Sakit', 'Sakit Hari Ini', 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/30');
+
+// ---------------------------------------------------------------------
 // Navigasi tab & modal
 // ---------------------------------------------------------------------
 window.switchKurirTab = (tab, btn) => {
@@ -1280,6 +1457,23 @@ window.switchAdminTab = (tab, btn) => {
     });
     root.querySelectorAll('.absensi-tab-btn').forEach((b) => b.classList.remove('active'));
     (btn || root.querySelector(`.absensi-tab-btn[data-tab="${tab}"]`))?.classList.add('active');
+
+    if (tab === 'harian') {
+        const tglEl = document.getElementById('absensi-filter-tgl');
+        const bulanEl = document.getElementById('absensi-filter-bulan');
+        let berubah = false;
+        if (tglEl && !tglEl.value) { tglEl.value = todayISO(); berubah = true; }
+        if (bulanEl && !bulanEl.value) { bulanEl.value = todayISO().slice(0, 7); berubah = true; }
+        if (berubah) window.renderAdminAbsensi();
+
+        const contentStatistik = document.getElementById('content-statistik-absensi');
+        const iconStatistik = document.getElementById('icon-statistik-absensi');
+        const labelStatistik = document.getElementById('btn-statistik-absensi-label');
+        if (contentStatistik) contentStatistik.classList.add('hidden');
+        if (iconStatistik) iconStatistik.style.transform = 'rotate(0deg)';
+        if (labelStatistik) labelStatistik.innerText = 'Buka';
+    }
+
     refreshIcons();
 };
 
