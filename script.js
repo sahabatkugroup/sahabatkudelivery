@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, remove, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
         const firebaseConfig = {
         apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
@@ -1397,6 +1397,19 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 setTimeout(() => {
                     populateLaporanFilter();
                     renderLaporanData();
+                    const contentPeringkat = document.getElementById('content-peringkat-kurir');
+                    const iconPeringkat = document.getElementById('icon-peringkat-kurir');
+                    const labelPeringkat = document.getElementById('btn-peringkat-kurir-label');
+                    if (contentPeringkat) contentPeringkat.classList.add('hidden');
+                    if (iconPeringkat) iconPeringkat.style.transform = 'rotate(0deg)';
+                    if (labelPeringkat) labelPeringkat.innerText = 'Buka';
+
+                    const contentHarian = document.getElementById('content-laporan-harian');
+                    const iconHarian = document.getElementById('icon-laporan-harian');
+                    const labelHarian = document.getElementById('btn-laporan-harian-label');
+                    if (contentHarian) contentHarian.classList.add('hidden');
+                    if (iconHarian) iconHarian.style.transform = 'rotate(0deg)';
+                    if (labelHarian) labelHarian.innerText = 'Buka';
                 }, 100);
             }
             if (screenId === 'screen-admin-tracking') {
@@ -5078,7 +5091,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 }
 
                 html += `
-                    <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs space-y-1.5">
+                    <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs space-y-2">
                         <div class="flex justify-between items-center">
                             <div>
                                 <div class="font-bold text-sm">${new Date(tgl).toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' })}</div>
@@ -5088,8 +5101,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             </div>
                             <div class="text-right">
                                 <div class="font-black text-primary">${d.totalNota} Nota</div>
-                                <div class="text-[10px] text-slate-400">Admin: ${d.notaAdmin} | OL: ${d.notaOL}</div>
                             </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 bg-white dark:bg-darkCard rounded-lg p-2 border border-slate-100 dark:border-slate-700/60">
+                            <div><span class="text-[9px] text-slate-400 block">Total Nota</span><span class="font-black text-slate-700 dark:text-slate-200">${d.totalNota}</span></div>
+                            <div><span class="text-[9px] text-slate-400 block">Nota Admin</span><span class="font-black text-blue-500">${d.notaAdmin}</span></div>
+                            <div><span class="text-[9px] text-slate-400 block">Nota OL</span><span class="font-black text-fuchsia-500">${d.notaOL}</span></div>
                         </div>
                         <div class="grid grid-cols-3 gap-2">
                             <div><span class="text-[10px] text-slate-400 block">Pendapatan</span><span class="font-bold text-success">Rp ${d.pendapatan.toLocaleString('id-ID')}</span></div>
@@ -5107,6 +5124,168 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             container.innerHTML = html;
 
             loadChartJs().then(() => initAdminLaporanChart(mapHarian)).catch(console.error);
+        };
+
+        // ===== Toggle Daftar Laporan Per Hari =====
+        window.toggleLaporanHarian = function() {
+            const content = document.getElementById('content-laporan-harian');
+            const icon = document.getElementById('icon-laporan-harian');
+            const label = document.getElementById('btn-laporan-harian-label');
+            if (!content) return;
+
+            const sedangTertutup = content.classList.contains('hidden');
+            if (sedangTertutup) {
+                content.classList.remove('hidden');
+                if (icon) icon.style.transform = 'rotate(180deg)';
+                if (label) label.innerText = 'Tutup';
+            } else {
+                content.classList.add('hidden');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+                if (label) label.innerText = 'Buka';
+            }
+        };
+
+        // ===== Peringkat Kurir (Laporan Admin) =====
+        window.populatePeringkatKurirFilter = function() {
+            const bulanSelect = document.getElementById('peringkat-filter-bulan');
+            const kurirSelect = document.getElementById('peringkat-filter-kurir');
+            if (!bulanSelect || !kurirSelect) return;
+
+            const bulanAktif = bulanSelect.value; // simpan pilihan lama kalau ada
+
+            const bulanSet = new Set();
+            bulanSet.add(getWibRawDate().substring(0, 7));
+            Object.values(cloudNotaList || {}).forEach(n => {
+                if (n?.tanggalRaw) bulanSet.add(n.tanggalRaw.substring(0, 7));
+            });
+            Object.values(cloudLogMitra || {}).forEach(l => {
+                if (l?.tglRaw) bulanSet.add(l.tglRaw.substring(0, 7));
+            });
+
+            bulanSelect.innerHTML = '';
+            Array.from(bulanSet).sort((a, b) => b.localeCompare(a)).forEach(bulan => {
+                const [y, m] = bulan.split('-');
+                const label = new Date(y, parseInt(m) - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+                bulanSelect.innerHTML += `<option value="${bulan}">${label}</option>`;
+            });
+
+            const kurirAktif = kurirSelect.value;
+            kurirSelect.innerHTML = '<option value="semua">Semua Kurir</option>';
+            Object.entries(cloudKurirList || {}).forEach(([id, u]) => {
+                if (u && u.role === 'kurir') {
+                    kurirSelect.innerHTML += `<option value="${u.username}">${u.nama || u.username}</option>`;
+                }
+            });
+
+            // default filter bulan = bulan ini
+            const bulanIni = getWibRawDate().substring(0, 7);
+            bulanSelect.value = bulanAktif && bulanSet.has(bulanAktif) ? bulanAktif : bulanIni;
+            if (kurirAktif && [...kurirSelect.options].some(o => o.value === kurirAktif)) {
+                kurirSelect.value = kurirAktif;
+            }
+        };
+
+        window.togglePeringkatKurir = function() {
+            const content = document.getElementById('content-peringkat-kurir');
+            const icon = document.getElementById('icon-peringkat-kurir');
+            const label = document.getElementById('btn-peringkat-kurir-label');
+            if (!content) return;
+
+            const sedangTertutup = content.classList.contains('hidden');
+            if (sedangTertutup) {
+                content.classList.remove('hidden');
+                if (icon) icon.style.transform = 'rotate(180deg)';
+                if (label) label.innerText = 'Tutup';
+                populatePeringkatKurirFilter();
+                renderPeringkatKurir();
+            } else {
+                content.classList.add('hidden');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+                if (label) label.innerText = 'Buka';
+            }
+        };
+
+        window.renderPeringkatKurir = function() {
+            const tbody = document.getElementById('tbody-peringkat-kurir');
+            if (!tbody) return;
+
+            const bulan = document.getElementById('peringkat-filter-bulan')?.value || '';
+            const kurirFilter = document.getElementById('peringkat-filter-kurir')?.value || 'semua';
+            const urutan = document.getElementById('peringkat-filter-urutan')?.value || 'totalNota';
+
+            let map = {};
+            const ensure = (username, nama) => {
+                if (!username) return;
+                if (!map[username]) {
+                    map[username] = { username, nama: nama || username, totalNota: 0, notaAdmin: 0, notaOL: 0, totalPendapatan: 0, trxMitra: 0 };
+                } else if (nama && map[username].nama === map[username].username) {
+                    map[username].nama = nama;
+                }
+            };
+
+            Object.values(cloudNotaList || {}).forEach(n => {
+                if (!isValidNotaItem(n)) return;
+                if (bulan && n.tanggalRaw.substring(0, 7) !== bulan) return;
+                if (kurirFilter !== 'semua' && n.kurirUsername !== kurirFilter) return;
+
+                ensure(n.kurirUsername, n.kurirNama);
+                if (!n.kurirUsername) return;
+
+                const ongkir = parseInt(n.ongkir) || 0;
+                const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
+                map[n.kurirUsername].totalNota++;
+                map[n.kurirUsername].totalPendapatan += (ongkir + biaya);
+
+                const status = normalizeStatusNota(n.status);
+                if (status === 'admin') map[n.kurirUsername].notaAdmin++;
+                if (status === 'ol') map[n.kurirUsername].notaOL++;
+            });
+
+            Object.values(cloudLogMitra || {}).forEach(log => {
+                if (!log || !log.tglRaw) return;
+                if (bulan && log.tglRaw.substring(0, 7) !== bulan) return;
+                if (kurirFilter !== 'semua' && log.kurirUsername !== kurirFilter) return;
+
+                ensure(log.kurirUsername, log.kurirNama);
+                if (!log.kurirUsername) return;
+
+                map[log.kurirUsername].trxMitra += (parseInt(log.trxInput) || 0);
+            });
+
+            let list = Object.values(map).map(k => ({
+                ...k,
+                rataRata: k.totalNota > 0 ? Math.round(k.totalPendapatan / k.totalNota) : 0
+            }));
+
+            list.sort((a, b) => (b[urutan] || 0) - (a[urutan] || 0));
+
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-slate-400 py-4">Tidak ada data sesuai filter.</td></tr>`;
+                return;
+            }
+
+            const cellClass = (field) => field === urutan ? 'text-primary font-black' : 'font-semibold text-slate-600 dark:text-slate-300';
+
+            tbody.innerHTML = list.map((k, idx) => {
+                const rank = idx + 1;
+                let badgeTone = 'bg-slate-100 dark:bg-slate-800 text-slate-500';
+                if (rank === 1) badgeTone = 'bg-amber-400 text-white';
+                else if (rank === 2) badgeTone = 'bg-slate-300 text-white';
+                else if (rank === 3) badgeTone = 'bg-orange-400 text-white';
+
+                return `
+                    <tr class="border-t border-slate-50 dark:border-slate-800/60">
+                        <td class="py-2 px-2"><span class="inline-flex items-center justify-center w-5 h-5 rounded-full font-black text-[9px] ${badgeTone}">${rank}</span></td>
+                        <td class="py-2 px-2 font-bold truncate max-w-[90px]">${k.nama}</td>
+                        <td class="py-2 px-2 text-right ${cellClass('totalNota')}">${k.totalNota}</td>
+                        <td class="py-2 px-2 text-right ${cellClass('notaAdmin')}">${k.notaAdmin}</td>
+                        <td class="py-2 px-2 text-right ${cellClass('notaOL')}">${k.notaOL}</td>
+                        <td class="py-2 px-2 text-right ${cellClass('rataRata')}">Rp ${k.rataRata.toLocaleString('id-ID')}</td>
+                        <td class="py-2 px-2 text-right ${cellClass('totalPendapatan')}">Rp ${k.totalPendapatan.toLocaleString('id-ID')}</td>
+                        <td class="py-2 px-2 text-right ${cellClass('trxMitra')}">${k.trxMitra}</td>
+                    </tr>
+                `;
+            }).join('');
         };
 
         let instanceChartLaporanAdmin = null;
