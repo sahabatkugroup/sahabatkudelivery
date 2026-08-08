@@ -1484,11 +1484,24 @@
                         </div>
                         <div id="admin-calendar-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
                     </div>
-                    <div class="flex items-center justify-between gap-2">
-                        <input id="admin-search-jadwal-list" type="text" placeholder="🔍 Cari jadwal off..." class="flex-1 text-xs bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 rounded-xl p-3 focus:ring-2 focus:ring-primary transition">
-                        <button onclick="openJadwalPopup()" class="px-3 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold shadow-md shadow-primary/25 active:scale-95 transition-transform shrink-0">+ Buat</button>
+                    <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                        <button type="button" onclick="toggleCariJadwalOff()" class="w-full flex items-center justify-between active:scale-[0.98] transition-transform">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                <i data-lucide="search" class="w-3.5 h-3.5 text-primary"></i> Cari Jadwal Off
+                            </h4>
+                            <div class="flex items-center gap-1 text-[10px] font-bold text-primary bg-blue-50 dark:bg-blue-950/40 pl-2.5 pr-1.5 py-1 rounded-lg">
+                                <span id="btn-cari-jadwal-off-label">Buka</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" id="icon-cari-jadwal-off"></i>
+                            </div>
+                        </button>
+                        <div id="content-cari-jadwal-off" class="hidden space-y-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <input id="admin-search-jadwal-list" type="text" placeholder="🔍 Cari jadwal off..." class="flex-1 text-xs bg-white dark:bg-darkCard border border-slate-100 dark:border-slate-800 rounded-xl p-3 focus:ring-2 focus:ring-primary transition">
+                                <button onclick="openJadwalPopup()" class="px-3 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-white text-[10px] font-bold shadow-md shadow-primary/25 active:scale-95 transition-transform shrink-0">+ Buat</button>
+                            </div>
+                            <div id="admin-jadwal-list-content" class="space-y-3"></div>
+                        </div>
                     </div>
-                    <div id="admin-jadwal-list-content" class="space-y-3"></div>
                 </section>
 
                 <!-- TAB: PENGAJUAN -->
