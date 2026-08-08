@@ -109,7 +109,17 @@ function formatJamKerjaText(masuk, pulang) {
 function getKurirAktif() {
     return Object.entries(DATA_USERS)
         .filter(([_, u]) => u.role === 'kurir' && u.status === 'aktif')
-        .map(([k, u]) => ({ id: k, nama: u.nama || u.username || k, leader: u.leader || '-' }));
+        .map(([k, u]) => ({ id: k, nama: u.nama || u.username || k, leader: u.leader || '-', tglGabung: u.tglGabung || '' }));
+}
+
+// Kurir dianggap sudah aktif dihitung (kena wajib absen) mulai H+1 setelah tanggal gabung.
+// Di tanggal gabung itu sendiri (dan sebelumnya) belum dihitung karena memang belum resmi jadi kurir aktif.
+function sudahAktifPadaTanggal(tglGabung, tanggal) {
+    if (!tglGabung) return true;
+    const nextDay = new Date(tglGabung);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDayStr = nextDay.toISOString().split('T')[0];
+    return tanggal >= nextDayStr;
 }
 
 function refreshIcons() { if (window.lucide) lucide.createIcons(); }
@@ -515,6 +525,38 @@ window.hapusJadwalDariMonitoring = async (key, tanggal) => {
         await remove(ref(db, `jadwal_off/${key}`));
         notify('Jadwal dihapus');
         window.openAdminTanggalDetail(tanggal);
+    }
+};
+
+// ---------------------------------------------------------------------
+// Toggle Cari Jadwal Off (tab Jadwal) — saat dibuka, auto-scroll ke tanggal hari ini
+// ---------------------------------------------------------------------
+window.toggleCariJadwalOff = function () {
+    const content = document.getElementById('content-cari-jadwal-off');
+    const icon = document.getElementById('icon-cari-jadwal-off');
+    const label = document.getElementById('btn-cari-jadwal-off-label');
+    if (!content) return;
+
+    const sedangTertutup = content.classList.contains('hidden');
+    if (sedangTertutup) {
+        content.classList.remove('hidden');
+        if (icon) icon.style.transform = 'rotate(180deg)';
+        if (label) label.innerText = 'Tutup';
+        renderAdminJadwalListContent();
+        refreshIcons();
+        setTimeout(() => {
+            const today = todayISO();
+            const target = document.getElementById(`jadwal-group-${today}`);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 150);
+    } else {
+        content.classList.add('hidden');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+        if (label) label.innerText = 'Buka';
     }
 };
 
@@ -968,7 +1010,7 @@ window.renderAdminAbsensi = function () {
     const bulanFilter = document.getElementById('absensi-filter-bulan')?.value || '';
     const namaFilter = (document.getElementById('absensi-filter-nama')?.value || '').toLowerCase().trim();
     const today = todayISO();
-    const kurirList = getKurirAktif();
+    const kurirList = getKurirAktif().filter((u) => sudahAktifPadaTanggal(u.tglGabung, today));
 
     // Kurir yang Off / Izin / Sakit hari ini dianggap punya alasan sah, jadi tidak dihitung "Belum Masuk" atau "Total Kurir" bertugas
     const jadwalHariIni = Object.values(DATA_JADWAL).filter((j) => getTanggalItem(j) === today);
@@ -1321,7 +1363,7 @@ window.openAdminPopupOffBulanIni = () => {
 // ---------------------------------------------------------------------
 window.openAbsensiPopupTotalKurirHariIni = () => {
     const today = todayISO();
-    const kurirList = getKurirAktif();
+    const kurirList = getKurirAktif().filter((u) => sudahAktifPadaTanggal(u.tglGabung, today));
     const jadwalHariIni = Object.values(DATA_JADWAL).filter((j) => getTanggalItem(j) === today && ['Off Reguler', 'Izin', 'Sakit'].includes(j.jenisOff));
     const namaAdaAlasan = new Set(jadwalHariIni.map((j) => (j.nama || '').toLowerCase().trim()));
     const list = kurirList
@@ -1365,7 +1407,7 @@ window.openAbsensiPopupHadir = () => {
 };
 window.openAbsensiPopupBelumMasuk = () => {
     const today = todayISO();
-    const kurirList = getKurirAktif();
+    const kurirList = getKurirAktif().filter((u) => sudahAktifPadaTanggal(u.tglGabung, today));
     const sudahAbsen = new Set(
         Object.values(DATA_ABSENSI).filter((a) => a.tanggal === today && a.jamMasuk).map((a) => (a.namaKurir || '').toLowerCase().trim())
     );
@@ -1472,6 +1514,15 @@ window.switchAdminTab = (tab, btn) => {
         if (contentStatistik) contentStatistik.classList.add('hidden');
         if (iconStatistik) iconStatistik.style.transform = 'rotate(0deg)';
         if (labelStatistik) labelStatistik.innerText = 'Buka';
+    }
+
+    if (tab === 'jadwal') {
+        const contentCari = document.getElementById('content-cari-jadwal-off');
+        const iconCari = document.getElementById('icon-cari-jadwal-off');
+        const labelCari = document.getElementById('btn-cari-jadwal-off-label');
+        if (contentCari) contentCari.classList.add('hidden');
+        if (iconCari) iconCari.style.transform = 'rotate(0deg)';
+        if (labelCari) labelCari.innerText = 'Buka';
     }
 
     refreshIcons();
