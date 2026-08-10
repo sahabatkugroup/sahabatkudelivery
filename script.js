@@ -154,6 +154,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         // data akun kurir yang sama (tglGabung, status) tanpa bikin listener Firebase kedua.
         window.getCloudKurirList = function() { return cloudKurirList; };
         let cloudNotaList = {};
+        let cloudNotaEditRequests = {};
+        let riwayatListVisible = false;
         let cloudMitraList = {};
         let cloudLogMitra = {};
         let cloudDepositBalance = {};
@@ -232,6 +234,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     if (currentScreen === 'screen-admin-kurir' && typeof renderAdminKurirList === 'function') renderAdminKurirList();
                     if (currentScreen === 'screen-admin-manajemen' && typeof renderAdminManajemen === 'function') renderAdminManajemen();
                     if (currentScreen === 'screen-admin-nota' && typeof renderAdminNota === 'function') renderAdminNota();
+                    if (currentScreen === 'screen-admin-nota' && typeof renderAdminNotaEditRequests === 'function') renderAdminNotaEditRequests();
                     if (currentScreen === 'screen-admin-mitra-data' && typeof renderAdminDaftarMitra === 'function') renderAdminDaftarMitra();
                     if (currentScreen === 'screen-admin-mitra-riwayat' && typeof renderAdminLogMitra === 'function') renderAdminLogMitra();
                     if (currentScreen === 'screen-admin-laporan' && typeof renderLaporanData === 'function') renderLaporanData();
@@ -716,6 +719,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             onValue(ref(db, 'nota'), (snapshot) => {
                 cloudNotaList = snapshot.val() || {};
                 queueUiRefresh();
+            });
+            onValue(ref(db, 'nota_edit_requests'), (snapshot) => {
+                cloudNotaEditRequests = snapshot.val() || {};
+                if (typeof updateNotaEditRequestBadge === 'function') {
+                    const pendingCount = Object.values(cloudNotaEditRequests || {}).filter(r => r && r.status === 'pending').length;
+                    updateNotaEditRequestBadge(pendingCount);
+                }
+                if (currentScreen === 'screen-riwayat' && riwayatListVisible && typeof renderKurirRiwayatList === 'function') renderKurirRiwayatList(true);
+                if (currentScreen === 'screen-admin-nota' && typeof renderAdminNotaEditRequests === 'function') renderAdminNotaEditRequests();
             });
             onValue(ref(db, 'mitra'), (snapshot) => {
                 cloudMitraList = snapshot.val() || {};
@@ -1410,6 +1422,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     if (contentHarian) contentHarian.classList.add('hidden');
                     if (iconHarian) iconHarian.style.transform = 'rotate(0deg)';
                     if (labelHarian) labelHarian.innerText = 'Buka';
+                }, 100);
+            }
+            if (screenId === 'screen-admin-nota') {
+                setTimeout(() => {
+                    if (typeof renderAdminNotaEditRequests === 'function') renderAdminNotaEditRequests();
                 }, 100);
             }
             if (screenId === 'screen-admin-tracking') {
@@ -3484,7 +3501,29 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 successMsg: 'Gambar nota berhasil disimpan!'
             });
         }
-        window.commitSaveNota = function() {
+        window.bukaPopupTipsNota = function() {
+            const input = document.getElementById('input-tips-nota-baru');
+            if (input) input.value = '';
+            const modal = document.getElementById('modal-input-tips');
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+            if (window.lucide) lucide.createIcons();
+            setTimeout(() => { if (input) input.focus(); }, 150);
+        };
+        window.tutupPopupTipsNota = function() {
+            const modal = document.getElementById('modal-input-tips');
+            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        };
+        window.lewatiTipsDanSimpanNota = function() {
+            const input = document.getElementById('input-tips-nota-baru');
+            if (input) input.value = '';
+            konfirmasiTipsDanSimpanNota();
+        };
+        window.konfirmasiTipsDanSimpanNota = function() {
+            const tipsVal = bersihkanAngka(document.getElementById('input-tips-nota-baru')?.value || '0');
+            tutupPopupTipsNota();
+            commitSaveNota(tipsVal);
+        };
+        window.commitSaveNota = function(tips = 0) {
             const notaNum = document.getElementById('p-nota-num').innerText || "Nota";
             const payload = {
                 id: notaNum,
@@ -3498,7 +3537,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 biayaTambahan: notaState.biaya || [],
                 subtotal: notaState.subtotal,
                 ongkir: notaState.ongkir,
-                total: notaState.total
+                total: notaState.total,
+                tips: parseInt(tips) || 0
             };
 
             const notaRef = ref(db, 'nota');
@@ -3603,6 +3643,64 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 previewButtons.className = 'grid grid-cols-3 gap-2 max-w-sm mx-auto';
             }
         };
+        function buildTombolUbahRiwayatNota(key, n, todayRaw) {
+            const isToday = (n.tanggalRaw || '') === todayRaw;
+            if (isToday) {
+                return `<button onclick="bukaEditNota('${key}')" class="flex items-center gap-1 text-amber-600 font-bold bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="pencil-line" class="w-3 h-3"></i> Ubah</button>`;
+            }
+
+            const req = (cloudNotaEditRequests || {})[key];
+            const status = req?.status || null;
+
+            if (status === 'approved') {
+                return `<button onclick="bukaEditNota('${key}')" class="flex items-center gap-1 text-amber-600 font-bold bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="pencil-line" class="w-3 h-3"></i> Ubah</button>`;
+            }
+            if (status === 'pending') {
+                return `<span class="flex items-center gap-1 text-slate-400 font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg"><i data-lucide="clock" class="w-3 h-3"></i> Menunggu Admin</span>`;
+            }
+            // belum ada pengajuan, atau pengajuan sebelumnya ditolak
+            return `<button onclick="ajukanEditNotaLama('${key}')" class="flex items-center gap-1 text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="send" class="w-3 h-3"></i> Ubah</button>`;
+        }
+
+        window.ajukanEditNotaLama = async function(key) {
+            const n = cloudNotaList[key];
+            if (!n) { toast('Data nota tidak ditemukan!'); return; }
+            if (!userSession || userSession.role !== 'kurir') return;
+
+            const existing = cloudNotaEditRequests[key];
+            if (existing && existing.status === 'pending') {
+                toast('Pengajuan ubah nota ini masih menunggu persetujuan Admin.');
+                return;
+            }
+
+            const ok = await showConfirm(
+                `Nota ${n.id || ''} bukan nota hari ini, jadi perlu persetujuan Admin dulu sebelum bisa diubah. Kirim pengajuan sekarang?`,
+                { title: 'Ajukan Ubah Nota', okText: 'Ya, Kirim Pengajuan' }
+            );
+            if (!ok) return;
+
+            const payload = {
+                notaKey: key,
+                notaId: n.id || '-',
+                tanggalNota: n.tanggalRaw || '',
+                tanggalNotaLabel: n.tanggal || '-',
+                kurirUsername: userSession.username || '',
+                kurirNama: userSession.nama || '-',
+                status: 'pending',
+                requestedAt: new Date().toISOString(),
+                respondedAt: null,
+                respondedBy: null
+            };
+
+            set(ref(db, `nota_edit_requests/${key}`), payload).then(() => {
+                cloudNotaEditRequests[key] = payload;
+                toast('Pengajuan terkirim. Menunggu persetujuan Admin.');
+                renderKurirRiwayatList(true);
+            }).catch(err => {
+                toast('Gagal mengirim pengajuan: ' + err.message);
+            });
+        };
+
         window.renderKurirRiwayatList = function(showList = false) {
             const container = document.getElementById('container-riwayat-list');
             if (!container) return;
@@ -3611,6 +3709,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const filterTgl = document.getElementById('filter-date-riwayat')?.value || getWibRawDate();
             const filterBulan = document.getElementById('filter-bulan-riwayat')?.value || getWibRawDate().substring(0, 7);
 
+            riwayatListVisible = !!showList;
+
             if (!showList) {
                 container.innerHTML = `<div class="text-center text-xs text-slate-400 py-4">Klik <b>Cari</b> untuk menampilkan riwayat.</div>`;
                 return;
@@ -3618,6 +3718,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
             container.innerHTML = '';
             let hasData = false;
+            const todayRawForEdit = getWibRawDate();
 
             const notaList = Object.entries(cloudNotaList || {})
                 .filter(([_, n]) => !!n)
@@ -3659,10 +3760,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             </div>
                             <span class="text-primary font-black shrink-0">Rp ${(n.total || 0).toLocaleString('id-ID')}</span>
                         </div>
+                        ${(n.tips || 0) > 0 ? `<div class="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold pl-1"><i data-lucide="hand-coins" class="w-3 h-3"></i> Tips: Rp ${(n.tips || 0).toLocaleString('id-ID')}</div>` : ''}
                         <div class="flex justify-between items-center pt-1.5 border-t border-dashed border-slate-100 dark:border-slate-800">
                             <span class="status-pill ${isOL ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/40' : 'bg-blue-50 text-primary dark:bg-blue-950/40'}"><i data-lucide="tag" class="w-2.5 h-2.5"></i> ${statusVal}</span>
                             <div class="flex items-center gap-2">
                                 <button onclick="previewRiwayatNota('${k}')" class="flex items-center gap-1 text-blue-500 font-bold bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="eye" class="w-3 h-3"></i> Preview</button>
+                                ${buildTombolUbahRiwayatNota(k, n, todayRawForEdit)}
                                 <button onclick="hapusRiwayatNota('${k}')" class="flex items-center gap-1 text-danger font-bold bg-red-50 dark:bg-red-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="trash-2" class="w-3 h-3"></i> Hapus</button>
                             </div>
                         </div>
@@ -3871,6 +3974,254 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     });
             }
         }
+        let editNotaState = { key: null, items: [], biaya: [], subtotal: 0, ongkir: 0, total: 0 };
+        let editNotaOriginal = null;
+
+        window.bukaEditNota = function(key) {
+            const n = cloudNotaList[key];
+            if (!n) { toast('Data nota tidak ditemukan!'); return; }
+
+            if (userSession && userSession.role === 'kurir') {
+                const isToday = (n.tanggalRaw || '') === getWibRawDate();
+                if (!isToday) {
+                    const req = cloudNotaEditRequests[key];
+                    if (!req || req.status !== 'approved') {
+                        toast('Nota selain tanggal hari ini hanya bisa diubah setelah disetujui Admin. Silakan ajukan dulu di daftar riwayat.');
+                        return;
+                    }
+                }
+            }
+
+            editNotaOriginal = n;
+            editNotaState = {
+                key,
+                items: JSON.parse(JSON.stringify(n.items || [])),
+                biaya: JSON.parse(JSON.stringify(n.biayaTambahan || [])),
+                subtotal: n.subtotal || 0,
+                ongkir: n.ongkir || 0,
+                total: n.total || 0,
+                tips: n.tips || 0
+            };
+
+            document.getElementById('edit-nota-key').value = key;
+            document.getElementById('edit-nota-nomor').innerText = n.id || '-';
+            document.getElementById('edit-nota-status').value = (n.status || 'Admin').toUpperCase() === 'OL' ? 'OL' : 'Admin';
+            setRupiahInput('edit-nota-ongkir', n.ongkir || 0);
+            setRupiahInput('edit-nota-tips', n.tips || 0);
+
+            const dropBiaya = document.getElementById('edit-biaya-dropdown');
+            if (dropBiaya) dropBiaya.value = '';
+            document.getElementById('edit-biaya-nama-manual')?.classList.add('hidden');
+            if (document.getElementById('edit-biaya-nominal')) document.getElementById('edit-biaya-nominal').value = '';
+            if (document.getElementById('edit-item-nama')) document.getElementById('edit-item-nama').value = '';
+            if (document.getElementById('edit-item-harga')) document.getElementById('edit-item-harga').value = '';
+            if (document.getElementById('edit-item-qty')) document.getElementById('edit-item-qty').value = '1';
+
+            renderEditNotaItems();
+            renderEditBiayaItems();
+            calculateEditNotaTotal();
+
+            const modal = document.getElementById('modal-edit-nota');
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.tutupEditNota = function() {
+            const modal = document.getElementById('modal-edit-nota');
+            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        };
+
+        window.addEditNotaItem = function() {
+            const nama = document.getElementById('edit-item-nama').value.trim();
+            const hargaInput = document.getElementById('edit-item-harga').value.trim();
+            const harga = hargaInput ? bersihkanAngka(hargaInput) : 0;
+            const qty = parseInt(document.getElementById('edit-item-qty').value) || 1;
+            if (!nama) return;
+
+            editNotaState.items.push({ nama, qty, harga, subtotal: qty * harga });
+
+            document.getElementById('edit-item-nama').value = '';
+            document.getElementById('edit-item-harga').value = '';
+            document.getElementById('edit-item-qty').value = '1';
+
+            calculateEditNotaTotal();
+            renderEditNotaItems();
+        };
+        window.deleteEditNotaItem = function(idx) {
+            editNotaState.items.splice(idx, 1);
+            calculateEditNotaTotal();
+            renderEditNotaItems();
+        };
+        function renderEditNotaItems() {
+            const container = document.getElementById('container-edit-items');
+            if (!container) return;
+            container.innerHTML = '';
+            editNotaState.items.forEach((item, idx) => {
+                container.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs">
+                        <div><b>${item.nama}</b><p class="text-[10px] text-slate-400">x${item.qty} • Rp ${item.harga.toLocaleString('id-ID')}</p></div>
+                        <div class="flex items-center gap-2"><span class="font-bold text-primary">Rp ${item.subtotal.toLocaleString('id-ID')}</span><button onclick="deleteEditNotaItem(${idx})" class="text-danger">Hapus</button></div>
+                    </div>
+                `;
+            });
+        }
+
+        window.handleEditBiayaDropdownChange = function() {
+            const drop = document.getElementById('edit-biaya-dropdown');
+            const selectedOpt = drop.options[drop.selectedIndex];
+            const hargaAttr = selectedOpt.getAttribute('data-harga');
+            const namaManual = document.getElementById('edit-biaya-nama-manual');
+            const nominalInput = document.getElementById('edit-biaya-nominal');
+
+            if (drop.value === 'Tambahan Lainnya') {
+                namaManual.classList.remove('hidden');
+                nominalInput.value = '';
+                nominalInput.placeholder = 'Isi nominal harga';
+            } else if (hargaAttr) {
+                namaManual.classList.add('hidden');
+                nominalInput.value = hargaAttr === 'manual' ? '' : hargaAttr;
+                nominalInput.placeholder = 'Contoh: 10.000';
+            } else {
+                namaManual.classList.add('hidden');
+                nominalInput.value = '';
+            }
+        };
+        window.addEditBiayaItem = function() {
+            const drop = document.getElementById('edit-biaya-dropdown');
+            const nominal = bersihkanAngka(document.getElementById('edit-biaya-nominal').value);
+            let nama = drop.value;
+            if (drop.value === 'Tambahan Lainnya') {
+                nama = document.getElementById('edit-biaya-nama-manual').value.trim() || 'Tambahan Lainnya';
+            }
+            if (!nama || nominal <= 0) return;
+
+            editNotaState.biaya.push({ nama, nominal });
+
+            drop.value = '';
+            document.getElementById('edit-biaya-nama-manual').classList.add('hidden');
+            document.getElementById('edit-biaya-nominal').value = '';
+
+            calculateEditNotaTotal();
+            renderEditBiayaItems();
+        };
+        window.deleteEditBiayaItem = function(idx) {
+            editNotaState.biaya.splice(idx, 1);
+            calculateEditNotaTotal();
+            renderEditBiayaItems();
+        };
+        function renderEditBiayaItems() {
+            const container = document.getElementById('container-edit-biaya');
+            if (!container) return;
+            container.innerHTML = '';
+            editNotaState.biaya.forEach((b, idx) => {
+                container.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-2 rounded-xl text-xs">
+                        <span>${b.nama}</span>
+                        <div class="flex items-center gap-2"><span class="font-bold text-amber-500">Rp ${b.nominal.toLocaleString('id-ID')}</span><button onclick="deleteEditBiayaItem(${idx})" class="text-danger">Hapus</button></div>
+                    </div>
+                `;
+            });
+        }
+
+        window.calculateEditNotaTotal = function() {
+            editNotaState.subtotal = editNotaState.items.reduce((acc, curr) => acc + curr.subtotal, 0);
+            editNotaState.ongkir = bersihkanAngka(document.getElementById('edit-nota-ongkir').value);
+            const totalBiayaTambahan = editNotaState.biaya.reduce((acc, curr) => acc + curr.nominal, 0);
+            editNotaState.total = editNotaState.subtotal + editNotaState.ongkir + totalBiayaTambahan;
+
+            document.getElementById('edit-calc-subtotal').innerText = "Rp " + editNotaState.subtotal.toLocaleString('id-ID');
+            document.getElementById('edit-calc-ongkir').innerText = "Rp " + editNotaState.ongkir.toLocaleString('id-ID');
+            document.getElementById('edit-calc-biaya').innerText = "Rp " + totalBiayaTambahan.toLocaleString('id-ID');
+            document.getElementById('edit-calc-total').innerText = "Rp " + editNotaState.total.toLocaleString('id-ID');
+        };
+
+        function buildEditNotaPreviewData() {
+            calculateEditNotaTotal();
+            const status = document.getElementById('edit-nota-status').value;
+            const rekeningKurirIni = getRekeningKurirByKey(userSession?.id);
+            return {
+                notaNum: editNotaOriginal?.id || '-',
+                tanggal: editNotaOriginal?.tanggal || '-',
+                kurir: editNotaOriginal?.kurirNama || userSession?.nama || '-',
+                status,
+                items: editNotaState.items.map(it => ({ nama: it.nama, qty: it.qty, harga: it.harga, subtotal: it.subtotal })),
+                subtotal: editNotaState.subtotal,
+                ongkir: editNotaState.ongkir,
+                biayaList: editNotaState.biaya.map(b => ({ nama: b.nama, nominal: b.nominal })),
+                total: editNotaState.total,
+                rekening: rekeningKurirIni,
+                history: null
+            };
+        }
+
+        window.simpanGambarEditNota = function() {
+            invalidateNotaCanvasCache('canvas-nota-edit');
+            const data = buildEditNotaPreviewData();
+            processNotaImage('canvas-nota-edit', data, {
+                mode: 'download',
+                btn: document.getElementById('btn-edit-simpan-gambar'),
+                successMsg: 'Gambar nota berhasil disimpan!'
+            });
+        };
+
+        window.bagikanWhatsAppEditNota = function() {
+            invalidateNotaCanvasCache('canvas-nota-edit');
+            const data = buildEditNotaPreviewData();
+            processNotaImage('canvas-nota-edit', data, {
+                mode: 'share',
+                btn: document.getElementById('btn-edit-share-wa')
+            });
+        };
+
+        window.simpanPerubahanNota = async function() {
+            const key = document.getElementById('edit-nota-key').value;
+            if (!key || !editNotaOriginal) { toast('Data nota tidak ditemukan!'); return; }
+
+            calculateEditNotaTotal();
+
+            if (editNotaState.items.length === 0 && editNotaState.ongkir <= 0) {
+                toast('Nota tidak boleh kosong. Isi minimal ongkir atau item!');
+                return;
+            }
+
+            const ok = await showConfirm(
+                'Apakah Anda yakin ingin mengubah nota ini? Pastikan tidak ada kesalahan sebelum menyimpan perubahan.',
+                { title: 'Konfirmasi Ubah Nota', okText: 'Ya, Simpan Perubahan' }
+            );
+            if (!ok) return;
+
+            const status = document.getElementById('edit-nota-status').value;
+            const tipsVal = bersihkanAngka(document.getElementById('edit-nota-tips')?.value || '0');
+            const btnSimpan = document.getElementById('btn-edit-simpan-nota');
+            if (btnSimpan) btnSimpan.disabled = true;
+
+            const payload = {
+                status,
+                items: editNotaState.items,
+                itemsCount: editNotaState.items.length,
+                biayaTambahan: editNotaState.biaya,
+                subtotal: editNotaState.subtotal,
+                ongkir: editNotaState.ongkir,
+                total: editNotaState.total,
+                tips: tipsVal,
+                editedAt: new Date().toISOString()
+            };
+
+            update(ref(db, `nota/${key}`), payload).then(() => {
+                toast('Nota berhasil diperbarui!');
+                if (cloudNotaList[key]) cloudNotaList[key] = { ...cloudNotaList[key], ...payload };
+                if (cloudNotaEditRequests[key]) {
+                    remove(ref(db, `nota_edit_requests/${key}`)).catch(() => {});
+                    delete cloudNotaEditRequests[key];
+                }
+                tutupEditNota();
+                if (currentScreen === 'screen-riwayat') renderKurirRiwayatList(true);
+            }).catch(err => {
+                toast('Gagal menyimpan perubahan nota: ' + err.message);
+            }).finally(() => {
+                if (btnSimpan) btnSimpan.disabled = false;
+            });
+        };        
         function populateMitraSelectionDropdown() {
             const drop = document.getElementById('m-input-pilih');
             if(!drop) return;
@@ -4519,6 +4870,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             let totalPendapatan = 0;
             let totalOngkir = 0;
             let totalTambahan = 0;
+            let totalTips = 0;
             let totalNotaCount = 0;
             let totalTrxMitra = 0;
             let rekapMap = {};
@@ -4538,35 +4890,40 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 const tambahan = Array.isArray(nota.biayaTambahan)
                     ? nota.biayaTambahan.reduce((a, b) => a + (parseInt(b.nominal) || 0), 0)
                     : 0;
+                const tips = parseInt(nota.tips) || 0;
 
-                const pendapatan = ongkir + tambahan;
+                const pendapatan = ongkir + tambahan + tips;
 
                 if (modeBulanan) {
                     if (!cocokBulan(tglNota)) continue;
 
                     if (!rekapMap[tglNota]) {
-                        rekapMap[tglNota] = { notaCount: 0, pendapatan: 0, trxMitra: 0, isMonth: false };
+                        rekapMap[tglNota] = { notaCount: 0, pendapatan: 0, tips: 0, trxMitra: 0, isMonth: false };
                     }
 
                     rekapMap[tglNota].notaCount += 1;
                     rekapMap[tglNota].pendapatan += pendapatan;
+                    rekapMap[tglNota].tips += tips;
 
                     totalOngkir += ongkir;
                     totalTambahan += tambahan;
+                    totalTips += tips;
                     totalPendapatan += pendapatan;
                     totalNotaCount++;
                 } else {
                     if (!cocokTanggal(tglNota)) continue;
 
                     if (!rekapMap[tglNota]) {
-                        rekapMap[tglNota] = { notaCount: 0, pendapatan: 0, trxMitra: 0, isMonth: false };
+                        rekapMap[tglNota] = { notaCount: 0, pendapatan: 0, tips: 0, trxMitra: 0, isMonth: false };
                     }
 
                     rekapMap[tglNota].notaCount += 1;
                     rekapMap[tglNota].pendapatan += pendapatan;
+                    rekapMap[tglNota].tips += tips;
 
                     totalOngkir += ongkir;
                     totalTambahan += tambahan;
+                    totalTips += tips;
                     totalPendapatan += pendapatan;
                     totalNotaCount++;
                 }
@@ -4586,7 +4943,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     if (!cocokBulan(tglLog)) continue;
 
                     if (!rekapMap[tglLog]) {
-                        rekapMap[tglLog] = { notaCount: 0, pendapatan: 0, trxMitra: 0, isMonth: false };
+                        rekapMap[tglLog] = { notaCount: 0, pendapatan: 0, tips: 0, trxMitra: 0, isMonth: false };
                     }
 
                     rekapMap[tglLog].trxMitra += trx;
@@ -4595,7 +4952,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     if (!cocokTanggal(tglLog)) continue;
 
                     if (!rekapMap[tglLog]) {
-                        rekapMap[tglLog] = { notaCount: 0, pendapatan: 0, trxMitra: 0, isMonth: false };
+                        rekapMap[tglLog] = { notaCount: 0, pendapatan: 0, tips: 0, trxMitra: 0, isMonth: false };
                     }
 
                     rekapMap[tglLog].trxMitra += trx;
@@ -4615,6 +4972,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             document.getElementById('rk-pendapatan').innerText = "Rp " + totalPendapatan.toLocaleString('id-ID');
             document.getElementById('rk-ongkir').innerText = "Rp " + totalOngkir.toLocaleString('id-ID');
             document.getElementById('rk-tambahan').innerText = "Rp " + totalTambahan.toLocaleString('id-ID');
+            document.getElementById('rk-tips').innerText = "Rp " + totalTips.toLocaleString('id-ID');
             document.getElementById('rk-nota-count').innerText = totalNotaCount;
             document.getElementById('rk-total-trx-mitra').innerText = totalTrxMitra + " Trx";
 
@@ -4638,13 +4996,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             <td class="py-2 font-medium text-slate-700 dark:text-slate-300">${tglCantik}</td>
                             <td class="py-2 text-center text-slate-500">${data.notaCount} Nota</td>
                             <td class="py-2 text-right font-bold text-primary">Rp ${data.pendapatan.toLocaleString('id-ID')}</td>
+                            <td class="py-2 text-right font-semibold text-emerald-500">Rp ${(data.tips || 0).toLocaleString('id-ID')}</td>
                             <td class="py-2 text-right font-semibold text-indigo-600">${data.trxMitra} Trx</td>
                         </tr>
                     `;
                 });
 
                 if (!adaData) {
-                    tabelBody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-400 py-4 italic">Belum ada aktivitas di filter ini.</td></tr>`;
+                    tabelBody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-400 py-4 italic">Belum ada aktivitas di filter ini.</td></tr>`;
                 }
             }
 
@@ -4953,6 +5312,81 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 isRenderAdminNotaRunning = false;
             }
         };
+
+        function updateNotaEditRequestBadge(count) {
+            const badgeMenu = document.getElementById('badge-nota-edit-request-menu');
+            const badgeHeader = document.getElementById('badge-nota-edit-request');
+            if (badgeMenu) badgeMenu.classList.toggle('hidden', !count);
+            if (badgeHeader) {
+                badgeHeader.classList.toggle('hidden', !count);
+                badgeHeader.innerText = count;
+            }
+        }
+        window.updateNotaEditRequestBadge = updateNotaEditRequestBadge;
+
+        window.renderAdminNotaEditRequests = function() {
+            const container = document.getElementById('container-admin-nota-edit-request');
+            if (!container) return;
+
+            const entries = Object.entries(cloudNotaEditRequests || {})
+                .filter(([_, r]) => r && r.status === 'pending')
+                .sort((a, b) => (b[1].requestedAt || '').localeCompare(a[1].requestedAt || ''));
+
+            updateNotaEditRequestBadge(entries.length);
+
+            if (entries.length === 0) {
+                container.innerHTML = '<div class="text-center text-[10px] text-slate-400 py-3">Tidak ada pengajuan ubah nota yang menunggu.</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            entries.forEach(([key, r]) => {
+                container.innerHTML += `
+                    <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl text-[11px] space-y-2 border border-slate-100 dark:border-slate-700">
+                        <div class="flex justify-between items-start gap-2">
+                            <div class="min-w-0">
+                                <p class="font-bold truncate">${r.notaId || '-'}</p>
+                                <p class="text-[10px] text-slate-400">${r.tanggalNotaLabel || '-'} &bull; ${r.kurirNama || '-'}</p>
+                            </div>
+                            <span class="status-pill bg-amber-50 text-amber-600 dark:bg-amber-950/40 shrink-0"><i data-lucide="clock" class="w-2.5 h-2.5"></i> Menunggu</span>
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button onclick="prosesEditNotaRequest('${key}', 'rejected')" class="flex items-center gap-1 text-danger font-bold bg-red-50 dark:bg-red-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="x" class="w-3 h-3"></i> Tolak</button>
+                            <button onclick="prosesEditNotaRequest('${key}', 'approved')" class="flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="check" class="w-3 h-3"></i> Setujui</button>
+                        </div>
+                    </div>
+                `;
+            });
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.prosesEditNotaRequest = async function(key, decision) {
+            const r = cloudNotaEditRequests[key];
+            if (!r) { toast('Data pengajuan tidak ditemukan!'); return; }
+
+            const isApprove = decision === 'approved';
+            const ok = await showConfirm(
+                isApprove
+                    ? `Setujui pengajuan ubah nota ${r.notaId || ''} dari ${r.kurirNama || '-'}? Kurir akan bisa mengubah nota ini.`
+                    : `Tolak pengajuan ubah nota ${r.notaId || ''} dari ${r.kurirNama || '-'}?`,
+                { title: isApprove ? 'Setujui Pengajuan' : 'Tolak Pengajuan', okText: isApprove ? 'Ya, Setujui' : 'Ya, Tolak' }
+            );
+            if (!ok) return;
+
+            const payload = {
+                status: decision,
+                respondedAt: new Date().toISOString(),
+                respondedBy: userSession?.nama || userSession?.username || 'Admin'
+            };
+
+            update(ref(db, `nota_edit_requests/${key}`), payload).then(() => {
+                cloudNotaEditRequests[key] = { ...cloudNotaEditRequests[key], ...payload };
+                toast(isApprove ? 'Pengajuan disetujui. Kurir sekarang bisa mengubah nota ini.' : 'Pengajuan ditolak.');
+                renderAdminNotaEditRequests();
+            }).catch(err => {
+                toast('Gagal memproses pengajuan: ' + err.message);
+            });
+        };
         window.populateLaporanFilter = function() {
             const bulanSelect = document.getElementById('laporan-filter-bulan');
             const kurirSelect = document.getElementById('laporan-filter-kurir');
@@ -4994,6 +5428,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
             let totalNota = 0;
             let totalPendapatan = 0;
+            let totalTips = 0;
             let totalNotaAdmin = 0;
             let totalNotaOL = 0;
             let totalTrxMitra = 0;
@@ -5012,6 +5447,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                         notaAdmin: 0,
                         notaOL: 0,
                         pendapatan: 0,
+                        tips: 0,
                         trxMitra: 0,
                         kurirSet: new Set()
                     };
@@ -5019,10 +5455,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
                 const ongkir = parseInt(n.ongkir) || 0;
                 const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
+                const tips = parseInt(n.tips) || 0;
                 const pendapatan = ongkir + biaya;
 
                 mapHarian[tgl].totalNota++;
                 mapHarian[tgl].pendapatan += pendapatan;
+                mapHarian[tgl].tips += tips;
                 mapHarian[tgl].kurirSet.add(n.kurirUsername);
                 kurirAktifSet.add(n.kurirUsername);
 
@@ -5038,6 +5476,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
                 totalNota++;
                 totalPendapatan += pendapatan;
+                totalTips += tips;
             });
 
             Object.values(cloudLogMitra || {}).forEach(log => {
@@ -5052,6 +5491,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                         notaAdmin: 0,
                         notaOL: 0,
                         pendapatan: 0,
+                        tips: 0,
                         trxMitra: 0,
                         kurirSet: new Set()
                     };
@@ -5071,6 +5511,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             document.getElementById('laporan-total-pendapatan').innerText = 'Rp ' + totalPendapatan.toLocaleString('id-ID');
             document.getElementById('laporan-rata-rata').innerText = 'Rp ' + rataRata.toLocaleString('id-ID');
             document.getElementById('laporan-kurir-aktif').innerText = kurirAktifSet.size;
+
+            const tipsEl = document.getElementById('laporan-total-tips');
+            if (tipsEl) tipsEl.innerText = 'Rp ' + totalTips.toLocaleString('id-ID');
 
             const trxMitraEl = document.getElementById('laporan-total-trx-mitra');
             if (trxMitraEl) trxMitraEl.innerText = totalTrxMitra + ' Trx';
@@ -5108,9 +5551,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             <div><span class="text-[9px] text-slate-400 block">Nota Admin</span><span class="font-black text-blue-500">${d.notaAdmin}</span></div>
                             <div><span class="text-[9px] text-slate-400 block">Nota OL</span><span class="font-black text-fuchsia-500">${d.notaOL}</span></div>
                         </div>
-                        <div class="grid grid-cols-3 gap-2">
+                        <div class="grid grid-cols-2 gap-2">
                             <div><span class="text-[10px] text-slate-400 block">Pendapatan</span><span class="font-bold text-success">Rp ${d.pendapatan.toLocaleString('id-ID')}</span></div>
                             <div><span class="text-[10px] text-slate-400 block">Rata-rata</span><span class="font-bold text-amber-500">Rp ${avg.toLocaleString('id-ID')}</span></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div><span class="text-[10px] text-slate-400 block">Total Tips</span><span class="font-bold text-teal-600 dark:text-teal-400">Rp ${(d.tips || 0).toLocaleString('id-ID')}</span></div>
                             <div><span class="text-[10px] text-slate-400 block">Trx Mitra</span><span class="font-bold text-indigo-600 dark:text-indigo-400">${d.trxMitra} Trx</span></div>
                         </div>
                     </div>
@@ -5408,7 +5854,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                         totalAdmin: 0,
                         totalOL: 0,
                         trxMitra: 0,
-                        totalPendapatan: 0
+                        totalPendapatan: 0,
+                        totalTips: 0
                     };
                 }
 
@@ -5416,8 +5863,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 const ongkir = parseInt(n.ongkir) || 0;
                 const biaya = (n.biayaTambahan || []).reduce((a, b) => a + (parseInt(b.nominal) || 0), 0);
                 const pendapatan = ongkir + biaya;
+                const tips = parseInt(n.tips) || 0;
 
                 grouped[namaKurir][tgl].totalPendapatan += pendapatan;
+                grouped[namaKurir][tgl].totalTips += tips;
                 if (status === 'admin') grouped[namaKurir][tgl].totalAdmin += 1;
                 if (status === 'ol') grouped[namaKurir][tgl].totalOL += 1;
             });
@@ -5434,7 +5883,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                         totalAdmin: 0,
                         totalOL: 0,
                         trxMitra: 0,
-                        totalPendapatan: 0
+                        totalPendapatan: 0,
+                        totalTips: 0
                     };
                 }
                 grouped[namaKurir][log.tglRaw].trxMitra += (parseInt(log.trxInput) || 0);
@@ -5491,6 +5941,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     { wch: 14 },
                     { wch: 14 },
                     { wch: 14 },
+                    { wch: 14 },
                     { wch: 16 },
                     { wch: 18 },
                     { wch: 14 },
@@ -5516,6 +5967,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             Tanggal: tgl,
                             'Total Nota': totalNota,
                             'Total Pendapatan': `Rp ${d.totalPendapatan.toLocaleString('id-ID')}`,
+                            'Total Tips': `Rp ${(d.totalTips || 0).toLocaleString('id-ID')}`,
                             'Trx Mitra': d.trxMitra,
                             'Rata-rata/Nota': `Rp ${rataRata.toLocaleString('id-ID')}`
                         };
