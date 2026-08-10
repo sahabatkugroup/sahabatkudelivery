@@ -619,7 +619,8 @@
                         </div>
                     </button>
 
-                    <button onclick="navigateTo('screen-admin-nota')" class="menu-card active:scale-95 transition-transform">
+                    <button onclick="navigateTo('screen-admin-nota')" class="menu-card active:scale-95 transition-transform relative">
+                        <span id="badge-nota-edit-request-menu" class="hidden absolute top-1.5 right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-darkCard">!</span>
                         <div class="icon-tile" data-tone="indigo"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i></div>
                         <div>
                             <span class="menu-card-title block">Semua Nota Kurir</span>
@@ -987,7 +988,16 @@
                 </div>
 
                 <div id="container-admin-nota" class="space-y-2.5 hidden"></div>
-                
+
+                <div class="bg-white dark:bg-darkCard p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <i data-lucide="shield-check" class="w-3.5 h-3.5 shrink-0"></i> Pengajuan Ubah Nota Lama
+                        <span id="badge-nota-edit-request" class="hidden min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">0</span>
+                    </h3>
+                    <p class="text-[10px] text-slate-400 -mt-1">Kurir wajib mengajukan &amp; menunggu persetujuan Admin sebelum bisa mengubah nota selain tanggal hari ini.</p>
+                    <div id="container-admin-nota-edit-request" class="space-y-2"></div>
+                </div>
+
             </div>
 
             <div id="screen-admin-mitra" class="screen p-4 space-y-4">
@@ -1178,6 +1188,16 @@
                             </div>
                         </div>
 
+                        <div class="relative overflow-hidden rounded-2xl p-3 bg-gradient-to-br from-teal-50 to-teal-100/70 dark:from-teal-950/40 dark:to-teal-900/10 border border-teal-100 dark:border-teal-900/40">
+                            <div class="flex items-center gap-2.5">
+                                <div class="icon-tile shrink-0" data-tone="emerald" style="width:34px;height:34px;"><i data-lucide="hand-coins" class="w-4 h-4"></i></div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[8.5px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wide leading-none whitespace-nowrap overflow-hidden text-ellipsis">Total Tips</div>
+                                    <div class="text-sm font-black text-teal-600 dark:text-teal-400 leading-tight mt-1 break-words" id="laporan-total-tips">Rp 0</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="relative overflow-hidden rounded-2xl p-3 bg-gradient-to-br from-amber-50 to-amber-100/70 dark:from-amber-950/40 dark:to-amber-900/10 border border-amber-100 dark:border-amber-900/40">
                             <div class="flex items-center gap-2.5">
                                 <div class="icon-tile shrink-0" data-tone="amber" style="width:34px;height:34px;"><i data-lucide="users" class="w-4 h-4"></i></div>
@@ -1188,7 +1208,7 @@
                             </div>
                         </div>
 
-                        <div class="relative overflow-hidden rounded-2xl p-3 bg-gradient-to-br from-violet-50 to-violet-100/70 dark:from-violet-950/40 dark:to-violet-900/10 border border-violet-100 dark:border-violet-900/40 col-span-2">
+                        <div class="relative overflow-hidden rounded-2xl p-3 bg-gradient-to-br from-violet-50 to-violet-100/70 dark:from-violet-950/40 dark:to-violet-900/10 border border-violet-100 dark:border-violet-900/40">
                             <div class="flex items-center gap-2.5">
                                 <div class="icon-tile shrink-0" data-tone="violet" style="width:34px;height:34px;"><i data-lucide="store" class="w-4 h-4"></i></div>
                                 <div class="min-w-0 flex-1">
@@ -2061,7 +2081,7 @@
                         <i data-lucide="image" class="w-3.5 h-3.5"></i> Simpan Gambar
                     </button>
                 
-                    <button id="btn-simpan-nota" onclick="commitSaveNota()" class="py-2.5 custom-gradient text-white font-medium text-[10px] rounded-xl flex items-center justify-center gap-2 shadow active:scale-95 transition-transform">
+                    <button id="btn-simpan-nota" onclick="bukaPopupTipsNota()" class="py-2.5 custom-gradient text-white font-medium text-[10px] rounded-xl flex items-center justify-center gap-2 shadow active:scale-95 transition-transform">
                         <i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan Nota
                     </button>
                 
@@ -2148,13 +2168,20 @@
                         </div>
                     </div>
                     <div class="bg-white dark:bg-darkCard p-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-500 shrink-0"><i data-lucide="hand-coins" class="w-4 h-4"></i></div>
+                        <div class="min-w-0">
+                            <p class="text-[9px] text-slate-400 uppercase leading-none">Total Tips</p>
+                            <p class="text-sm font-black text-emerald-500 mt-1 break-words" id="rk-tips">Rp 0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-darkCard p-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-2.5">
                         <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-success shrink-0"><i data-lucide="file-text" class="w-4 h-4"></i></div>
                         <div class="min-w-0">
                             <p class="text-[9px] text-slate-400 uppercase leading-none">Jumlah Nota</p>
                             <p class="text-sm font-black text-success mt-1" id="rk-nota-count">0</p>
                         </div>
                     </div>
-                    <div class="bg-white dark:bg-darkCard p-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm col-span-2 flex items-center gap-2.5">
+                    <div class="bg-white dark:bg-darkCard p-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-2.5">
                         <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-500 shrink-0"><i data-lucide="store" class="w-4 h-4"></i></div>
                         <div class="min-w-0">
                             <p class="text-[9px] text-slate-400 uppercase leading-none">Total Transaksi Mitra</p>
@@ -2178,6 +2205,7 @@
                                     <th class="py-1.5">Tanggal</th>
                                     <th class="py-1.5 text-center">Nota</th>
                                     <th class="py-1.5 text-right">Pendapatan</th>
+                                    <th class="py-1.5 text-right">Tips</th>
                                     <th class="py-1.5 text-right">Mitra</th>
                                 </tr>
                             </thead>
@@ -2778,7 +2806,113 @@
             </div>
         </div>
     </div>
-    
+    <!-- ===== Modal EDIT NOTA (Kurir) — ubah isi nota yang sudah tersimpan ===== -->
+    <div id="modal-input-tips" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm items-center justify-center p-4">
+        <div class="bg-white dark:bg-darkCard w-full max-w-[300px] rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-3 animate-modal-pop">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-500 shrink-0"><i data-lucide="hand-coins" class="w-4 h-4"></i></div>
+                <div class="min-w-0">
+                    <h3 class="text-xs font-bold text-slate-700 dark:text-white leading-tight">Tips dari Customer</h3>
+                    <p class="text-[9.5px] text-slate-400 leading-tight">Opsional, kosongkan jika tidak ada</p>
+                </div>
+            </div>
+            <input type="text" id="input-tips-nota-baru" oninput="autoformatRupiah(this)" placeholder="Contoh: 5.000" inputmode="numeric" class="w-full px-3 py-2.5 border rounded-xl text-sm font-bold text-emerald-600 dark:bg-darkBg dark:border-slate-700 text-center">
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="lewatiTipsDanSimpanNota()" class="py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold rounded-xl text-[10.5px] uppercase active:scale-95 transition-transform">Lewati</button>
+                <button onclick="konfirmasiTipsDanSimpanNota()" class="py-2.5 custom-gradient text-white font-bold rounded-xl text-[10.5px] uppercase active:scale-95 transition-transform">Simpan Nota</button>
+            </div>
+        </div>
+    </div>
+    <div id="modal-edit-nota" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm items-center justify-center p-3 sm:p-4">
+        <div class="bg-white dark:bg-darkCard w-full max-w-[420px] rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 max-h-[92vh] overflow-y-auto animate-modal-pop">
+            <div class="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 bg-white dark:bg-darkCard border-b border-slate-100 dark:border-slate-800">
+                <div class="min-w-0">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><i data-lucide="pencil-line" class="w-3.5 h-3.5"></i> Ubah Nota</h3>
+                    <p id="edit-nota-nomor" class="text-sm font-bold text-slate-800 dark:text-white truncate">-</p>
+                </div>
+                <button onclick="tutupEditNota()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">✕</button>
+            </div>
+
+            <div class="p-4 space-y-4">
+                <input type="hidden" id="edit-nota-key">
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Status Order</label>
+                        <select id="edit-nota-status" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700">
+                            <option value="Admin">Admin</option>
+                            <option value="OL">OL</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">Ongkir (Rp)</label>
+                        <input type="text" id="edit-nota-ongkir" oninput="autoformatRupiah(this); calculateEditNotaTotal();" inputmode="numeric" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700 font-semibold text-primary">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] text-slate-400 mb-1 flex items-center gap-1"><i data-lucide="hand-coins" class="w-3 h-3"></i> Tips dari Customer (Rp)</label>
+                    <input type="text" id="edit-nota-tips" oninput="autoformatRupiah(this)" placeholder="Contoh: 5.000" inputmode="numeric" class="w-full px-3 py-2 border rounded-xl text-xs dark:bg-darkBg dark:border-slate-700 font-semibold text-emerald-600">
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><i data-lucide="package" class="w-3.5 h-3.5"></i> Daftar Item</h4>
+                    <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2">
+                        <input type="text" id="edit-item-nama" oninput="autocapitalText(this)" placeholder="Nama barang..." class="w-full px-3 py-2 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="number" id="edit-item-qty" placeholder="Qty" value="1" class="w-full px-3 py-2 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+                            <input type="text" id="edit-item-harga" oninput="autoformatRupiah(this)" placeholder="Contoh: 10.000" inputmode="numeric" class="col-span-2 w-full px-3 py-2 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+                        </div>
+                        <button type="button" onclick="addEditNotaItem()" class="w-full py-2 bg-primary text-white font-medium rounded-lg text-[11px] uppercase">Tambah Item</button>
+                    </div>
+                    <div id="container-edit-items" class="space-y-2"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"><i data-lucide="coins" class="w-3.5 h-3.5"></i> Tambahan Biaya</h4>
+                    <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-2">
+                        <select id="edit-biaya-dropdown" onchange="handleEditBiayaDropdownChange()" class="w-full px-3 py-2 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+                            <option value="">-- Pilih Jenis Biaya --</option>
+                            <option value="Tambahan Ojek" data-harga="2.000">Tambahan Ojek (2.000)</option>
+                            <option value="Tambahan Malam" data-harga="2.000">Tambahan Malam (2.000)</option>
+                            <option value="Tambahan Tempat" data-harga="2.000">Tambahan Tempat (2.000)</option>
+                            <option value="Tambahan Tempat (Ojek)" data-harga="2.000">Tambahan Tempat (Ojek) (2.000)</option>
+                            <option value="Tambahan Hujan" data-harga="2000">Tambahan Hujan (2.000)</option>
+                            <option value="Tambahan Parkir" data-harga="2.000">Tambahan Parkir (2.000)</option>
+                            <option value="Tambahan Kapasitas" data-harga="manual">Tambahan Kapasitas</option>
+                            <option value="Tambahan Cash Minuman" data-harga="5.000">Tambahan Cash Minuman (5.000)</option>
+                            <option value="Tambahan Tempat >3 (Pasar)" data-harga="3.000">Tambahan Tempat >3 (Pasar) (3.000)</option>
+                            <option value="Tambahan Lainnya" data-harga="manual">Tambahan Lainnya</option>
+                        </select>
+                        <input type="text" id="edit-biaya-nama-manual" oninput="autocapitalText(this)" placeholder="Misal: Parkir Pasar" class="w-full px-3 py-2 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700 hidden">
+                        <input type="text" id="edit-biaya-nominal" oninput="autoformatRupiah(this)" placeholder="Contoh: 10.000" inputmode="numeric" class="w-full px-3 py-2 border rounded-lg text-xs dark:bg-darkBg dark:border-slate-700">
+                        <button type="button" onclick="addEditBiayaItem()" class="w-full py-2 bg-primary text-white font-medium rounded-lg text-[11px] uppercase">Tambah Biaya</button>
+                    </div>
+                    <div id="container-edit-biaya" class="space-y-2"></div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-4 rounded-2xl space-y-1.5 shadow-md">
+                    <div class="flex justify-between text-xs opacity-70"><span>Subtotal Item:</span><span id="edit-calc-subtotal">Rp 0</span></div>
+                    <div class="flex justify-between text-xs opacity-70"><span>Ongkos Kirim:</span><span id="edit-calc-ongkir">Rp 0</span></div>
+                    <div class="flex justify-between text-xs opacity-70"><span>Tambahan Biaya:</span><span id="edit-calc-biaya">Rp 0</span></div>
+                    <div class="border-t border-white/10 my-1"></div>
+                    <div class="flex justify-between text-sm font-bold text-amber-400"><span>Total Keseluruhan:</span><span id="edit-calc-total">Rp 0</span></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 pt-1 pb-1">
+                    <button id="btn-edit-simpan-gambar" onclick="simpanGambarEditNota()" class="py-2.5 bg-slate-800 text-white font-medium text-[10px] rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i> Simpan Gambar
+                    </button>
+                    <button id="btn-edit-simpan-nota" onclick="simpanPerubahanNota()" class="py-2.5 custom-gradient text-white font-medium text-[10px] rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform">
+                        <i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan Nota
+                    </button>
+                    <button id="btn-edit-share-wa" onclick="bagikanWhatsAppEditNota()" class="py-2.5 bg-success text-white font-bold text-[10px] rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-transform">
+                        <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Bagikan WA
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>    
     <div id="modal-edit-kurir" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
         <div class="bg-white dark:bg-darkCard w-full max-w-[360px] sm:max-w-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-4 relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeEditKurirModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
