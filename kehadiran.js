@@ -1,13 +1,3 @@
-// ===================================================================
-// kehadiran.js — dipindahkan dari <script> di kehadiran.html
-// Fitur: Absensi Kurir dengan Face Scan + GPS Geofence (Firebase Realtime)
-// Catatan: file ini memakai Firebase v8 (compat SDK) yang dimuat lewat
-// <script> di <head> index.html, terpisah dari SDK v9 modular yang
-// dipakai script.js/sop.js/absensi.js — supaya kode asli tidak perlu
-// ditulis ulang.
-// ===================================================================
-
-// Config asli sesuai database Sahabatku Group Anda
 const firebaseConfig = {
   apiKey: "AIzaSyDweL8xXcOu6ZODYzCa1KpqZVPLH5Ocijk",
   authDomain: "aplikasi-sahabatkugroup.firebaseapp.com",
@@ -46,55 +36,6 @@ function syncKehadiranProfilTerkunci(nama) {
   }
 }
 
-async function autoLoginKurirDariSession() {
-  const savedSession = localStorage.getItem('sahabatku_session');
-  if (!savedSession) return;
-
-  try {
-    const session = JSON.parse(savedSession);
-    if (session.role !== 'kurir' && session.role !== 'leader') return;
-
-    const snap = await database.ref(`users/${session.id}`).get();
-    if (!snap.exists()) return;
-
-    const user = snap.val();
-    if (user.status !== 'aktif') {
-      alert('Akun kurir tidak aktif.');
-      return;
-    }
-
-    // simpan ke variabel utama
-    infoKurir = {
-      id: session.id,
-      nama: user.nama || session.nama || '-',
-      leader: user.leader || '-',
-      password: user.password || '',
-      ongkirLocked: user.ongkirLocked || false,
-      ongkirPassword: user.ongkirPassword || ''
-    };
-
-    // isi dropdown otomatis
-    const select = document.getElementById('select-kurir');
-    select.value = session.id;
-    document.getElementById('box-status-firebase').classList.remove('hidden');
-    document.getElementById('txt-id').innerText = infoKurir.leader;
-    document.getElementById('txt-status').innerText = 'AKTIF';
-    syncKehadiranProfilTerkunci(infoKurir.nama);
-
-    // cek status absen hari ini
-    await checkSelectedKurirStatus();
-
-    // Aktifkan reminder otomatis (belum absen masuk / sudah bisa absen pulang) —
-    // notifikasi sistem cache lokal, sama seperti reminder mitra trx.
-    if (typeof window.startAbsensiReminderWatcher === 'function') {
-      window.startAbsensiReminderWatcher();
-    }
-
-  } catch (err) {
-    console.error(err);
-  }
-}
-
 function initKehadiran() {
   lucide.createIcons();
   hitungTanggalOperasional();
@@ -105,9 +46,73 @@ function initKehadiran() {
     hitungTanggalOperasional();
   }, 60000);
 
-  setTimeout(() => {
-    autoLoginKurirDariSession();
-  }, 300);
+  // Langsung jalan, tanpa delay buatan lagi
+  autoLoginKurirDariSession();
+}
+
+async function autoLoginKurirDariSession() {
+  const savedSession = localStorage.getItem('sahabatku_session');
+  if (!savedSession) return;
+
+  let session;
+  try {
+    session = JSON.parse(savedSession);
+  } catch (e) { return; }
+  if (session.role !== 'kurir' && session.role !== 'leader') return;
+
+  // === TAMPILKAN LANGSUNG DARI SESSION (instan, tanpa nunggu Firebase) ===
+  infoKurir = {
+    id: session.id,
+    nama: session.nama || '-',
+    leader: '-',
+    password: '',
+    ongkirLocked: false,
+    ongkirPassword: ''
+  };
+
+  const select = document.getElementById('select-kurir');
+  if (select) select.value = session.id;
+
+  document.getElementById('box-status-firebase').classList.remove('hidden');
+  document.getElementById('txt-id').innerText = '...';
+  document.getElementById('txt-status').innerText = 'AKTIF';
+  document.getElementById('txt-badge-status').innerText = 'Mengecek...';
+  syncKehadiranProfilTerkunci(infoKurir.nama);
+
+  // === BARU SYNC DETAIL LENGKAP DI BACKGROUND ===
+  try {
+    const snap = await database.ref(`users/${session.id}`).get();
+    if (!snap.exists()) return;
+
+    const user = snap.val();
+    if (user.status !== 'aktif') {
+      alert('Akun kurir tidak aktif.');
+      return;
+    }
+
+    infoKurir = {
+      id: session.id,
+      nama: user.nama || session.nama || '-',
+      leader: user.leader || '-',
+      password: user.password || '',
+      ongkirLocked: user.ongkirLocked || false,
+      ongkirPassword: user.ongkirPassword || ''
+    };
+
+    if (select) select.value = session.id;
+    document.getElementById('txt-id').innerText = infoKurir.leader;
+    document.getElementById('txt-status').innerText = 'AKTIF';
+    syncKehadiranProfilTerkunci(infoKurir.nama);
+
+    // cek status absen hari ini
+    await checkSelectedKurirStatus();
+
+    if (typeof window.startAbsensiReminderWatcher === 'function') {
+      window.startAbsensiReminderWatcher();
+    }
+  } catch (err) {
+    console.error(err);
+  }
 }
 // Screen ini dimuat langsung sebagai bagian dari index.html (bukan halaman
 // terpisah lagi), jadi inisialisasi dijalankan begitu DOM siap.
