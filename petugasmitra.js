@@ -1782,6 +1782,8 @@ window.__pm = {
     renderLegacyCek: pmRenderLegacyCek,
     renderLegacyPending: pmRenderLegacyPending,
     requestHapusTrx: pmRequestHapusTrx,
+    injectLegacyMitraExtras: pmInjectLegacyMitraExtras,   // ← TAMBAHKAN INI
+    updateAdminBadge: pmUpdateAdminBadge,                 // ← TAMBAHKAN INI    
     toggleRiwayat() { pmToggleResults("rwt", "pm-rwt-results", "pm-rwt-toggle-btn", pmRenderRiwayat, "Buka Daftar Total Transaksi", "Tutup Daftar Total Transaksi"); },
     toggleDaftarMitra() { pmToggleResults("daftar", "pm-daftar-results", "pm-daftar-toggle-btn", pmRenderDaftarMitra, "Buka", "Tutup"); },
     toggleStatus() { pmToggleResults("status", "pm-status-results", "pm-status-toggle-btn", pmRenderStatusSaya, "Buka Daftar Pengajuan", "Tutup Daftar Pengajuan"); },
