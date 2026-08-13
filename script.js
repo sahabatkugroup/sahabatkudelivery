@@ -1389,7 +1389,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             'screen-admin-ongkir': { title: 'Wilayah Ongkir', icon: 'route' },
             'screen-admin-order-deposit': { title: 'Input Deposit', icon: 'clipboard-list' },
             'screen-admin-testimonial': { title: 'Testimoni Customer', icon: 'message-circle-more' },
-            'screen-admin-notifikasi': { title: 'Kirim Notifikasi', icon: 'bell-ring' }
+            'screen-admin-notifikasi': { title: 'Kirim Notifikasi', icon: 'bell-ring' },
+            'screen-jelajah-kedai': { title: 'Jelajah Kedai', icon: 'compass' },
+            'screen-kurir-testimonial': { title: 'Testimoni Customer', icon: 'message-circle-more' },
+            'screen-profil-saya': { title: 'Profil Data Diri', icon: 'id-card' }
         };
         function applyAppBarMeta(screenId) {
             const appBarTitle = document.getElementById('app-bar-title');
@@ -2587,6 +2590,409 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             }).join('');
         };
 
+        // ===================================================================
+        // TESTIMONI CUSTOMER — versi KURIR (read-only, tanpa kontrol admin).
+        // Menampilkan data yang sama (cloudTestimonialList) dgn filter bulan,
+        // tapi tanpa tombol Tampilkan/Sembunyikan/Hapus.
+        // ===================================================================
+        window.bukaKurirTestimonial = function() {
+            navigateTo('screen-kurir-testimonial');
+
+            const inputBulan = document.getElementById('kurir-testimonial-filter-bulan');
+            if (inputBulan && !inputBulan.value) {
+                inputBulan.value = getWibRawDate().substring(0, 7);
+            }
+        };
+
+        window.toggleKurirTestimonialOpen = function() {
+            const el = document.getElementById('container-kurir-testimonial');
+            if (!el) return;
+            el.dataset.open = el.dataset.open === '1' ? '0' : '1';
+
+            const btn = document.getElementById('btn-toggle-kurir-testimonial');
+            if (btn) btn.innerText = el.dataset.open === '1' ? 'Tutup' : 'Cari';
+
+            renderKurirTestimonial();
+        };
+
+        window.renderKurirTestimonial = function() {
+            const container = document.getElementById('container-kurir-testimonial');
+            if (!container) return;
+
+            const isOpen = container.dataset.open === '1';
+            if (!isOpen) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const bulanFilter = document.getElementById('kurir-testimonial-filter-bulan')?.value || '';
+
+            const filteredKeys = Object.keys(cloudTestimonialList || {})
+                .sort((a, b) => {
+                    const timestampA = cloudTestimonialList[a]?.timestamp || 0;
+                    const timestampB = cloudTestimonialList[b]?.timestamp || 0;
+                    return timestampB - timestampA;
+                })
+                .filter(key => {
+                    const t = cloudTestimonialList[key];
+                    if (!t) return false;
+                    const rawBulan = t.timestamp
+                        ? new Date(t.timestamp).toISOString().slice(0, 7)
+                        : (t.date ? t.date.split('/').reverse().join('-').slice(0, 7) : '');
+                    return !bulanFilter || rawBulan === bulanFilter;
+                });
+
+            if (!filteredKeys.length) {
+                container.innerHTML = '<div class="text-center text-xs text-slate-400 py-4">Tidak ada testimoni pada bulan ini.</div>';
+                return;
+            }
+
+            container.innerHTML = filteredKeys.map(key => {
+                const t = cloudTestimonialList[key];
+                const statusText = t.isPublished ? 'TAMPIL' : 'SEMBUNYI';
+                const statusClass = t.isPublished
+                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
+                const createdText = t.timestamp
+                    ? new Date(t.timestamp).toLocaleString('id-ID')
+                    : `${t.date || '-'} ${t.time || '-'}`;
+
+                return `
+                    <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs space-y-2">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <div class="font-bold text-sm text-slate-800 dark:text-white">${t.fullname || '-'}</div>
+                                <div class="text-[10px] text-slate-400">Kurir: ${t.nama || '-'}</div>
+                                <div class="text-[10px] text-slate-400">Tanggal: ${createdText}</div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-[10px] font-bold ${statusClass} shrink-0">${statusText}</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 text-[10px]">
+                            <div class="bg-white dark:bg-darkCard p-2 rounded-lg">
+                                <div class="text-slate-400">Rating</div>
+                                <div class="font-bold">${t.rating || 0}</div>
+                            </div>
+                            <div class="bg-white dark:bg-darkCard p-2 rounded-lg">
+                                <div class="text-slate-400">Attitude</div>
+                                <div class="font-bold">${t.attitude || '-'}</div>
+                            </div>
+                            <div class="bg-white dark:bg-darkCard p-2 rounded-lg">
+                                <div class="text-slate-400">Speed</div>
+                                <div class="font-bold">${t.speed || '-'}</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-darkCard p-2 rounded-lg text-[11px] text-slate-600 dark:text-slate-300">${t.comments || '-'}</div>
+                    </div>
+                `;
+            }).join('');
+
+            if (window.lucide) lucide.createIcons();
+        };
+
+        // ===================================================================
+        // PROFIL SAYA — versi HALAMAN PENUH (non-popup), dibuka dari menu
+        // "Profil" di dashboard kurir. Logikanya sama dengan popup "Profil
+        // Saya" (lihat profilkurir.js) tapi pakai id sendiri (akhiran -pg)
+        // supaya tidak bentrok, dan menulis ke node Firebase yang sama
+        // ('profil_kurir_pending') lewat koneksi db modular di file ini.
+        // ===================================================================
+        function formatTanggalIndoProfilPage(tglStr) {
+            if (!tglStr) return '';
+            try {
+                const d = new Date(tglStr + 'T00:00:00');
+                if (isNaN(d.getTime())) return tglStr;
+                return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            } catch (e) {
+                return tglStr;
+            }
+        }
+
+        function hitungLamaBergabungProfilPage(tglGabungStr) {
+            if (!tglGabungStr) return 'Tgl bergabung belum diatur';
+            try {
+                const [th, bl, tg] = tglGabungStr.split('-').map(Number);
+                if (!th || !bl || !tg) return '-';
+                const gabung = new Date(th, bl - 1, tg);
+
+                const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+                const hariIni = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+                if (gabung > hariIni) return 'Belum bergabung';
+                if (gabung.getTime() === hariIni.getTime()) return 'Baru bergabung hari ini';
+
+                const baseline = new Date(gabung);
+                baseline.setDate(baseline.getDate() - 1);
+
+                let tahun = hariIni.getFullYear() - baseline.getFullYear();
+                let bulan = hariIni.getMonth() - baseline.getMonth();
+                let hari = hariIni.getDate() - baseline.getDate();
+
+                if (hari < 0) {
+                    bulan -= 1;
+                    const akhirBulanLalu = new Date(hariIni.getFullYear(), hariIni.getMonth(), 0).getDate();
+                    hari += akhirBulanLalu;
+                }
+                if (bulan < 0) {
+                    tahun -= 1;
+                    bulan += 12;
+                }
+
+                const bagian = [];
+                if (tahun > 0) bagian.push(`${tahun} tahun`);
+                if (bulan > 0) bagian.push(`${bulan} bulan`);
+                if (hari > 0 || bagian.length === 0) bagian.push(`${hari} hari`);
+
+                return bagian.join(' ');
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        function formatRupiahProfilPage(nilai) {
+            const n = parseInt(nilai) || 0;
+            if (!n) return '';
+            return 'Rp ' + n.toLocaleString('id-ID') + '/bulan';
+        }
+
+        const DAFTAR_JENIS_REKENING_PAGE = ['DANA', 'OVO', 'GoPay', 'ShopeePay', 'LinkAja', 'BCA', 'BRI', 'BNI', 'Mandiri', 'Lainnya'];
+
+        function buatOpsiJenisRekeningHtmlPage(terpilih) {
+            const opsiKosong = `<option value="">-- Jenis --</option>`;
+            const opsiLain = DAFTAR_JENIS_REKENING_PAGE.map(j => `<option value="${j}" ${j === terpilih ? 'selected' : ''}>${j}</option>`).join('');
+            const custom = (terpilih && !DAFTAR_JENIS_REKENING_PAGE.includes(terpilih)) ? `<option value="${terpilih}" selected>${terpilih}</option>` : '';
+            return opsiKosong + custom + opsiLain;
+        }
+
+        function buatBarisRekeningPage(nilai) {
+            const rek = nilai || {};
+            const div = document.createElement('div');
+            div.className = 'rekening-row-pg flex items-start gap-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl p-2';
+            div.innerHTML = `
+                <div class="flex-1 grid grid-cols-2 gap-1.5">
+                    <select class="rek-jenis-pg w-full px-2 py-1.5 border rounded-lg text-[11px] dark:bg-darkBg dark:border-slate-700">
+                        ${buatOpsiJenisRekeningHtmlPage(rek.jenis || '')}
+                    </select>
+                    <input type="text" value="${(rek.nomor || '').replace(/"/g, '&quot;')}" inputmode="numeric" placeholder="No. HP/Rekening" class="rek-nomor-pg w-full px-2 py-1.5 border rounded-lg text-[11px] dark:bg-darkBg dark:border-slate-700">
+                    <input type="text" value="${(rek.pemilik || '').replace(/"/g, '&quot;')}" placeholder="Atas Nama (opsional)" class="rek-nama-pg col-span-2 w-full px-2 py-1.5 border rounded-lg text-[11px] dark:bg-darkBg dark:border-slate-700">
+                </div>
+                <button type="button" onclick="hapusBarisRekeningPage(this)" class="shrink-0 w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-500 flex items-center justify-center mt-0.5">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+            `;
+            return div;
+        }
+
+        window.hapusBarisRekeningPage = function(btn) {
+            const row = btn.closest('.rekening-row-pg');
+            if (row) row.remove();
+        };
+
+        window.tambahBarisRekeningPage = function() {
+            const container = document.getElementById('kf-rekening-list-pg');
+            if (!container) return;
+            container.appendChild(buatBarisRekeningPage({}));
+            if (window.lucide) lucide.createIcons();
+        };
+
+        function renderDaftarRekeningEditPage(list) {
+            const container = document.getElementById('kf-rekening-list-pg');
+            if (!container) return;
+            container.innerHTML = '';
+            const arr = Array.isArray(list) ? list : [];
+            if (arr.length === 0) {
+                container.appendChild(buatBarisRekeningPage({}));
+            } else {
+                arr.forEach(r => container.appendChild(buatBarisRekeningPage(r)));
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function renderDaftarRekeningViewPage(list) {
+            const container = document.getElementById('kfv-rekening-list-pg');
+            if (!container) return;
+            const arr = (Array.isArray(list) ? list : []).filter(r => r && (r.nomor || '').trim());
+            if (arr.length === 0) {
+                container.innerHTML = `<p class="text-[10.5px] text-slate-400 italic px-0.5">Belum ada e-wallet/rekening bank yang diatur.</p>`;
+                return;
+            }
+            container.innerHTML = arr.map(r => `
+                <div class="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2">
+                    <div class="min-w-0">
+                        <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">${r.jenis || 'Lainnya'}</p>
+                        <p class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">${r.nomor || '-'}</p>
+                    </div>
+                    ${r.pemilik ? `<span class="text-[10px] text-slate-400 text-right shrink-0 max-w-[40%] truncate">a.n ${r.pemilik}</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function kumpulkanRekeningDariContainerPage() {
+            const container = document.getElementById('kf-rekening-list-pg');
+            if (!container) return [];
+            const rows = container.querySelectorAll('.rekening-row-pg');
+            const hasil = [];
+            rows.forEach(row => {
+                const jenis = (row.querySelector('.rek-jenis-pg')?.value || '').trim();
+                const nomor = (row.querySelector('.rek-nomor-pg')?.value || '').trim();
+                const pemilik = (row.querySelector('.rek-nama-pg')?.value || '').trim();
+                if (jenis || nomor) hasil.push({ jenis, nomor, pemilik });
+            });
+            return hasil;
+        }
+
+        window.bukaProfilSayaPage = function() {
+            navigateTo('screen-profil-saya');
+            renderProfilSayaPage();
+        };
+
+        window.renderProfilSayaPage = function() {
+            if (!userSession || !userSession.id) {
+                toast('Sesi login tidak ditemukan, silakan login ulang.');
+                return;
+            }
+
+            const akun = cloudKurirList[userSession.id] || {};
+            const approved = (typeof window.getCloudProfilKurirList === 'function' ? window.getCloudProfilKurirList() : {})[userSession.id] || {};
+            const pending = (typeof window.getCloudProfilPendingList === 'function' ? window.getCloudProfilPendingList() : {})[userSession.id] || null;
+            const sumber = pending || approved;
+
+            const namaTampil = (approved.namaLengkap && approved.namaLengkap.trim()) ? approved.namaLengkap : (akun.nama || userSession.nama || '-');
+            const statusAktif = (akun.status || 'aktif') === 'aktif';
+
+            const elNama = document.getElementById('profil-saya-nama-pg');
+            const elBadge = document.getElementById('profil-saya-status-badge-pg');
+            if (elNama) elNama.innerText = namaTampil;
+            if (elBadge) elBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${statusAktif ? 'bg-emerald-300' : 'bg-rose-300'}"></span> ${statusAktif ? 'Akun Aktif' : 'Akun Nonaktif'}`;
+
+            const elLamaGabung = document.getElementById('profil-saya-lama-bergabung-text-pg');
+            if (elLamaGabung) elLamaGabung.innerText = hitungLamaBergabungProfilPage(akun.tglGabung);
+
+            const elIdCard = document.getElementById('kf-id-card-display-pg');
+            if (elIdCard) elIdCard.innerText = approved.noIdCard || 'Belum diatur Admin';
+            const elTglGabung = document.getElementById('kf-tgl-gabung-display-pg');
+            if (elTglGabung) elTglGabung.innerText = formatTanggalIndoProfilPage(akun.tglGabung) || (akun.tglGabung || '-');
+
+            const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+            setVal('kf-nama-lengkap-pg', sumber.namaLengkap);
+            setVal('kf-nik-pg', sumber.nik);
+            setVal('kf-tempat-lahir-pg', sumber.tempatLahir);
+            setVal('kf-tanggal-lahir-pg', sumber.tanggalLahir);
+            setVal('kf-hp-wa-pg', sumber.noHpWa);
+            setVal('kf-hp-kurir-pg', sumber.noHpKurir);
+            setVal('kf-alamat-pg', sumber.alamatDomisili);
+            setVal('kf-pekerjaan-lain-pg', sumber.pekerjaanLain);
+            setVal('kf-bpjs-pg', sumber.noBpjs);
+            setVal('kf-kelas-bpjs-pg', sumber.kelasBpjs);
+            setVal('kf-biaya-bpjs-pg', sumber.biayaBpjs || '');
+            setVal('kf-kontak-darurat-nama-pg', sumber.kontakDaruratNama || sumber.kontakDarurat);
+            setVal('kf-kontak-darurat-hp-pg', sumber.kontakDaruratNoHp);
+
+            const setTeks = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = (val && String(val).trim()) ? val : '-'; };
+            setTeks('kfv-nama-lengkap-pg', sumber.namaLengkap);
+            setTeks('kfv-nik-pg', sumber.nik);
+            const ttl = [sumber.tempatLahir, formatTanggalIndoProfilPage(sumber.tanggalLahir)].filter(Boolean).join(', ');
+            setTeks('kfv-ttl-pg', ttl);
+            setTeks('kfv-hp-wa-pg', sumber.noHpWa);
+            setTeks('kfv-hp-kurir-pg', sumber.noHpKurir);
+            setTeks('kfv-alamat-pg', sumber.alamatDomisili);
+            setTeks('kfv-pekerjaan-lain-pg', sumber.pekerjaanLain);
+            setTeks('kfv-bpjs-pg', sumber.noBpjs);
+            const kelasBiaya = [sumber.kelasBpjs, formatRupiahProfilPage(sumber.biayaBpjs)].filter(Boolean).join(' • ');
+            setTeks('kfv-kelas-biaya-bpjs-pg', kelasBiaya);
+            setTeks('kfv-kontak-darurat-nama-pg', sumber.kontakDaruratNama || sumber.kontakDarurat);
+            setTeks('kfv-kontak-darurat-hp-pg', sumber.kontakDaruratNoHp);
+
+            const elStatus = document.getElementById('kf-status-display-pg');
+            if (elStatus) {
+                elStatus.innerText = statusAktif ? 'AKTIF' : 'NONAKTIF';
+                elStatus.className = `text-xs font-bold ${statusAktif ? 'text-emerald-600' : 'text-rose-500'}`;
+            }
+
+            renderDaftarRekeningViewPage(sumber.rekening);
+            renderDaftarRekeningEditPage(sumber.rekening);
+
+            const banner = document.getElementById('profil-saya-pending-banner-pg');
+            if (banner) banner.classList.toggle('hidden', !pending);
+
+            tampilkanModeViewProfilSayaPage();
+            if (window.lucide) lucide.createIcons();
+        };
+
+        function tampilkanModeViewProfilSayaPage() {
+            const view = document.getElementById('profil-saya-view-mode-pg');
+            const edit = document.getElementById('profil-saya-edit-mode-pg');
+            if (view) view.classList.remove('hidden');
+            if (edit) edit.classList.add('hidden');
+        }
+
+        window.aktifkanModeEditProfilSayaPage = function() {
+            const view = document.getElementById('profil-saya-view-mode-pg');
+            const edit = document.getElementById('profil-saya-edit-mode-pg');
+            if (view) view.classList.add('hidden');
+            if (edit) edit.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.batalModeEditProfilSayaPage = function() {
+            renderProfilSayaPage();
+        };
+
+        window.simpanProfilSayaPage = function() {
+            if (!userSession || !userSession.id) {
+                toast('Sesi login tidak ditemukan, silakan login ulang.');
+                return;
+            }
+
+            const namaLengkap = (document.getElementById('kf-nama-lengkap-pg').value || '').trim();
+            if (!namaLengkap) {
+                toast('Nama Lengkap wajib diisi!');
+                return;
+            }
+
+            const payload = {
+                namaLengkap,
+                nik: document.getElementById('kf-nik-pg').value.trim(),
+                tempatLahir: document.getElementById('kf-tempat-lahir-pg').value.trim(),
+                tanggalLahir: document.getElementById('kf-tanggal-lahir-pg').value,
+                noHpWa: document.getElementById('kf-hp-wa-pg').value.trim(),
+                noHpKurir: document.getElementById('kf-hp-kurir-pg').value.trim(),
+                alamatDomisili: document.getElementById('kf-alamat-pg').value.trim(),
+                pekerjaanLain: document.getElementById('kf-pekerjaan-lain-pg').value.trim(),
+                noBpjs: document.getElementById('kf-bpjs-pg').value.trim(),
+                kelasBpjs: document.getElementById('kf-kelas-bpjs-pg').value,
+                biayaBpjs: bersihkanAngka(document.getElementById('kf-biaya-bpjs-pg').value),
+                kontakDaruratNama: document.getElementById('kf-kontak-darurat-nama-pg').value.trim(),
+                kontakDaruratNoHp: document.getElementById('kf-kontak-darurat-hp-pg').value.trim(),
+                rekening: kumpulkanRekeningDariContainerPage(),
+                submittedAt: new Date().toISOString()
+            };
+
+            set(ref(db, `profil_kurir_pending/${userSession.id}`), payload).then(() => {
+                toast('Perubahan berhasil dikirim, menunggu persetujuan Admin.');
+                renderProfilSayaPage();
+            }).catch(err => {
+                toast('Gagal mengirim perubahan: ' + err.message);
+            });
+        };
+
+        window.batalkanPengajuanProfilSayaPage = async function() {
+            if (!userSession || !userSession.id) return;
+
+            const ok = typeof showConfirm === 'function'
+                ? await showConfirm('Batalkan pengajuan perubahan profil ini?')
+                : confirm('Batalkan pengajuan perubahan profil ini?');
+            if (!ok) return;
+
+            remove(ref(db, `profil_kurir_pending/${userSession.id}`)).then(() => {
+                toast('Pengajuan dibatalkan.');
+                renderProfilSayaPage();
+            }).catch(err => {
+                toast('Gagal membatalkan: ' + err.message);
+            });
+        };
+
         window.toggleTestimonialOpen = function() {
             const el = document.getElementById('container-admin-testimonial');
             if (!el) return;
@@ -3659,7 +4065,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 return `<span class="flex items-center gap-1 text-slate-400 font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg"><i data-lucide="clock" class="w-3 h-3"></i> Menunggu Admin</span>`;
             }
             // belum ada pengajuan, atau pengajuan sebelumnya ditolak
-            return `<button onclick="ajukanEditNotaLama('${key}')" class="flex items-center gap-1 text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="send" class="w-3 h-3"></i> Ubah</button>`;
+            return `<button onclick="ajukanEditNotaLama('${key}')" class="flex items-center gap-1 text-slate-500 font-bold bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"><i data-lucide="send" class="w-3 h-3"></i> Ajukan Ubah</button>`;
         }
 
         window.ajukanEditNotaLama = async function(key) {
