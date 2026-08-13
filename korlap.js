@@ -1,28 +1,3 @@
-/* =====================================================================
-   KORLAP.JS
-   Modul baru khusus role "Korlap" (Koordinator Lapangan) — login lewat
-   akun Manajemen dengan kategori "Korlap". Dashboard-nya cuma 5 menu:
-     1. Leader & Penilaian (read-only, tab Penilaian saja)
-     2. KPI & Penghargaan (tab Top 5 disembunyikan)
-     3. Kelola Mitra (cuma Cek Trx Kurir & Cek Audit Trx)
-     4. Testimoni Customer (read-only, cuma filter bulan + buka/tutup)
-     5. Keluar
-
-   File ini BERDIRI SENDIRI (tidak mengubah script.js) dan cuma butuh:
-     <script type="module" src="korlap.js"></script>
-   ditambahkan di index.html, plus opsi baru di dropdown "Kategori" pada
-   form Manajemen:
-     <option value="Korlap">Korlap</option>
-   (di #manajemen-kategori dan #edit-manajemen-kategori)
-
-   Catatan: modul ini memakai CSS class "pm-*" yang sudah diinjeksikan
-   oleh petugasmitra.js (pmInjectStyle), jadi petugasmitra.js WAJIB tetap
-   ada di halaman supaya tampilan Korlap ikut rapi. petugasmitra.js juga
-   perlu sedikit disesuaikan agar widget "Cek Trx Kurir" & "Cek Audit
-   Trx" ikut terisi untuk kategori Korlap — lihat catatan di bagian
-   bawah file ini / pesan pengantar.
-   ===================================================================== */
-
 const KATEGORI_KL = "Korlap";
 
 /* ------------------------------------------------------------------ *
@@ -143,16 +118,29 @@ function klApplyRestrictions() {
     const kpiTop5 = document.getElementById("kpi-tab-top5");
     if (kpiTop5) kpiTop5.classList.add("hidden");
 
-    // Kelola Mitra (hub): hanya sisakan "Cek Trx Kurir" & "Cek Audit Trx"
+    // Kelola Mitra (hub): sisakan "Cek Trx Kurir", "Cek Audit Trx", dan "Riwayat Trx Inputan"
     const mitraScreen = document.getElementById("screen-admin-mitra");
     if (mitraScreen) {
         mitraScreen.querySelectorAll("button").forEach(btn => {
             const onclickAttr = btn.getAttribute("onclick") || "";
-            const isAllowed = onclickAttr.includes("screen-admin-mitra-cekkurir") || onclickAttr.includes("screen-admin-mitra-audit");
+            const isAllowed = onclickAttr.includes("screen-admin-mitra-cekkurir") ||
+                               onclickAttr.includes("screen-admin-mitra-audit") ||
+                               onclickAttr.includes("screen-admin-mitra-riwayat");
             btn.classList.toggle("hidden", !isAllowed);
         });
     }
 }
+
+/* Riwayat Trx Kurir: read-only — sembunyikan tombol hapus per-item transaksi */
+function klApplyRiwayatRestrictions() {
+    const container = document.getElementById("container-admin-log-mitra");
+    if (!container) return;
+    container.querySelectorAll("button").forEach(btn => {
+        const onclickAttr = btn.getAttribute("onclick") || "";
+        if (onclickAttr.includes("hapusLogMitra(")) btn.classList.add("hidden");
+    });
+}
+
 
 /* ------------------------------------------------------------------ *
  * Testimoni Customer: read-only — cuma filter bulan + tombol buka/tutup,
@@ -268,6 +256,8 @@ function klPatchNavigation() {
         } else {
             klApplyRestrictions();
             if (screenId === "screen-admin-testimonial") klApplyTestimonialRestrictions();
+            if (screenId === "screen-admin-mitra-riwayat") klApplyRiwayatRestrictions();  // ← tambahan
+            
         }
     };
 
@@ -330,7 +320,19 @@ function klPatchRenderAdminTestimonial() {
         klApplyTestimonialRestrictions();
     };
 }
+function klPatchRenderAdminLogMitra() {
+    if (window.__klLogMitraPatched) return;
+    window.__klLogMitraPatched = true;
 
+    const origRenderLogMitra = window.renderAdminLogMitra;
+    window.renderAdminLogMitra = function () {
+        if (typeof origRenderLogMitra === "function") origRenderLogMitra();
+
+        const s = klGetSession();
+        if (!klIsKorlapSession(s)) return;
+        klApplyRiwayatRestrictions();
+    };
+}
 function klPatchApplyManajemenAccess() {
     if (window.__klAccessPatched) return;
     window.__klAccessPatched = true;
@@ -363,6 +365,7 @@ function klBoot() {
     klPatchApplyManajemenAccess();
     klPatchRenderKPISection();
     klPatchRenderAdminTestimonial();
+    klPatchRenderAdminLogMitra(); 
 
     const session = klGetSession();
     if (klIsKorlapSession(session)) {
