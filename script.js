@@ -3254,26 +3254,43 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const nomorUrut = hasil.snapshot.val() || 1;
             return `NT-${tanggalRaw.replace(/-/g, '')}-${String(nomorUrut).padStart(4, '0')}`;
         }
-
         window.prosesPratinjauNota = async function() {
-            const cekOngkir = parseInt(document.getElementById('nota-ongkir').value) || 0;
-            if (cekOngkir <= 0) { 
-                toast("Wajib mengisi Ongkir untuk melanjutkan!"); 
-                return; 
+            // pakai bersihkanAngka, bukan parseInt — input ongkir sudah diformat
+            // pakai titik ribuan (mis. "6.000"), parseInt saja cuma baca "6".
+            const cekOngkir = bersihkanAngka(document.getElementById('nota-ongkir').value);
+            if (cekOngkir <= 0) {
+                toast("Wajib mengisi Ongkir untuk melanjutkan!");
+                return;
             }
             if (sedangReservasiNomorNota) return; // cegah dobel-tap = dobel reservasi nomor
             sedangReservasiNomorNota = true;
 
             const btnLanjut = document.querySelector('button[onclick="prosesPratinjauNota()"]');
-            if (btnLanjut) btnLanjut.disabled = true;
+            let origHtml = '';
+            if (btnLanjut) {
+                origHtml = btnLanjut.innerHTML;
+                btnLanjut.disabled = true;
+                btnLanjut.classList.add('btn-busy');
+                btnLanjut.innerHTML = '<span class="btn-spin"></span> Memproses...';
+            }
 
             let nomorNotaFinal;
             try {
-                nomorNotaFinal = await reserveNextNotaNumber(getWibRawDate(), userSession.username);
+                // Timeout 10 detik supaya tombol tidak "ngegantung" kalau koneksi lemot.
+                nomorNotaFinal = await Promise.race([
+                    reserveNextNotaNumber(getWibRawDate(), userSession.username),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+                ]);
             } catch (e) {
-                toast('Gagal mengambil nomor nota, coba lagi.');
+                toast(e && e.message === 'timeout'
+                    ? 'Koneksi lambat, gagal ambil nomor nota. Coba tekan lagi.'
+                    : 'Gagal mengambil nomor nota, coba lagi.');
                 sedangReservasiNomorNota = false;
-                if (btnLanjut) btnLanjut.disabled = false;
+                if (btnLanjut) {
+                    btnLanjut.disabled = false;
+                    btnLanjut.classList.remove('btn-busy');
+                    btnLanjut.innerHTML = origHtml;
+                }
                 return;
             }
 
@@ -3340,9 +3357,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             }
             if (window.lucide) lucide.createIcons();
 
-            // Data terstruktur buat gambar nota (canvas), terpisah dari HTML preview di atas.
-            // notaNum di sini SUDAH nomor final hasil reservasi atomic di atas — jadi gambar
-            // yang diunduh/dibagikan lewat WhatsApp dijamin sama persis dengan yang tersimpan.
             kurirNotaPreviewData = {
                 notaNum: nomorNotaFinal,
                 tanggal: tgl.toLocaleString('id-ID'),
@@ -3356,27 +3370,17 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 rekening: rekeningKurirIni,
                 history: null
             };
-            // Siapkan canvas-nya di background begitu preview tampil, biar pas tombol
-            // Simpan Gambar/Bagikan WhatsApp ditekan, prosesnya sudah instan (dari cache).
             requestAnimationFrame(() => { getNotaCanvas('canvas-nota', kurirNotaPreviewData).catch(() => {}); });
 
             sedangReservasiNomorNota = false;
-            if (btnLanjut) btnLanjut.disabled = false;
+            if (btnLanjut) {
+                btnLanjut.disabled = false;
+                btnLanjut.classList.remove('btn-busy');
+                btnLanjut.innerHTML = origHtml;
+            }
 
             navigateTo('screen-preview');
         }
-        // ============================================================
-        // GAMBAR NOTA — digambar LANGSUNG ke <canvas> (Canvas 2D API),
-        // BUKAN screenshot dari DOM (html2canvas sudah tidak dipakai lagi).
-        // ------------------------------------------------------------
-        // html2canvas harus meng-clone seluruh DOM nota, menghitung ulang semua
-        // CSS (gradient, shadow, border-radius, font, dst), menunggu font/gambar,
-        // baru "melukis" hasilnya ke canvas piksel demi piksel — proses inilah
-        // yang bikin lambat/lag di HP RAM kecil, walau CSS-nya sudah diringankan.
-        // Dengan menggambar LANGSUNG dari data nota (persegi + teks + garis),
-        // tidak ada DOM yang di-clone/dihitung ulang sama sekali, jadi proses
-        // simpan gambar / bagikan WhatsApp jadi cepat & konsisten di HP apapun.
-        // ============================================================
         const NOTA_FONT = "'Inter', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
         function notaFmtRp(n) { return (Math.round(n) || 0).toLocaleString('id-ID'); }
 
@@ -3907,28 +3911,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 successMsg: 'Gambar nota berhasil disimpan!'
             });
         }
-        window.bukaPopupTipsNota = function() {
-            const input = document.getElementById('input-tips-nota-baru');
-            if (input) input.value = '';
-            const modal = document.getElementById('modal-input-tips');
-            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
-            if (window.lucide) lucide.createIcons();
-            setTimeout(() => { if (input) input.focus(); }, 150);
-        };
-        window.tutupPopupTipsNota = function() {
-            const modal = document.getElementById('modal-input-tips');
-            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
-        };
-        window.lewatiTipsDanSimpanNota = function() {
-            const input = document.getElementById('input-tips-nota-baru');
-            if (input) input.value = '';
-            konfirmasiTipsDanSimpanNota();
-        };
-        window.konfirmasiTipsDanSimpanNota = function() {
-            const tipsVal = bersihkanAngka(document.getElementById('input-tips-nota-baru')?.value || '0');
-            tutupPopupTipsNota();
-            commitSaveNota(tipsVal);
-        };
         window.commitSaveNota = function(tips = 0) {
             const notaNum = document.getElementById('p-nota-num').innerText || "Nota";
             const payload = {
@@ -3951,7 +3933,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const pushRef = push(notaRef);
 
             // simpan nota dengan key yang fix (pushRef.key)
-            set(pushRef, payload).then(async () => {
+            return set(pushRef, payload).then(async () => {
                 toast("Nota kiriman berhasil disimpan!");
                 localStorage.removeItem('sahabatku_nota_draft');
 
@@ -4030,6 +4012,21 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 toast('Gagal simpan nota.');
             });
         };
+        window.konfirmasiSimpanNota = async function() {
+            const btn = document.getElementById('btn-simpan-nota');
+            if (btn && btn.disabled) return; // anti dobel-tap
+
+            const ok = await showConfirm(
+                'Apakah Anda yakin ingin menyimpan nota ini? Pastikan semua data sudah benar.',
+                { title: 'Simpan Nota', okText: 'Ya, Simpan' }
+            );
+            if (!ok) return;
+
+            if (btn) { btn.disabled = true; btn.classList.add('btn-busy'); }
+            commitSaveNota(0).finally(() => {
+                if (btn) { btn.disabled = false; btn.classList.remove('btn-busy'); }
+            });
+        };        
         window.shareWhatsApp = function() {
             if (!kurirNotaPreviewData) { toast('Preview nota belum siap.'); return; }
             processNotaImage('canvas-nota', kurirNotaPreviewData, {
