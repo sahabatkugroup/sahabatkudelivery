@@ -911,6 +911,30 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     // Mulai kirim lokasi live SEKARANG JUGA saat refresh/auto-login,
                     // jangan menunggu data 'users' selesai sinkron dari cloud dulu.
                     if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
+
+                    // ===== PULIHKAN LAYAR TERAKHIR (khusus kurir) =====
+                    // Di HP RAM kecil, browser sering "membekukan"/reload tab yang
+                    // dibiarkan di belakang layar. Sebelumnya, tiap kali itu terjadi
+                    // saat kurir lagi di menu "Buat Nota", app selalu paksa balik ke
+                    // dashboard begitu halaman dimuat ulang -> kelihatan seperti
+                    // "otomatis pindah sendiri" padahal cuma reload diam-diam.
+                    // Sekarang layar terakhir (kalau memang aman dibuka ulang)
+                    // dipulihkan lagi, plus draft nota-nya (loadNotaDraft di bawah).
+                    try {
+                        const lastScreen = localStorage.getItem('sahabatku_last_screen');
+                        const RESUMABLE_KURIR_SCREENS = [
+                            'screen-nota', 'screen-preview', 'screen-riwayat',
+                            'screen-mitra', 'screen-absensi-kurir', 'screen-statistik',
+                            'screen-rekap', 'screen-profil'
+                        ];
+                        if (lastScreen && RESUMABLE_KURIR_SCREENS.includes(lastScreen)) {
+                            // screen-preview butuh nomor nota hasil reservasi yang sudah
+                            // "terpakai" sebelumnya -> lebih aman balik ke screen-nota
+                            // saja (draft isian tetap ada), daripada nampilin preview basi.
+                            const target = lastScreen === 'screen-preview' ? 'screen-nota' : lastScreen;
+                            setTimeout(() => navigateTo(target), 60);
+                        }
+                    } catch (e) { /* abaikan, biarkan tetap di dashboard */ }
                 }
             }
             document.addEventListener('click', function(e) {
@@ -965,10 +989,26 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             }
         
             setLoginButtonLoading(true);
-        
-            // 1) Cek login admin utama
-            get(ref(db, 'loginadmin'))
-                .then((snapshotAdmin) => {
+
+            // Dulu 3 pengecekan (admin -> manajemen -> kurir) dilakukan BERURUTAN,
+            // jadi login KURIR (paling banyak dipakai tiap hari) selalu paling lambat
+            // karena harus nunggu 2 request lain gagal dulu satu-satu. Sekarang
+            // ketiganya ditembak BARENGAN (Promise.all) supaya total waktu tunggu
+            // = request paling lambat SAJA, bukan jumlah semuanya. Ditambah timeout
+            // 12 detik biar tombol tidak "ngegantung" selamanya kalau sinyal jelek.
+            const LOGIN_TIMEOUT_MS = 12000;
+            const withTimeout = (p) => Promise.race([
+                p,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), LOGIN_TIMEOUT_MS))
+            ]);
+
+            withTimeout(Promise.all([
+                get(ref(db, 'loginadmin')),
+                get(ref(db, 'manajemen_sahabatku')),
+                get(ref(db, 'users'))
+            ]))
+                .then(([snapshotAdmin, snapshotManajemen, snapshotUsers]) => {
+                    // 1) Cek login admin utama
                     if (snapshotAdmin.exists()) {
                         const adminData = snapshotAdmin.val();
                         const adminUser = (adminData.username || "").trim().toLowerCase();
@@ -976,33 +1016,26 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                         if (userIn === adminUser && passIn === adminPass) {
                             userSession = { username: "admin", nama: "Super Admin", role: "owner", kategori: "Owner" };
                             localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
-                        
+
                             document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
-                        
+
                             launchApplicationSession("screen-admin-dashboard");
                             applyManajemenAccess("Owner");
-                        
+
                             setLoginButtonLoading(false);
-                            return true;
+                            return;
                         }
                     }
-                    return false;
-                })
-                .then((adminLogged) => {
-                    if (adminLogged) return null;
-        
+
                     // 2) Cek login manajemen sahabatku
-                    return get(ref(db, 'manajemen_sahabatku'));
-                })
-                .then((snapshotManajemen) => {
-                    if (snapshotManajemen && snapshotManajemen.exists()) {
+                    if (snapshotManajemen.exists()) {
                         const dataManajemen = snapshotManajemen.val();
-        
+
                         for (let key in dataManajemen) {
                             const m = dataManajemen[key];
                             const manUser = (m.username || "").trim().toLowerCase();
                             const manPass = (m.password || "").trim();
-        
+
                             if (manUser === userIn && manPass === passIn) {
                                 userSession = {
                                     id: key,
@@ -1011,41 +1044,32 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                                     role: "manajemen",
                                     kategori: m.kategori || "-"
                                 };
-        
+
                                 localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
                                 document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
-        
+
                                 launchApplicationSession("screen-admin-dashboard");
                                 // PENTING: Terapkan akses manajemen sesuai kategori
                                 setTimeout(() => {
                                     applyManajemenAccess(m.kategori || "-");
                                 }, 100);
-        
+
                                 setLoginButtonLoading(false);
-                                return true;
+                                return;
                             }
                         }
                     }
-                    return false;
-                })
-                .then((manajemenLogged) => {
-                    if (manajemenLogged) return null;
-        
+
                     // 3) Cek login kurir
-                    return get(ref(db, 'users'));
-                })
-                .then((snapshotUsers) => {
-                    if (!snapshotUsers) return;
-        
                     let foundKey = null;
                     let foundUser = null;
-        
+
                     if (snapshotUsers.exists()) {
                         const dataKurir = snapshotUsers.val();
                         for (let key in dataKurir) {
                             const kurirUser = (dataKurir[key].username || "").trim().toLowerCase();
                             const kurirPass = (dataKurir[key].password || "").trim();
-        
+
                             if (kurirUser === userIn && kurirPass === passIn) {
                                 foundKey = key;
                                 foundUser = dataKurir[key];
@@ -1053,15 +1077,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             }
                         }
                     }
-        
+
                     setLoginButtonLoading(false);
-        
+
                     if (foundUser) {
                         if (foundUser.status !== "aktif") {
                             toast("Gagal masuk! Status akun Anda dinonaktifkan atau diblokir oleh Admin.");
                             return;
                         }
-        
+
                         userSession = {
                             id: foundKey,
                             username: foundUser.username,
@@ -1069,13 +1093,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             role: "kurir"
                         };
 
-
                         localStorage.setItem('sahabatku_session', JSON.stringify(userSession));
-                        document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);        
+                        document.querySelectorAll('.session-fullname').forEach(el => el.innerText = userSession.nama);
                         if (document.getElementById('nota-kurir')) {
                             document.getElementById('nota-kurir').value = foundUser.nama;
                         }
-        
+
                         launchApplicationSession("screen-dashboard");
                         if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
                     } else {
@@ -1084,7 +1107,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 })
                 .catch((error) => {
                     console.error("Login Error: ", error);
-                    toast("Terjadi gangguan koneksi ke server: " + error.message);
+                    const pesan = (error && error.message === 'timeout')
+                        ? "Koneksi lambat, gagal masuk. Coba tekan Masuk sekali lagi."
+                        : "Terjadi gangguan koneksi ke server: " + (error && error.message ? error.message : error);
+                    toast(pesan);
                     setLoginButtonLoading(false);
                 });
         };
@@ -1337,6 +1363,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
         function performLogout() {
             localStorage.removeItem('sahabatku_session');
+            localStorage.removeItem('sahabatku_last_screen');
             userSession = {};
             if (typeof stopMitraReminderWatcher === 'function') stopMitraReminderWatcher();
             
@@ -1524,6 +1551,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const targetEl = document.getElementById(screenId);
             if (targetEl) targetEl.classList.add('active');
             currentScreen = screenId;
+            // Simpan layar terakhir supaya kalau app di-reload diam-diam oleh HP
+            // (RAM kecil/koneksi lemot), kurir tidak "ditendang" balik ke dashboard
+            // begitu saja — lihat pemulihannya di DOMContentLoaded.
+            try { localStorage.setItem('sahabatku_last_screen', screenId); } catch (e) {}
             window.scrollTo(0, 0);
             if (screenId === 'screen-dashboard') {
                 setTimeout(() => {
@@ -3274,31 +3305,19 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 btnLanjut.innerHTML = '<span class="btn-spin"></span> Memproses...';
             }
 
-            let nomorNotaFinal;
-            try {
-                // Timeout 10 detik supaya tombol tidak "ngegantung" kalau koneksi lemot.
-                nomorNotaFinal = await Promise.race([
-                    reserveNextNotaNumber(getWibRawDate(), userSession.username),
-                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
-                ]);
-            } catch (e) {
-                toast(e && e.message === 'timeout'
-                    ? 'Koneksi lambat, gagal ambil nomor nota. Coba tekan lagi.'
-                    : 'Gagal mengambil nomor nota, coba lagi.');
-                sedangReservasiNomorNota = false;
-                if (btnLanjut) {
-                    btnLanjut.disabled = false;
-                    btnLanjut.classList.remove('btn-busy');
-                    btnLanjut.innerHTML = origHtml;
-                }
-                return;
-            }
-
+            // ===== PERCEPATAN =====
+            // Dulu: layar preview baru pindah SETELAH nomor nota selesai diambil
+            // dari server -> di HP/koneksi lambat kelihatan "macet" pas tombol
+            // Pratinjau ditekan. Sekarang: semua tampilan (rincian item, subtotal,
+            // total, rekening) langsung dirender & layar langsung pindah SEKARANG
+            // JUGA (instan, tidak nunggu jaringan). Nomor nota-nya sendiri diisi
+            // "Memuat..." dulu, lalu ditimpa otomatis begitu hasil reservasi dari
+            // server sudah datang di belakang layar.
             invalidateNotaCanvasCache('canvas-nota'); // isi nota berganti, canvas lama tidak valid lagi
             calculateNotaTotal();
-            
+
             const tgl = new Date();
-            document.getElementById('p-nota-num').innerText = nomorNotaFinal;
+            document.getElementById('p-nota-num').innerText = 'Memuat...';
             document.getElementById('p-nota-date').innerText = tgl.toLocaleString('id-ID');
             document.getElementById('p-nota-kurir').innerText = userSession.nama;
             document.getElementById('p-nota-status').innerText = document.getElementById('nota-status').value;
@@ -3358,7 +3377,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             if (window.lucide) lucide.createIcons();
 
             kurirNotaPreviewData = {
-                notaNum: nomorNotaFinal,
+                notaNum: '...',
                 tanggal: tgl.toLocaleString('id-ID'),
                 kurir: userSession.nama,
                 status: document.getElementById('nota-status').value,
@@ -3370,7 +3389,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 rekening: rekeningKurirIni,
                 history: null
             };
-            requestAnimationFrame(() => { getNotaCanvas('canvas-nota', kurirNotaPreviewData).catch(() => {}); });
 
             sedangReservasiNomorNota = false;
             if (btnLanjut) {
@@ -3379,7 +3397,31 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 btnLanjut.innerHTML = origHtml;
             }
 
+            // Layar preview pindah SEKARANG, tidak nunggu server.
             navigateTo('screen-preview');
+
+            // Ambil nomor nota resmi di belakang layar. Timeout 10 detik supaya
+            // kalau koneksi benar-benar putus, kurir dikasih tahu & bisa coba lagi
+            // dari sini tanpa harus balik dulu ke form.
+            (async () => {
+                try {
+                    const nomorNotaFinal = await Promise.race([
+                        reserveNextNotaNumber(getWibRawDate(), userSession.username),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+                    ]);
+                    const numEl = document.getElementById('p-nota-num');
+                    if (numEl) numEl.innerText = nomorNotaFinal;
+                    kurirNotaPreviewData.notaNum = nomorNotaFinal;
+                    invalidateNotaCanvasCache('canvas-nota');
+                    requestAnimationFrame(() => { getNotaCanvas('canvas-nota', kurirNotaPreviewData).catch(() => {}); });
+                } catch (e) {
+                    const numEl = document.getElementById('p-nota-num');
+                    if (numEl) numEl.innerText = 'Gagal, coba lagi';
+                    toast(e && e.message === 'timeout'
+                        ? 'Koneksi lambat, nomor nota gagal diambil. Tekan Pratinjau Nota sekali lagi.'
+                        : 'Gagal mengambil nomor nota, coba lagi.');
+                }
+            })();
         }
         const NOTA_FONT = "'Inter', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
         function notaFmtRp(n) { return (Math.round(n) || 0).toLocaleString('id-ID'); }
@@ -3903,8 +3945,24 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 setNotaImageBusy(false, btn);
             }
         }
+        // Nomor nota kurir diambil di belakang layar (lihat prosesPratinjauNota),
+        // jadi sebelum dipakai untuk simpan/download/share, pastikan dulu sudah
+        // benar-benar siap (bukan masih "Memuat..." / gagal).
+        function isNotaKurirSiap() {
+            const numEl = document.getElementById('p-nota-num');
+            const numTxt = numEl ? numEl.innerText : '';
+            if (!kurirNotaPreviewData || !numTxt || numTxt === 'Memuat...' || numTxt === '...') {
+                toast('Nomor nota masih diambil dari server, tunggu sebentar lalu coba lagi.');
+                return false;
+            }
+            if (numTxt === 'Gagal, coba lagi') {
+                toast('Nomor nota gagal diambil. Tekan tombol Pratinjau Nota sekali lagi.');
+                return false;
+            }
+            return true;
+        }
         window.saveNotaAsJpg = function() {
-            if (!kurirNotaPreviewData) { toast('Preview nota belum siap.'); return; }
+            if (!isNotaKurirSiap()) return;
             processNotaImage('canvas-nota', kurirNotaPreviewData, {
                 mode: 'download',
                 btn: document.getElementById('btn-simpan-gambar'),
@@ -4016,6 +4074,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const btn = document.getElementById('btn-simpan-nota');
             if (btn && btn.disabled) return; // anti dobel-tap
 
+            // Nomor nota diambil di belakang layar (biar layar preview instan) —
+            // jangan sampai kesimpan sebelum nomor resminya benar-benar siap.
+            if (!isNotaKurirSiap()) return;
+
             const ok = await showConfirm(
                 'Apakah Anda yakin ingin menyimpan nota ini? Pastikan semua data sudah benar.',
                 { title: 'Simpan Nota', okText: 'Ya, Simpan' }
@@ -4028,7 +4090,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             });
         };        
         window.shareWhatsApp = function() {
-            if (!kurirNotaPreviewData) { toast('Preview nota belum siap.'); return; }
+            if (!isNotaKurirSiap()) return;
             processNotaImage('canvas-nota', kurirNotaPreviewData, {
                 mode: 'share',
                 btn: document.getElementById('btn-share-wa')
