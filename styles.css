@@ -844,3 +844,24 @@ svg.lucide {
 
 /* ================= Screen Kehadiran (E-Absensi Wajah) ================= */
 #overlay-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+/* ================= Mode Hemat Performa (HP RAM kecil / koneksi lambat) =================
+   Class "low-end-device" ditambahkan otomatis lewat script kecil di index.html kalau
+   perangkat terdeteksi RAM kecil (navigator.deviceMemory) atau koneksinya lambat
+   (navigator.connection.effectiveType). Efeknya: animasi dekoratif & blur (yang
+   paling berat buat GPU HP murah) dimatikan, tapi tampilan & semua FITUR tetap
+   sama persis — cuma bagian "hiasan"-nya saja yang disederhanakan. */
+.low-end-device .login-blob,
+.low-end-device .login-logo-ring,
+.low-end-device .login-submit-btn::before {
+  animation: none !important;
+  display: none !important;
+}
+.low-end-device .login-role-badge {
+  backdrop-filter: none !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+.low-end-device [style*="blur"],
+.low-end-device .absensi-glass,
+.low-end-device .icon-tile {
+  backdrop-filter: none !important;
+}
