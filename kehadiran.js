@@ -50,16 +50,6 @@ function initKehadiran() {
   autoLoginKurirDariSession();
 }
 
-// Bungkus sebuah Promise dengan batas waktu, supaya kalau koneksi jelek,
-// kita tidak menunggu tanpa batas — cepat kasih tahu & tetap pakai data
-// yang sudah ada (dari session) daripada layar "Memuat..." nyangkut lama.
-function withTimeout(promise, ms) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
-  ]);
-}
-
 async function autoLoginKurirDariSession() {
   const savedSession = localStorage.getItem('sahabatku_session');
   if (!savedSession) return;
@@ -90,18 +80,8 @@ async function autoLoginKurirDariSession() {
   syncKehadiranProfilTerkunci(infoKurir.nama);
 
   // === BARU SYNC DETAIL LENGKAP DI BACKGROUND ===
-  // PENTING (percepatan): dulu langkah berikutnya (cek status absen hari ini &
-  // nyalain tombol "Lanjut") lewat checkSelectedKurirStatus() yang butuh
-  // listUserKurir[selectedId] — dan listUserKurir itu BARU terisi setelah
-  // SELURUH node 'users' (semua kurir) selesai di-download lewat
-  // muatDaftarKurirOtomatis(). Jadi walau nama sudah tampil instan di atas,
-  // tombol "Lanjut Absen" masih nunggu daftar user LENGKAP itu turun dulu —
-  // ini yang bikin kerasa "lambat"/nyangkut di koneksi jelek atau data kurir
-  // banyak. Sekarang: kita cuma fetch SATU record milik kurir yang login
-  // (users/{id}, jauh lebih ringan & cepat), dan langsung pakai hasilnya
-  // sendiri buat cek status — TIDAK nunggu listUserKurir/daftar lengkap lagi.
   try {
-    const snap = await withTimeout(database.ref(`users/${session.id}`).get(), 8000);
+    const snap = await database.ref(`users/${session.id}`).get();
     if (!snap.exists()) return;
 
     const user = snap.val();
@@ -110,29 +90,28 @@ async function autoLoginKurirDariSession() {
       return;
     }
 
+    infoKurir = {
+      id: session.id,
+      nama: user.nama || session.nama || '-',
+      leader: user.leader || '-',
+      password: user.password || '',
+      ongkirLocked: user.ongkirLocked || false,
+      ongkirPassword: user.ongkirPassword || ''
+    };
+
+    if (select) select.value = session.id;
+    document.getElementById('txt-id').innerText = infoKurir.leader;
+    document.getElementById('txt-status').innerText = 'AKTIF';
+    syncKehadiranProfilTerkunci(infoKurir.nama);
+
+    // cek status absen hari ini
+    await checkSelectedKurirStatus();
+
     if (typeof window.startAbsensiReminderWatcher === 'function') {
       window.startAbsensiReminderWatcher();
     }
-
-    // Simpan juga sebagai cadangan (fallback) untuk checkSelectedKurirStatus()
-    // di bawah — supaya kalau listener riwayat absensi terpicu SEBELUM daftar
-    // lengkap 'users' (listUserKurir) selesai turun, status yang sudah benar
-    // tidak sempat ke-reset balik ke "Pilih Nama Dulu".
-    window.__infoKurirLoginFallback = { id: session.id, user: { ...user, status: 'aktif' } };
-
-    // Langsung terapkan status absen dari data yang baru saja didapat sendiri,
-    // tanpa perlu menunggu listUserKurir dari daftar lengkap.
-    await terapkanStatusAbsenKurir(session.id, user);
   } catch (err) {
-    if (err && err.message === 'timeout') {
-      // Koneksi lambat: nama tetap tampil (dari session), user dikasih tahu
-      // supaya bisa coba lagi, bukan dibiarkan "Mengecek..." selamanya.
-      const txtBadge = document.getElementById('txt-badge-status');
-      if (txtBadge) txtBadge.innerText = 'Koneksi lambat, tarik utk coba lagi';
-      matikanTombolLanjut('Koneksi lambat, coba lagi');
-    } else {
-      console.error(err);
-    }
+    console.error(err);
   }
 }
 // Screen ini dimuat langsung sebagai bagian dari index.html (bukan halaman
@@ -208,9 +187,6 @@ function tampilkanPopupTanggalMasuk() {
 }
 
 // 1. SINKRONISASI DATALIST: Membaca otomatis node 'users' yang ber-role kurir dan berstatus aktif
-// Catatan: dropdown "select-kurir" sudah disembunyikan (kartu kurir terkunci ke akun yang login),
-// jadi listener node 'users' PENUH ini sekarang murni untuk cadangan/kompatibilitas saja —
-// alur utama nama+status kurir login TIDAK lagi menunggu proses ini (lihat autoLoginKurirDariSession).
 function muatDaftarKurirOtomatis() {
   database.ref('users').on('value', (snapshot) => {
     const dropdown = document.getElementById('select-kurir');
@@ -480,66 +456,60 @@ document.getElementById('btn-ulang-foto').addEventListener('click', async () => 
 });
 // Catatan: tombol kembali kamera lama (btn-back-absen) sudah digantikan oleh
 // tombol X di header modal-scan-wajah (lihat tutupModalScanWajah()).
+async function checkSelectedKurirStatus() {
+const selectedId = document.getElementById('select-kurir').value;
+const box = document.getElementById('box-status-firebase');
+const txtId = document.getElementById('txt-id');
+const txtStatus = document.getElementById('txt-status');
+const txtBadge = document.getElementById('txt-badge-status');
+const btnLanjut = document.getElementById('btn-lanjut');
 
-// ===================================================================
-// Inti pengecekan status absen hari ini + pengaturan tombol "Lanjut".
-// Dipisah dari SUMBER datanya (parameter "user") supaya bisa dipakai baik
-// dari data individual yang sudah lebih dulu didapat (kurir yang login,
-// lihat autoLoginKurirDariSession — lebih cepat) MAUPUN dari listUserKurir
-// (jalur lama lewat dropdown, dipertahankan untuk kompatibilitas).
-// ===================================================================
-async function terapkanStatusAbsenKurir(selectedId, user) {
-  const box = document.getElementById('box-status-firebase');
-  const txtId = document.getElementById('txt-id');
-  const txtStatus = document.getElementById('txt-status');
-  const txtBadge = document.getElementById('txt-badge-status');
-  const btnLanjut = document.getElementById('btn-lanjut');
-
-  if (!selectedId || !user) {
+if (!selectedId || !listUserKurir[selectedId]) {
     box.classList.add('hidden');
     btnLanjut.disabled = true;
     btnLanjut.className = "w-full bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium py-2.5 px-3 rounded-xl text-xs cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm transition-all";
     btnLanjut.innerHTML = `<span>Pilih Nama Dulu</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>`;
     lucide.createIcons();
     return;
-  }
+}
 
-  infoKurir = {
+const user = listUserKurir[selectedId];
+infoKurir = {
     id: selectedId,
     nama: user.nama || '-',
     leader: user.leader || '-',
     password: user.password || '',
     ongkirLocked: user.ongkirLocked || false,
     ongkirPassword: user.ongkirPassword || ''
-  };
+};
 
-  box.classList.remove('hidden');
-  txtId.innerText = infoKurir.leader;
-  txtStatus.innerText = user.status ? user.status.toUpperCase() : '-';
-  syncKehadiranProfilTerkunci(infoKurir.nama);
+box.classList.remove('hidden');
+txtId.innerText = infoKurir.leader;
+txtStatus.innerText = user.status ? user.status.toUpperCase() : '-';
+syncKehadiranProfilTerkunci(infoKurir.nama);
 
-  const refDB = database.ref('absensi_sahabatku');
-  const snap = await refDB.orderByChild('idKurir').equalTo(selectedId).once('value');
+const refDB = database.ref('absensi_sahabatku');
+const snap = await refDB.orderByChild('idKurir').equalTo(selectedId).once('value');
 
-  let dataHariIni = null;
-  snap.forEach((child) => {
+let dataHariIni = null;
+snap.forEach((child) => {
     const d = child.val();
     if (d.tanggal === tglOperasionalStr) dataHariIni = d;
-  });
+});
 
-  const jamSekarang = new Date();
-  const jamSekarangStr = jamSekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
-  const [jamNow, menitNow] = jamSekarangStr.split(/[:.]/).map(Number);
-  const jamNowTotalMenit = jamNow * 60 + menitNow;
+const jamSekarang = new Date();
+const jamSekarangStr = jamSekarang.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+const [jamNow, menitNow] = jamSekarangStr.split(/[:.]/).map(Number);
+const jamNowTotalMenit = jamNow * 60 + menitNow;
 
-  if (!dataHariIni) {
+if (!dataHariIni) {
     txtBadge.innerText = "Belum Absen";
     txtBadge.className = "font-bold px-2.5 py-0.5 rounded-full text-[10px] text-right whitespace-nowrap bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300";
     jenisAbsen = "MASUK";
     btnLanjut.innerHTML = `<span>Lanjut Absen Masuk</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>`;
     btnLanjut.disabled = false;
     btnLanjut.className = "w-full shbt-blue text-white font-medium py-2.5 px-3 rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all";
-  } else if (dataHariIni.jamMasuk && !dataHariIni.jamPulang) {
+} else if (dataHariIni.jamMasuk && !dataHariIni.jamPulang) {
     const [jamStr = '00', menitStr = '00'] = String(dataHariIni.jamMasuk || '00:00').split(':');
     const jamMasuk = parseInt(jamStr, 10) || 0;
     const menitMasuk = parseInt(menitStr, 10) || 0;
@@ -565,40 +535,26 @@ async function terapkanStatusAbsenKurir(selectedId, user) {
 
 
     if (jamNowUntukHitung >= batasPulangMenit) {
-      txtBadge.innerText = "Sudah Masuk";
-      txtBadge.className = "font-bold px-2.5 py-0.5 rounded-full text-[10px] text-right whitespace-nowrap bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400";
-      jenisAbsen = "PULANG";
-      btnLanjut.innerHTML = `<span>Lanjut Absen Pulang</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>`;
-      btnLanjut.disabled = false;
-      btnLanjut.className = "w-full shbt-blue text-white font-medium py-2.5 px-3 rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all";
+    txtBadge.innerText = "Sudah Masuk";
+    txtBadge.className = "font-bold px-2.5 py-0.5 rounded-full text-[10px] text-right whitespace-nowrap bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400";
+    jenisAbsen = "PULANG";
+    btnLanjut.innerHTML = `<span>Lanjut Absen Pulang</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>`;
+    btnLanjut.disabled = false;
+    btnLanjut.className = "w-full shbt-blue text-white font-medium py-2.5 px-3 rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-md transition-all";
     } else {
-      txtBadge.innerText = `Pulang Jam ${String(jamPulang).padStart(2, '0')}:${String(menitPulang).padStart(2, '0')}`;
-      txtBadge.className = "font-bold px-2.5 py-0.5 rounded-full text-[10px] text-right whitespace-nowrap bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-600";
-      matikanTombolLanjut(`⏱️ Tunggu ${Math.floor(sisaMenit / 60)}j ${sisaMenit % 60}m lagi`);
-      return;
+    txtBadge.innerText = `Pulang Jam ${String(jamPulang).padStart(2, '0')}:${String(menitPulang).padStart(2, '0')}`;
+    txtBadge.className = "font-bold px-2.5 py-0.5 rounded-full text-[10px] text-right whitespace-nowrap bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-600";
+    matikanTombolLanjut(`⏱️ Tunggu ${Math.floor(sisaMenit / 60)}j ${sisaMenit % 60}m lagi`);
+    return;
     }
-  } else if (dataHariIni.jamMasuk && dataHariIni.jamPulang) {
+} else if (dataHariIni.jamMasuk && dataHariIni.jamPulang) {
     txtBadge.innerText = "Sudah Lengkap";
     txtBadge.className = "font-bold px-2.5 py-0.5 rounded-full text-[10px] text-right whitespace-nowrap bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400";
     matikanTombolLanjut("Absen Selesai Hari Ini");
     return;
-  }
-
-  lucide.createIcons();
 }
 
-// Jalur lama lewat dropdown (dipertahankan untuk kompatibilitas — dropdown-nya
-// sendiri sudah disembunyikan di tampilan, kartu kurir sekarang otomatis
-// terkunci ke akun yang login lewat autoLoginKurirDariSession).
-async function checkSelectedKurirStatus() {
-  const selectedId = document.getElementById('select-kurir').value;
-  // Pakai listUserKurir kalau sudah ada; kalau belum (daftar lengkap 'users'
-  // masih di-download), pakai data kurir login yang sudah lebih dulu didapat
-  // sendiri (window.__infoKurirLoginFallback) supaya status tidak "kereset".
-  const fallback = window.__infoKurirLoginFallback;
-  const user = listUserKurir[selectedId] ||
-    (fallback && fallback.id === selectedId ? fallback.user : null);
-  await terapkanStatusAbsenKurir(selectedId, user);
+lucide.createIcons();
 }
 
 document.getElementById('btn-kirim-final').addEventListener('click', async () => {
