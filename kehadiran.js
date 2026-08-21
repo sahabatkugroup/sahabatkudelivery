@@ -23,6 +23,12 @@ const RADIUS_MAKS_METER = 80;
 let streamKamera = null, adaWajah = false, gpsValid = false;
 let tglOperasionalStr = "", jenisAbsen = "MASUK", fileBlobFinal = null, fotoBase64Final = null;
 let infoKurir = {}, listUserKurir = {};
+// Sesi kurir yang login (terkunci) — dipakai supaya alur absensi TIDAK bergantung
+// pada dropdown "select-kurir" (yang sudah disembunyikan & disabled di layar ini).
+// idKurirSesiAktif dipasang SEKETIKA session lokal ketemu (instan, tanpa nunggu
+// Firebase), supaya nama & tombol lanjut bisa langsung dipakai secepat mungkin.
+let modeSesiTerkunci = false;
+let idKurirSesiAktif = null;
 
 // Menyinkronkan kartu identitas kurir yang terkunci (avatar inisial + nama)
 // dengan data infoKurir. Murni tampilan, tidak mengubah alur data absensi.
@@ -46,6 +52,14 @@ function initKehadiran() {
     hitungTanggalOperasional();
   }, 60000);
 
+  // Preload model wajah di background dari awal (tidak nunggu tombol "Lanjut"
+  // ditekan) — supaya waktu masuk ke kamera scan wajah jadi jauh lebih cepat,
+  // terutama di HP dengan koneksi/RAM terbatas. Kalau gagal, biarkan saja;
+  // startCameraEngine() akan coba load lagi seperti biasa saat dibutuhkan.
+  if (typeof faceapi !== 'undefined') {
+    faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/').catch(() => {});
+  }
+
   // Langsung jalan, tanpa delay buatan lagi
   autoLoginKurirDariSession();
 }
@@ -59,6 +73,12 @@ async function autoLoginKurirDariSession() {
     session = JSON.parse(savedSession);
   } catch (e) { return; }
   if (session.role !== 'kurir' && session.role !== 'leader') return;
+
+  // Sesi ini TERKUNCI ke kurir yang login — tidak perlu (dan tidak boleh) minta
+  // user pilih nama lagi. Dipasang paling awal supaya seluruh alur di bawah
+  // (termasuk checkSelectedKurirStatus) langsung tahu memakai id ini.
+  modeSesiTerkunci = true;
+  idKurirSesiAktif = session.id;
 
   // === TAMPILKAN LANGSUNG DARI SESSION (instan, tanpa nunggu Firebase) ===
   infoKurir = {
@@ -79,7 +99,12 @@ async function autoLoginKurirDariSession() {
   document.getElementById('txt-badge-status').innerText = 'Mengecek...';
   syncKehadiranProfilTerkunci(infoKurir.nama);
 
-  // === BARU SYNC DETAIL LENGKAP DI BACKGROUND ===
+  // Langsung cek status absen hari ini SEKARANG JUGA (paralel, tidak menunggu
+  // fetch profil lengkap di bawah) — inilah yang menyalakan tombol "Lanjut" jadi
+  // secepat mungkin, bukan nunggu 2 request Firebase berurutan seperti sebelumnya.
+  checkSelectedKurirStatus();
+
+  // === BARU SYNC DETAIL LENGKAP DI BACKGROUND (leader, password ongkir, dst) ===
   try {
     const snap = await database.ref(`users/${session.id}`).get();
     if (!snap.exists()) return;
@@ -103,9 +128,6 @@ async function autoLoginKurirDariSession() {
     document.getElementById('txt-id').innerText = infoKurir.leader;
     document.getElementById('txt-status').innerText = 'AKTIF';
     syncKehadiranProfilTerkunci(infoKurir.nama);
-
-    // cek status absen hari ini
-    await checkSelectedKurirStatus();
 
     if (typeof window.startAbsensiReminderWatcher === 'function') {
       window.startAbsensiReminderWatcher();
@@ -211,6 +233,16 @@ function muatDaftarKurirOtomatis() {
         dropdown.appendChild(opt);
       }
     });
+
+    // PENTING: node 'users' ini bisa berubah kapan saja (kurir lain login/update),
+    // dan setiap kali berubah dropdown-nya dibangun ULANG dari nol — itu otomatis
+    // menghapus pilihan yang sudah di-set oleh sesi kurir yang terkunci. Makanya di
+    // sini kita pasang lagi & langsung cek ulang statusnya, supaya tombol "Lanjut"
+    // TIDAK PERNAH nyangkut di "Pilih Nama Dulu" untuk kurir yang sudah login.
+    if (modeSesiTerkunci && idKurirSesiAktif && listUserKurir[idKurirSesiAktif]) {
+      dropdown.value = idKurirSesiAktif;
+      checkSelectedKurirStatus();
+    }
   });
 }
 
@@ -457,35 +489,48 @@ document.getElementById('btn-ulang-foto').addEventListener('click', async () => 
 // Catatan: tombol kembali kamera lama (btn-back-absen) sudah digantikan oleh
 // tombol X di header modal-scan-wajah (lihat tutupModalScanWajah()).
 async function checkSelectedKurirStatus() {
-const selectedId = document.getElementById('select-kurir').value;
+const selectedId = modeSesiTerkunci ? idKurirSesiAktif : document.getElementById('select-kurir').value;
 const box = document.getElementById('box-status-firebase');
 const txtId = document.getElementById('txt-id');
 const txtStatus = document.getElementById('txt-status');
 const txtBadge = document.getElementById('txt-badge-status');
 const btnLanjut = document.getElementById('btn-lanjut');
 
-if (!selectedId || !listUserKurir[selectedId]) {
+if (!selectedId) {
     box.classList.add('hidden');
-    btnLanjut.disabled = true;
-    btnLanjut.className = "w-full bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-medium py-2.5 px-3 rounded-xl text-xs cursor-not-allowed flex items-center justify-center gap-1.5 shadow-sm transition-all";
-    btnLanjut.innerHTML = `<span>Pilih Nama Dulu</span><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>`;
-    lucide.createIcons();
+    matikanTombolLanjut('Pilih Nama Dulu');
     return;
 }
 
+// Untuk sesi TERKUNCI (kurir login), jangan pernah nyangkut di "Pilih Nama Dulu"
+// hanya karena daftar kurir (listUserKurir) dari Firebase belum sempat sinkron —
+// itu dropdown tersembunyi yang memang tidak dipakai user pada alur ini. Data
+// nama/id sudah ada instan dari sesi login (infoKurir), jadi tetap lanjut jalan.
 const user = listUserKurir[selectedId];
-infoKurir = {
-    id: selectedId,
-    nama: user.nama || '-',
-    leader: user.leader || '-',
-    password: user.password || '',
-    ongkirLocked: user.ongkirLocked || false,
-    ongkirPassword: user.ongkirPassword || ''
-};
+if (!user && !modeSesiTerkunci) {
+    box.classList.add('hidden');
+    matikanTombolLanjut('Pilih Nama Dulu');
+    return;
+}
 
+if (user) {
+    infoKurir = {
+        id: selectedId,
+        nama: user.nama || infoKurir.nama || '-',
+        leader: user.leader || '-',
+        password: user.password || '',
+        ongkirLocked: user.ongkirLocked || false,
+        ongkirPassword: user.ongkirPassword || ''
+    };
+    txtId.innerText = infoKurir.leader;
+    txtStatus.innerText = user.status ? user.status.toUpperCase() : '-';
+} else {
+    // Profil lengkap belum kesinkron — tampilkan apa adanya dari data sesi,
+    // detailnya (leader/status) menyusul otomatis begitu Firebase selesai sinkron.
+    txtId.innerText = infoKurir.leader && infoKurir.leader !== '-' ? infoKurir.leader : '...';
+    txtStatus.innerText = 'AKTIF';
+}
 box.classList.remove('hidden');
-txtId.innerText = infoKurir.leader;
-txtStatus.innerText = user.status ? user.status.toUpperCase() : '-';
 syncKehadiranProfilTerkunci(infoKurir.nama);
 
 const refDB = database.ref('absensi_sahabatku');
