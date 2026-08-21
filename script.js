@@ -107,6 +107,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         let userSession = null; 
         let currentScreen = 'screen-login';
         let navigationHistory = [];
+        // Penanda bahwa sesi kurir sudah "dinyalakan" (launchApplicationSession sudah
+        // dipanggil sekali). Dipakai supaya listener realtime 'users' (yang bisa nyala
+        // berkali-kali kapan saja ada perubahan data kurir manapun) TIDAK menyeret user
+        // balik ke dashboard tiap kali data itu berubah — cukup sekali saat login/refresh.
+        let sesiKurirSudahDiluncurkan = false;
 
         window.addEventListener('popstate', function () {
             navigateBack();
@@ -708,8 +713,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 if (userSession && userSession.role === 'kurir') {
                     const currentKurir = cloudKurirList[userSession.id];
                     if (currentKurir && currentKurir.status === 'aktif') {
-                        launchApplicationSession("screen-dashboard");
-                        if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
+                        // PENTING: hanya jalankan SEKALI. Listener ini nyala ulang tiap ada
+                        // perubahan di node 'users' manapun (termasuk update lokasi live kurir
+                        // sendiri) — kalau launchApplicationSession dipanggil tiap kali, user
+                        // yang lagi ada di menu lain (mis. sedang buat nota) akan "ketarik"
+                        // paksa balik ke dashboard tanpa sebab yang jelas.
+                        if (!sesiKurirSudahDiluncurkan) {
+                            sesiKurirSudahDiluncurkan = true;
+                            launchApplicationSession("screen-dashboard");
+                            if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
+                        }
                     } else if (currentKurir && currentKurir.status !== 'aktif') {
                         toast("Sesi berakhir. Akun Anda telah dinonaktifkan oleh Admin.");
                         performLogout();
@@ -907,6 +920,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                         applyManajemenAccess(userSession.kategori || '-');
                     }, 50);
                 } else if (userSession.role === 'kurir') {
+                    sesiKurirSudahDiluncurkan = true;
                     launchApplicationSession("screen-dashboard");
                     // Mulai kirim lokasi live SEKARANG JUGA saat refresh/auto-login,
                     // jangan menunggu data 'users' selesai sinkron dari cloud dulu.
@@ -1076,6 +1090,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                             document.getElementById('nota-kurir').value = foundUser.nama;
                         }
         
+                        sesiKurirSudahDiluncurkan = true;
                         launchApplicationSession("screen-dashboard");
                         if (typeof startLiveLocationTracking === "function") startLiveLocationTracking();
                     } else {
@@ -1904,6 +1919,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 remove(ref(db, `nota/${key}`)).then(() => {
                     // ikut hapus ongkir history per nota
                     if (notaId) remove(ref(db, `ongkir_history/${notaId}`)).catch(() => {});
+                    rollbackNotaCounterJikaTerakhir(n); // biar nomor nota kepakai lagi kalau ini nomor terakhir
                     toast('Nota dan history ongkir ikut terhapus!');
                 }).catch(err => {
                     toast('Gagal hapus nota: ' + err.message);
@@ -1930,8 +1946,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         
             if (!(await showConfirm(`Yakin hapus ${hasil.length} nota sesuai filter ini?`))) return;
         
-            hasil.forEach(([key]) => {
-                remove(ref(db, `nota/${key}`));
+            hasil.forEach(([key, n]) => {
+                remove(ref(db, `nota/${key}`)).then(() => rollbackNotaCounterJikaTerakhir(n));
             });
         
             toast('Nota sesuai filter sedang dihapus.');
@@ -3254,6 +3270,42 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const nomorUrut = hasil.snapshot.val() || 1;
             return `NT-${tanggalRaw.replace(/-/g, '')}-${String(nomorUrut).padStart(4, '0')}`;
         }
+        // Cuma MELIHAT nomor berikutnya TANPA menaikkan counter — dipakai di layar
+        // Pratinjau supaya nomor yang ditampilkan sudah realistis, tapi belum "kepakai".
+        // Nomor baru benar-benar dikunci (reserveNextNotaNumber, atomic) saat nota
+        // DIKONFIRMASI SIMPAN (commitSaveNota) — jadi sekadar buka menu nota/klik
+        // pratinjau berkali-kali TIDAK bikin nomor lompat-lompat kalau tidak jadi disimpan.
+        async function peekNextNotaNumber(tanggalRaw, kurirUsername) {
+            const counterRef = ref(db, `nota_counter_harian/${tanggalRaw}/${kurirUsername}`);
+            const snap = await get(counterRef);
+            const nomorSekarang = snap.exists() ? (parseInt(snap.val()) || 0) : 0;
+            return `NT-${tanggalRaw.replace(/-/g, '')}-${String(nomorSekarang + 1).padStart(4, '0')}`;
+        }
+        // ===================================================================
+        // ROLLBACK NOMOR NOTA — dipanggil saat sebuah nota dihapus dari riwayat.
+        // Supaya nomor nota TIDAK "bolong" gara-gara nota yang salah/dihapus,
+        // counter harian kurir yang bersangkutan otomatis mundur satu langkah —
+        // TAPI HANYA kalau nota yang dihapus itu memang nota TERAKHIR yang
+        // nomornya dikeluarkan hari itu untuk kurir tsb (dicek via Firebase
+        // transaction, jadi aman dari race condition/dobel-tap). Kalau yang
+        // dihapus itu nota di tengah (bukan yang terakhir), counter TIDAK
+        // diturunkan — supaya tidak ada nota lain yang kebagian nomor dobel.
+        // ===================================================================
+        function rollbackNotaCounterJikaTerakhir(n) {
+            try {
+                if (!n || !n.id || !n.tanggalRaw || !n.kurirUsername) return;
+                const match = /-(\d{4})$/.exec(n.id);
+                if (!match) return;
+                const nomorUrutNota = parseInt(match[1], 10);
+                if (!nomorUrutNota) return;
+
+                const counterRef = ref(db, `nota_counter_harian/${n.tanggalRaw}/${n.kurirUsername}`);
+                runTransaction(counterRef, (nilaiSekarang) => {
+                    if (nilaiSekarang === nomorUrutNota) return nomorUrutNota - 1;
+                    return; // batalkan transaksi kalau bukan nomor terakhir, biarkan apa adanya
+                }).catch(() => {});
+            } catch (e) { /* jangan sampai gagalkan proses hapus nota gara-gara ini */ }
+        }
         window.prosesPratinjauNota = async function() {
             // pakai bersihkanAngka, bukan parseInt — input ongkir sudah diformat
             // pakai titik ribuan (mis. "6.000"), parseInt saja cuma baca "6".
@@ -3262,7 +3314,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 toast("Wajib mengisi Ongkir untuk melanjutkan!");
                 return;
             }
-            if (sedangReservasiNomorNota) return; // cegah dobel-tap = dobel reservasi nomor
+            if (sedangReservasiNomorNota) return; // cegah dobel-tap
             sedangReservasiNomorNota = true;
 
             const btnLanjut = document.querySelector('button[onclick="prosesPratinjauNota()"]');
@@ -3276,9 +3328,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
             let nomorNotaFinal;
             try {
+                // Ini cuma INTIP nomor berikutnya buat ditampilkan di pratinjau — TIDAK
+                // menaikkan counter. Nomor baru benar-benar dikunci nanti saat nota
+                // ditekan "Simpan" (lihat commitSaveNota). Jadi preview boleh dibuka
+                // berkali-kali tanpa bikin nomor nota ikut melompat padahal belum disimpan.
                 // Timeout 10 detik supaya tombol tidak "ngegantung" kalau koneksi lemot.
                 nomorNotaFinal = await Promise.race([
-                    reserveNextNotaNumber(getWibRawDate(), userSession.username),
+                    peekNextNotaNumber(getWibRawDate(), userSession.username),
                     new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
                 ]);
             } catch (e) {
@@ -3911,10 +3967,30 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 successMsg: 'Gambar nota berhasil disimpan!'
             });
         }
-        window.commitSaveNota = function(tips = 0) {
-            const notaNum = document.getElementById('p-nota-num').innerText || "Nota";
+        window.commitSaveNota = async function(tips = 0) {
+            // Nomor final BARU dikunci di sini (atomic, sekali per save) — bukan waktu
+            // pratinjau. Ini mencegah counter naik hanya gara-gara buka/klik pratinjau
+            // tanpa benar-benar menyimpan nota.
+            let notaNumFinal;
+            try {
+                notaNumFinal = await Promise.race([
+                    reserveNextNotaNumber(getWibRawDate(), userSession.username),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+                ]);
+            } catch (e) {
+                toast(e && e.message === 'timeout'
+                    ? 'Koneksi lambat, gagal ambil nomor nota. Coba tekan lagi.'
+                    : 'Gagal mengambil nomor nota, coba lagi.');
+                return;
+            }
+
+            // Sinkronkan nomor final ke tampilan & objek preview (dipakai simpan gambar/share WA)
+            document.getElementById('p-nota-num').innerText = notaNumFinal;
+            if (kurirNotaPreviewData) kurirNotaPreviewData.notaNum = notaNumFinal;
+            invalidateNotaCanvasCache('canvas-nota');
+
             const payload = {
-                id: notaNum,
+                id: notaNumFinal,
                 tanggal: document.getElementById('p-nota-date').innerText,
                 tanggalRaw: getWibRawDate(),
                 kurirNama: userSession.nama,
@@ -4259,6 +4335,28 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             const btnSimpanNota = document.getElementById('btn-simpan-nota');
             if (btnSimpanNota) btnSimpanNota.classList.add('hidden');
             updatePreviewButtonsLayout();
+
+            // PENTING: refresh objek yang benar-benar dipakai simpan-gambar/share-WhatsApp
+            // (saveNotaAsJpg & bagikanWhatsApp di layar preview ini pakai kurirNotaPreviewData,
+            // BUKAN notaState). Sebelumnya objek ini tidak pernah diperbarui di sini, jadi kalau
+            // nota baru saja diedit lalu dibuka dari riwayat, gambar/WA yang dibagikan masih versi
+            // LAMA (data nota yang terakhir kali dibuat, bukan yang baru diedit).
+            const rekeningKurirRiwayat = getRekeningKurirByKey(userSession?.id);
+            kurirNotaPreviewData = {
+                notaNum: n.id,
+                tanggal: n.tanggal,
+                kurir: n.kurirNama || n.kurirUsername,
+                status: n.status || 'Lunas',
+                items: (n.items || []).map(it => ({ nama: it.nama, qty: it.qty, harga: it.harga, subtotal: it.subtotal })),
+                subtotal: n.subtotal || ((n.total || 0) - (n.ongkir || 0) - totalBiayaTambahan),
+                ongkir: n.ongkir || 0,
+                biayaList: (n.biayaTambahan || []).map(b => ({ nama: b.nama, nominal: b.nominal })),
+                total: n.total || 0,
+                rekening: rekeningKurirRiwayat,
+                history: null
+            };
+            requestAnimationFrame(() => { getNotaCanvas('canvas-nota', kurirNotaPreviewData).catch(() => {}); });
+
             navigateTo('screen-preview');
         }
         function saveNotaDraft() {
@@ -4333,6 +4431,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 remove(ref(db, `nota/${key}`))
                     .then(() => {
                         delete cloudNotaList[key];
+                        rollbackNotaCounterJikaTerakhir(n); // biar nomor nota kepakai lagi kalau ini nomor terakhir
 
                         if (userId && n) {
                             const balikin = getPotonganKurirKoin(n);
