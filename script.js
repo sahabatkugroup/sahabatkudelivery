@@ -1919,7 +1919,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 remove(ref(db, `nota/${key}`)).then(() => {
                     // ikut hapus ongkir history per nota
                     if (notaId) remove(ref(db, `ongkir_history/${notaId}`)).catch(() => {});
-                    rollbackNotaCounterJikaTerakhir(n); // biar nomor nota kepakai lagi kalau ini nomor terakhir
+                    if (cloudNotaList) delete cloudNotaList[key];
+                    if (n) syncNotaCounterDenganRiwayat(n.tanggalRaw, n.kurirUsername); // biar nomor nota kepakai lagi kalau ini nomor terakhir
                     toast('Nota dan history ongkir ikut terhapus!');
                 }).catch(err => {
                     toast('Gagal hapus nota: ' + err.message);
@@ -1946,8 +1947,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         
             if (!(await showConfirm(`Yakin hapus ${hasil.length} nota sesuai filter ini?`))) return;
         
+            hasil.forEach(([key]) => {
+                if (cloudNotaList) delete cloudNotaList[key];
+            });
             hasil.forEach(([key, n]) => {
-                remove(ref(db, `nota/${key}`)).then(() => rollbackNotaCounterJikaTerakhir(n));
+                remove(ref(db, `nota/${key}`)).then(() => {
+                    if (n) syncNotaCounterDenganRiwayat(n.tanggalRaw, n.kurirUsername);
+                });
             });
         
             toast('Nota sesuai filter sedang dihapus.');
@@ -3282,28 +3288,29 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             return `NT-${tanggalRaw.replace(/-/g, '')}-${String(nomorSekarang + 1).padStart(4, '0')}`;
         }
         // ===================================================================
-        // ROLLBACK NOMOR NOTA — dipanggil saat sebuah nota dihapus dari riwayat.
-        // Supaya nomor nota TIDAK "bolong" gara-gara nota yang salah/dihapus,
-        // counter harian kurir yang bersangkutan otomatis mundur satu langkah —
-        // TAPI HANYA kalau nota yang dihapus itu memang nota TERAKHIR yang
-        // nomornya dikeluarkan hari itu untuk kurir tsb (dicek via Firebase
-        // transaction, jadi aman dari race condition/dobel-tap). Kalau yang
-        // dihapus itu nota di tengah (bukan yang terakhir), counter TIDAK
-        // diturunkan — supaya tidak ada nota lain yang kebagian nomor dobel.
+        // SINKRON ULANG COUNTER NOMOR NOTA — dipanggil setiap sebuah nota dihapus.
+        // Bukan sekadar "mundur satu", tapi DIHITUNG ULANG dari nota yang BENAR-BENAR
+        // masih ada di cloudNotaList untuk kurir+tanggal yang sama, lalu counter di-set
+        // ke nomor tertinggi yang tersisa. Ini "self-healing": walau counter sempat
+        // meleset (misal karena drift lama), begitu ada nota dihapus, counter otomatis
+        // dibetulkan sesuai kondisi riwayat yang sebenarnya — jadi kalau nota terakhir
+        // yang dihapus, nomor itu pasti kepakai lagi di nota berikutnya.
+        // PENTING: panggil fungsi ini SETELAH cloudNotaList[key] dihapus secara lokal,
+        // supaya nota yang baru dihapus tidak ikut terhitung.
         // ===================================================================
-        function rollbackNotaCounterJikaTerakhir(n) {
+        function syncNotaCounterDenganRiwayat(tanggalRaw, kurirUsername) {
             try {
-                if (!n || !n.id || !n.tanggalRaw || !n.kurirUsername) return;
-                const match = /-(\d{4})$/.exec(n.id);
-                if (!match) return;
-                const nomorUrutNota = parseInt(match[1], 10);
-                if (!nomorUrutNota) return;
-
-                const counterRef = ref(db, `nota_counter_harian/${n.tanggalRaw}/${n.kurirUsername}`);
-                runTransaction(counterRef, (nilaiSekarang) => {
-                    if (nilaiSekarang === nomorUrutNota) return nomorUrutNota - 1;
-                    return; // batalkan transaksi kalau bukan nomor terakhir, biarkan apa adanya
-                }).catch(() => {});
+                if (!tanggalRaw || !kurirUsername) return;
+                let nomorTertinggi = 0;
+                Object.values(cloudNotaList || {}).forEach((item) => {
+                    if (!item || item.tanggalRaw !== tanggalRaw || item.kurirUsername !== kurirUsername) return;
+                    const m = /-(\d{4})$/.exec(item.id || '');
+                    if (!m) return;
+                    const nomor = parseInt(m[1], 10) || 0;
+                    if (nomor > nomorTertinggi) nomorTertinggi = nomor;
+                });
+                const counterRef = ref(db, `nota_counter_harian/${tanggalRaw}/${kurirUsername}`);
+                set(counterRef, nomorTertinggi).catch(() => {});
             } catch (e) { /* jangan sampai gagalkan proses hapus nota gara-gara ini */ }
         }
         window.prosesPratinjauNota = async function() {
@@ -4431,7 +4438,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 remove(ref(db, `nota/${key}`))
                     .then(() => {
                         delete cloudNotaList[key];
-                        rollbackNotaCounterJikaTerakhir(n); // biar nomor nota kepakai lagi kalau ini nomor terakhir
+                        if (n) syncNotaCounterDenganRiwayat(n.tanggalRaw, n.kurirUsername); // biar nomor nota kepakai lagi kalau ini nomor terakhir
 
                         if (userId && n) {
                             const balikin = getPotonganKurirKoin(n);
