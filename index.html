@@ -11,8 +11,6 @@
     <meta name="theme-color" content="#0066FF">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png">
-    <link rel="preconnect" href="https://uploads.onecompiler.io" crossorigin>
-    <link rel="preload" as="image" href="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png" fetchpriority="high">
     <link rel="icon" href="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
@@ -20,50 +18,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        // ================= Deteksi HP RAM kecil / koneksi lambat =================
-        // Kalau memenuhi salah satu (RAM kecil ATAU koneksi lambat/data saver aktif),
-        // tambahkan class "low-end-device" ke <html> supaya CSS (lihat styles.css)
-        // otomatis mematikan animasi & efek blur dekoratif yang berat di GPU HP murah.
-        // Tidak ada fitur yang hilang — cuma bagian hiasan visual yang disederhanakan.
-        (function () {
-            try {
-                var isLowRam = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 4;
-                var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-                var isSlowConn = conn && (conn.saveData === true || /2g/.test(conn.effectiveType || ''));
-                if (isLowRam || isSlowConn) {
-                    document.documentElement.classList.add('low-end-device');
-                }
-            } catch (e) { /* abaikan, biarkan tampilan normal */ }
-        })();
-    </script>
-    <script>
-        // Loader fallback CDN yang aman dipakai bareng "defer".
-        // Sebelumnya fallback pakai document.write() -- itu AMAN kalau script-nya
-        // masih synchronous (blocking), tapi begitu script diberi "defer",
-        // document.write() yang jalan belakangan (setelah HTML selesai di-parse)
-        // bisa MENGHAPUS SELURUH HALAMAN. Makanya diganti pakai cara ini:
-        // bikin elemen <script> baru lewat JavaScript, jauh lebih aman di semua kondisi.
-        window.loadFallbackScript = function (url, onload) {
-            var s = document.createElement('script');
-            s.src = url;
-            s.defer = true;
-            if (onload) s.onload = onload;
-            document.head.appendChild(s);
-        };
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- defer dipasang di library yang TIDAK langsung dipakai saat halaman pertama
-         kali muncul (peta, chart laporan, export excel, gambar nota) — supaya
-         browser bisa langsung menampilkan layar Login duluan tanpa harus
-         nunggu semua file besar ini selesai diunduh dulu. Ini salah satu
-         penyebab utama "logo/loading nyangkut lama" di HP dengan koneksi
-         lemot atau RAM kecil. -->
-    <script defer src="https://unpkg.com/lucide@1.23.0/dist/umd/lucide.js" onerror="this.onerror=null;window.loadFallbackScript('https://cdn.jsdelivr.net/npm/lucide@1.23.0/dist/umd/lucide.min.js')"></script>
-    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" onload="if(window.fixLeafletIcons)window.fixLeafletIcons()" onerror="this.onerror=null;window.loadFallbackScript('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js', function(){ if(window.fixLeafletIcons) window.fixLeafletIcons(); })"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js" onerror="this.onerror=null;window.loadFallbackScript('https://unpkg.com/chart.js')"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js" onerror="this.onerror=null;window.loadFallbackScript('https://unpkg.com/xlsx/dist/xlsx.full.min.js')"></script>
-    <script defer src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" onerror="this.onerror=null;window.loadFallbackScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js')"></script>
+    <script src="https://unpkg.com/lucide@1.23.0/dist/umd/lucide.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://cdn.jsdelivr.net/npm/lucide@1.23.0/dist/umd/lucide.min.js\x22\x3E\x3C/script\x3E')"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js\x22\x3E\x3C/script\x3E')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://unpkg.com/chart.js\x22\x3E\x3C/script\x3E')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://unpkg.com/xlsx/dist/xlsx.full.min.js\x22\x3E\x3C/script\x3E')"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js\x22\x3E\x3C/script\x3E')"></script>
 
     <!-- Dipakai khusus oleh screen-kehadiran (kehadiran.js): scan wajah & Firebase realtime -->
     <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
@@ -109,21 +69,12 @@
     </script>
 
     <script>
-        // Fix Leaflet marker icons path.
-        // Dibungkus jadi fungsi (bukan langsung dieksekusi) karena leaflet.js
-        // sekarang dimuat dengan "defer" (biar tidak menahan tampilan Login),
-        // jadi variabel global L belum tentu sudah ada di titik ini. Fungsi ini
-        // dipanggil otomatis lewat onload="" pada tag <script leaflet> di atas.
-        window.fixLeafletIcons = function () {
-            if (!window.L || !window.L.Icon) return;
-            L.Icon.Default.mergeOptions({
-                iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
-            });
-        };
-        // Kalau ternyata L sudah tersedia duluan (mis. dari cache), jalankan langsung.
-        if (window.L) window.fixLeafletIcons();
+        // Fix Leaflet marker icons path
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+        });
     </script>
 
     <script>
@@ -158,7 +109,7 @@
                 <div class="absolute -inset-3 rounded-[28px] bg-white/10 blur-md"></div>
                 <div class="login-logo-ring"></div>
                 <div class="relative w-20 h-20 bg-white rounded-3xl flex items-center justify-center p-0 shadow-xl overflow-hidden ring-4 ring-white/25">
-                    <img src="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png" alt="Logo Sahabatku" width="80" height="80" fetchpriority="high" loading="eager" decoding="sync" class="w-full h-full object-cover" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 80%22%3E%3Crect width=%2280%22 height=%2280%22 rx=%2224%22 fill=%22%230066FF%22/%3E%3Ctext x=%2250%25%22 y=%2258%25%22 font-family=%22Arial%22 font-size=%2234%22 font-weight=%22800%22 fill=%22%23fff%22 text-anchor=%22middle%22%3ESD%3C/text%3E%3C/svg%3E'">
+                    <img src="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png" alt="Logo Sahabatku" class="w-full h-full object-cover">
                 </div>
                 <div class="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-xl bg-emerald-400 ring-4 ring-white/90 flex items-center justify-center shadow-md">
                     <i data-lucide="check" class="w-3.5 h-3.5 text-white" stroke-width="3"></i>
