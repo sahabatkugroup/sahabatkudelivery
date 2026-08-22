@@ -1,8 +1,9 @@
-const CACHE_NAME = "sahabatku-cache-v20";
+const CACHE_NAME = "sahabatku-cache-v21";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./tailwind-built.css",
   "./script.js",
   "./sop.js",
   "./absensi.js",
