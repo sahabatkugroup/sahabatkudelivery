@@ -12,89 +12,24 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png">
     <link rel="icon" href="https://uploads.onecompiler.io/43v32m6x5/44rw83fkz/Sahabatku%20(2).png">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="styles.css">
-    <!-- Tailwind sudah di-build jadi file statis (bukan JIT CDN lagi) supaya HP tidak perlu compile CSS tiap buka app -->
-    <link rel="stylesheet" href="tailwind-built.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script defer src="https://unpkg.com/lucide@1.23.0/dist/umd/lucide.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://cdn.jsdelivr.net/npm/lucide@1.23.0/dist/umd/lucide.min.js\x22\x3E\x3C/script\x3E')"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@1.23.0/dist/umd/lucide.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://cdn.jsdelivr.net/npm/lucide@1.23.0/dist/umd/lucide.min.js\x22\x3E\x3C/script\x3E')"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js\x22\x3E\x3C/script\x3E')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://unpkg.com/chart.js\x22\x3E\x3C/script\x3E')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://unpkg.com/xlsx/dist/xlsx.full.min.js\x22\x3E\x3C/script\x3E')"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js" onerror="this.onerror=null;document.write('\x3Cscript src=\x22https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js\x22\x3E\x3C/script\x3E')"></script>
 
-    <!--
-        CATATAN OPTIMASI:
-        Library berikut ini SENGAJA DIHAPUS dari sini dan dipindah jadi "lazy-load"
-        (baru di-download saat fiturnya benar-benar dipakai), karena tiap load app
-        sebelumnya semua ini didownload duluan padahal belum tentu kepakai:
-
-        - leaflet.css / leaflet.js  -> sekarang di-load oleh loadLeaflet() di script.js,
-          dipanggil pas fitur tracking/peta dibuka.
-        - chart.js                 -> sekarang di-load oleh loadChartJs() di script.js,
-          dipanggil pas layar rekap/laporan (grafik) dibuka.
-        - xlsx.full.min.js         -> sekarang di-load oleh loadXLSX() di script.js,
-          dipanggil pas tombol export Excel ditekan.
-        - html2canvas.min.js       -> DIHAPUS PERMANEN dari sini karena ternyata
-          dobel: suratpernyataan.html sudah punya script html2canvas sendiri.
-        - face-api.js              -> sekarang di-load oleh loadFaceApi() di kehadiran.js,
-          dipanggil pas screen absensi wajah dibuka (bukan otomatis dari awal lagi).
-
-        Loader function-nya ada di bagian bawah file JS masing-masing, cari komentar
-        "LAZY LOADER" untuk lihat kodenya.
-    -->
-
-    <script>
-        // ===== LAZY LOADER UNTUK LIBRARY BERAT =====
-        // Dipakai bareng oleh script.js & kehadiran.js supaya library besar
-        // (leaflet, chart.js, xlsx, face-api) baru didownload saat fiturnya
-        // benar-benar dibuka, bukan didownload semua di awal.
-        window.__libLoaders = window.__libLoaders || {};
-
-        function loadScriptOnce(key, src) {
-            if (window.__libLoaders[key]) return window.__libLoaders[key];
-            window.__libLoaders[key] = new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = src;
-                s.onload = resolve;
-                s.onerror = () => { delete window.__libLoaders[key]; reject(new Error('Gagal load ' + src)); };
-                document.head.appendChild(s);
-            });
-            return window.__libLoaders[key];
-        }
-
-        function loadStyleOnce(key, href) {
-            if (document.getElementById(key)) return;
-            const l = document.createElement('link');
-            l.id = key;
-            l.rel = 'stylesheet';
-            l.href = href;
-            document.head.appendChild(l);
-        }
-
-        window.loadLeaflet = function () {
-            loadStyleOnce('lib-leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
-            if (window.L) return Promise.resolve();
-            return loadScriptOnce('leaflet', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js').then(() => {
-                // Fix Leaflet marker icons path (dulunya di <head>, sekarang jalan
-                // otomatis begitu leaflet selesai di-load, bukan pas app dibuka)
-                L.Icon.Default.mergeOptions({
-                    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
-                });
-            });
-        };
-        window.loadChartJs = function () {
-            return window.Chart ? Promise.resolve() : loadScriptOnce('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js');
-        };
-        window.loadXLSX = function () {
-            return window.XLSX ? Promise.resolve() : loadScriptOnce('xlsx', 'https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js');
-        };
-        window.loadFaceApi = function () {
-            return window.faceapi ? Promise.resolve() : loadScriptOnce('faceapi', 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js');
-        };
-    </script>
+    <!-- Dipakai khusus oleh screen-kehadiran (kehadiran.js): scan wajah & Firebase realtime -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
     <script>
         // === Penjaga tampilan icon (auto-heal) ===
@@ -133,12 +68,34 @@
         })();
     </script>
 
-    <!--
-        Config warna Tailwind (primary, secondary, dll) yang dulu di sini
-        buat CDN sekarang sudah "dibakar" langsung ke tailwind-built.css
-        lewat tailwind.config.js saat proses build, jadi tidak perlu lagi
-        di-set lewat JS di sini.
-    -->
+    <script>
+        // Fix Leaflet marker icons path
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+        });
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0066FF',
+                        secondary: '#008CFF',
+                        success: '#22C55E',
+                        danger: '#EF4444',
+                        lightBg: '#F8FAFC',
+                        darkBg: '#0F172A',
+                        darkCard: '#1E293B'
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
 </head>
 <body class="bg-lightBg text-slate-800 dark:bg-darkBg dark:text-slate-100 font-sans transition-colors duration-300">
     <div id="screen-login" class="screen active login-gradient-bg justify-end relative overflow-hidden">
