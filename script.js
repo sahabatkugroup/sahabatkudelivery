@@ -478,12 +478,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 
         };
 
-        window.renderTrackingMap = async function(id) {
+        window.renderTrackingMap = function(id) {
             const mapEl = document.getElementById('tracking-map');
-            if (!mapEl) return;
-            // Leaflet baru di-download pas fitur tracking beneran dibuka (lazy load)
-            await window.loadLeaflet();
-            if (typeof L === 'undefined') return;
+            if (!mapEl || typeof L === 'undefined') return;
 
             const loc = liveLocations[id];
             const user = selectedTrackingUser || cloudKurirList[id];
@@ -525,11 +522,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
             trackingMap.setView([loc.lat, loc.lng], 16);
             trackingMap.invalidateSize();
         };
-        window.openTrackingModal = async function(id) {
+        window.openTrackingModal = function(id) {
             const modal = document.getElementById('modal-tracking-kurir');
             if (!modal) return;
-            // Leaflet baru di-download pas modal tracking beneran dibuka (lazy load)
-            await window.loadLeaflet();
 
             const loc = liveLocations[id];
             const user = cloudKurirList[id] || null;
@@ -1457,10 +1452,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                     renderTrackingKurirList();
                     if (selectedKurirTracking) renderTrackingMap(selectedKurirTracking);
                 }, 100);
-            }
-            if (screenId === 'screen-kehadiran' && typeof window.preloadFaceApiKehadiran === 'function') {
-                // Preload face-api (lazy) baru pas user beneran buka screen absensi wajah
-                window.preloadFaceApiKehadiran();
             }
             if (screenId === 'screen-admin-testimonial') {
                 setTimeout(() => {
@@ -5594,12 +5585,10 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         }
         let instanceChartRekap = null;
         
-        async function initChartsEngine(dataHarianSistem = {}) {
+        function initChartsEngine(dataHarianSistem = {}) {
             const chartContainer = document.getElementById('chart-rekap-container');
             const canvasLama = document.getElementById('chartPendapatan');
             if (!chartContainer || !canvasLama) return;
-            // Chart.js baru di-download pas layar rekap dibuka (lazy load)
-            await window.loadChartJs();
             if (instanceChartRekap !== null) {
                 instanceChartRekap.destroy();
             }
@@ -6255,11 +6244,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         };
 
         let instanceChartLaporanAdmin = null;
-        async function initAdminLaporanChart(mapHarian = {}) {
+        function initAdminLaporanChart(mapHarian = {}) {
             const chartContainer = document.getElementById('chart-laporan-admin-container');
             if (!chartContainer) return;
-            // Chart.js baru di-download pas layar laporan admin dibuka (lazy load)
-            await window.loadChartJs();
             if (instanceChartLaporanAdmin !== null) {
                 instanceChartLaporanAdmin.destroy();
                 instanceChartLaporanAdmin = null;
@@ -6347,9 +6334,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
                 }
             });
         }
-        window.backupLaporanExcel = async function() {
-            // XLSX baru di-download pas tombol export Excel ditekan (lazy load)
-            await window.loadXLSX();
+        window.backupLaporanExcel = function() {
             const bulan = document.getElementById('laporan-filter-bulan')?.value || getWibRawDate().substring(0, 7);
             const kurirFilter = document.getElementById('laporan-filter-kurir')?.value || 'semua';
 
