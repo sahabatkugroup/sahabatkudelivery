@@ -1,26 +1,23 @@
-const CACHE_NAME = "sahabatku-cache-v23";
+const CACHE_NAME = "sahabatku-cache-v26";
+
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./script.js",
-  "./sop.js",
-  "./absensi.js",
-  "./kehadiran.js",
-  "./profilkurir.js",
-  "./petugasmitra.js",
-  "./suratpernyataan.html",
-  "./trainer.js",
-  "./korlap.js",
-  "./admincalonkurir.js",
-  "./jelajah.js",
+  "./tailwind-built.css",
   "./manifest.json"
 ];
-
-// Install: simpan file-file utama ke cache
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(
+        APP_SHELL.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn("Gagal cache saat install:", url, err);
+          })
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
