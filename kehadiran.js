@@ -52,17 +52,25 @@ function initKehadiran() {
     hitungTanggalOperasional();
   }, 60000);
 
-  // Preload model wajah di background dari awal (tidak nunggu tombol "Lanjut"
-  // ditekan) — supaya waktu masuk ke kamera scan wajah jadi jauh lebih cepat,
-  // terutama di HP dengan koneksi/RAM terbatas. Kalau gagal, biarkan saja;
-  // startCameraEngine() akan coba load lagi seperti biasa saat dibutuhkan.
-  if (typeof faceapi !== 'undefined') {
-    faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/').catch(() => {});
-  }
-
   // Langsung jalan, tanpa delay buatan lagi
   autoLoginKurirDariSession();
 }
+
+// ===== LAZY LOAD FACE-API =====
+// Sebelumnya library face-api.js (berat, model machine learning) di-download
+// otomatis tiap kali app dibuka, walau user belum tentu buka screen absensi
+// wajah. Sekarang baru di-download + preload model-nya saat user BENERAN
+// masuk ke screen-kehadiran (dipanggil dari navigateTo di script.js), supaya
+// loading awal app jauh lebih ringan.
+let __faceApiPreloadStarted = false;
+window.preloadFaceApiKehadiran = function () {
+  if (__faceApiPreloadStarted) return;
+  __faceApiPreloadStarted = true;
+  if (typeof window.loadFaceApi !== 'function') return;
+  window.loadFaceApi()
+    .then(() => faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/'))
+    .catch(() => { __faceApiPreloadStarted = false; }); // biar bisa dicoba ulang kalau gagal
+};
 
 async function autoLoginKurirDariSession() {
   const savedSession = localStorage.getItem('sahabatku_session');
@@ -376,6 +384,8 @@ document.getElementById('btn-lanjut').addEventListener('click', async () => {
 
 async function startCameraEngine() {
   document.getElementById('cam-loader').classList.remove('hidden');
+  // Jaga-jaga kalau face-api belum sempat ke-preload (lazy load fallback)
+  if (typeof window.loadFaceApi === 'function') await window.loadFaceApi();
   await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/');
   document.getElementById('cam-loader').classList.add('hidden');
   try {
